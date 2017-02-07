@@ -28,9 +28,9 @@ which xdotool &>/dev/null || (echo '错误：xdotool 程序未安装。' >&2; ze
 _mcchat_input="$(zenity --entry --text '保持 Minecraft 处于暂停界面并在此输入聊天内容：' --title 'Minecraft 中文聊天辅助工具')"
 test -z "$_mcchat_input" && exit 0
 #wmctrl -a 'Minecraft'
-xdotool key --clearmodifiers Escape
-sleep 0.25
-xdotool key t
-sleep 0.25
+#xdotool key --clearmodifiers Escape
+#sleep 0.25
+#xdotool key t
+#sleep 0.25
 xdotool type --delay 150 "$_mcchat_input"
-xdotool key Return
+#xdotool key Return
