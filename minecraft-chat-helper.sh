@@ -29,8 +29,9 @@ _mcchat_input="$(zenity --entry --text '保持 Minecraft 处于暂停界面并�
 test -z "$_mcchat_input" && exit 0
 #wmctrl -a 'Minecraft'
 #xdotool key --clearmodifiers Escape
-#sleep 0.25
+#sleep 0.5
 #xdotool key t
-#sleep 0.25
+#sleep 0.5 && xdotools key Control+space 
 xdotool type --delay 150 "$_mcchat_input"
 #xdotool key Return
+
