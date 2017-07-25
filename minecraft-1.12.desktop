@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Minecraft(v1.12)
+Comment=Minecraft(v1.12)
+Exec=minecraft-1.12.sh
+Icon=/home/zx/bin/minecraft-icon.png
+Terminal=false
+Type=Application
+NoDisplay=true
