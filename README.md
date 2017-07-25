@@ -5,7 +5,7 @@ Minecraft chat helper with IME (Chinese, Japanese, Korean) support
 
 ### Linux:
 
-Dependencies: zenity, xclip, xdotool
+Dependencies: zenity, xdotool
 
 Under the control panel given by your Desktop Environment, add a hotkey, for
 example Super+T, to fire up `minecraft-chat-helper.sh`.
@@ -57,7 +57,7 @@ Minecraft 中文聊天辅助工具
 
 ### Linux：
 
-依赖项：zenity, xclip, xdotool
+依赖项：zenity, xdotool
 
 在您的桌面环境提供的控制面板中，添加一组快捷键，比如 Super+T，来启动
 `minecraft-chat-helper.sh` 脚本。
