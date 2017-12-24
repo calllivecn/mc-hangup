@@ -8,8 +8,9 @@ trap "safe_exit" SIGINT SIGTERM
 
 
 WIN=$(xdotool search --name "Minecraft 1.12.2")
+WIN=$(xdotool search --name "Minecraft 1.12")
 
-xdotool windowfoucs $WIN
+xdotool windowfocus $WIN
 
 xdotool key Escape
 
@@ -18,4 +19,5 @@ do
 	xdotool mousedown 3
 	sleep 0.1
 	xdotool mouseup 3
+	sleep $[60 * 60]
 done
