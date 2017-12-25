@@ -2,7 +2,7 @@
 Name=Minecraft(v1.12)
 Comment=Minecraft(v1.12)
 Exec=minecraft-1.12.sh
-Icon=/home/zx/bin/minecraft-icon.png
+Icon=/home/zx/bin/mc-icon.png
 Terminal=false
 Type=Application
 NoDisplay=true
