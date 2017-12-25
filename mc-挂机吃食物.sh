@@ -1,23 +1,27 @@
+#!/bin/sh
+#
+# 每30分钟吃一次食物
 
 safe_exit(){
+
+	#xdotool mouseup 1
 	xdotool mouseup 3
 	exit 0
 }
+trap safe_exit SIGINT
 
-trap "safe_exit" SIGINT SIGTERM
+WID=$(xdotool search --name 'Minecraft 1.12.2')
 
+xdotool windowfocus $WID
 
-WIN=$(xdotool search --name "Minecraft 1.12.2")
-WIN=$(xdotool search --name "Minecraft 1.12")
-
-xdotool windowfocus $WIN
-
-xdotool key Escape
+xdotool key Escape 
+sleep 1
+#xdotool mousedown 1
 
 while :
 do
+	sleep $[60*30]
 	xdotool mousedown 3
-	sleep 0.1
+	sleep 5
 	xdotool mouseup 3
-	sleep $[60 * 60]
 done
