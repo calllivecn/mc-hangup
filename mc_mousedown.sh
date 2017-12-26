@@ -2,7 +2,7 @@
 
 trap safe_exit SIGINT
 
-WID=$(xdotool search --name 'Minecraft 1.12')
+WID=$(xdotool search --name 'Minecraft 1.12.2')
 
 safe_exit(){
 
@@ -12,7 +12,7 @@ safe_exit(){
 }
 
 xdotool windowfocus $WID
-
+sleep 0.5
 xdotool key Escape 
-sleep 1
+sleep 0.5
 xdotool mousedown 1
