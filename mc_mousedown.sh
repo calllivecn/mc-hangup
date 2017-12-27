@@ -12,7 +12,7 @@ safe_exit(){
 }
 
 xdotool windowfocus $WID
-sleep 0.5
+xdotool sleep 0.5
 xdotool key Escape 
-sleep 0.5
+xdotool sleep 0.5
 xdotool mousedown 1
