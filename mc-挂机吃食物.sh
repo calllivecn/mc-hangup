@@ -15,9 +15,9 @@ getFocus(){
 }
 
 reconveryFocus(){
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool key t
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool windowfocus "$SOURCE_WID"
 }
 
@@ -27,7 +27,7 @@ getMcFocus(){
 
 notify(){
 	notify-send "接下来的10秒钟内，不要动键盘或鼠标。"
-	sleep 5
+	xdotool sleep 5
 }
 
 send(){
@@ -37,20 +37,19 @@ send(){
 	getMcFocus
 
 	xdotool windowfocus $WID
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool key Escape 
-	sleep 0.1
+	xdotool sleep 0.1
 
 	xdotool key t
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool type --delay 150 "自动挂机中。。。"
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool key Return
 
 	reconveryFocus
 
-	sleep $[60 * 3]
-	#sleep 45
+	xdotool sleep $[60 * 3]
 }
 
 eat(){
@@ -59,12 +58,12 @@ eat(){
 	getMcFocus
 
 	xdotool windowfocus $WID
-	sleep 0.1
+	xdotool sleep 0.1
 	xdotool key Escape 
-	sleep 0.1
+	xdotool sleep 0.1
 
 	xdotool mousedown 3
-	sleep 3
+	xdotool sleep 3
 	xdotool mouseup 3
 
 	reconveryFocus
@@ -80,5 +79,4 @@ do
 
 	eat
 
-	#sleep $[60*30]
 done
