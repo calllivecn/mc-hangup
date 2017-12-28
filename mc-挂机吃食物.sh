@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # 每30分钟吃一次食物
 
@@ -8,21 +8,30 @@ safe_exit(){
 	xdotool mouseup 3
 	exit 0
 }
+
 trap safe_exit SIGINT SIGTERM
 
+MC_NAME='Minecraft 1.12.2'
+
+delay='xdotool sleep 0.1'
+
 getFocus(){
-	SOURCE_WID=$(xdotool getwindowfocus)
+	SOURCE_WIN=$(xdotool getwindowfocus)
 }
 
 reconveryFocus(){
-	xdotool sleep 0.1
+	$delay
 	xdotool key t
-	xdotool sleep 0.1
-	xdotool windowfocus "$SOURCE_WID"
+	$delay
+	xdotool windowfocus "$SOURCE_WIN"
 }
 
 getMcFocus(){
-	WID=$(xdotool search --name 'Minecraft 1.12.2')
+	WIN=$(xdotool search --name "$MC_NAME")
+	if test -z $WIN;then
+		echo not found $MC_NAME
+		exit 1
+	fi
 }
 
 notify(){
@@ -36,15 +45,15 @@ send(){
 
 	getMcFocus
 
-	xdotool windowfocus $WID
-	xdotool sleep 0.1
+	xdotool windowfocus $WIN
+	$delay
 	xdotool key Escape 
-	xdotool sleep 0.1
+	$delay
 
 	xdotool key t
-	xdotool sleep 0.1
-	xdotool type --delay 150 "自动挂机中。。。"
-	xdotool sleep 0.1
+	$delay
+	xdotool type --delay 50 "自动挂机中。。。"
+	$delay
 	xdotool key Return
 
 	reconveryFocus
@@ -57,10 +66,10 @@ eat(){
 	getFocus
 	getMcFocus
 
-	xdotool windowfocus $WID
-	xdotool sleep 0.1
+	xdotool windowfocus $WIN
+	$delay
 	xdotool key Escape 
-	xdotool sleep 0.1
+	$delay
 
 	xdotool mousedown 3
 	xdotool sleep 3
@@ -69,14 +78,24 @@ eat(){
 	reconveryFocus
 }
 
+food=${1:-4}
+
+echo "默认使用物品栏第:${food}格为食物"
+echo
+echo "当前使用物品栏第:${food}格为食物"
+echo
+echo "请保证食物充足"
+
 while :
 do
 
-	for i in {1..10}
-	do
-		send
-	done
-
+	#for i in {1..10}
+	#do
+	#	send
+	#done
+	
 	eat
+
+	xdotool sleep $[60 * 30]
 
 done
