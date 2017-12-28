@@ -15,8 +15,8 @@ WID=$(xdotool search --name 'Minecraft 1.12.2')
 fishingRod="${1:-1}"
 food="${2:-2}"
 
-echo "默认钓鱼杆在物品栏第:  $fishingRod 格"
-echo  "默认食物在物品栏第: $food 格"
+echo "假设钓鱼杆在物品栏第:${fishingRod}格"
+echo  "假设食物在物品栏第:${food}格"
 
 delay='xdotool sleep 0.1'
 
