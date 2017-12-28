@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 safe_exit(){
@@ -10,13 +10,29 @@ safe_exit(){
 
 trap safe_exit SIGINT
 
-WID=$(xdotool search --name 'Minecraft 1.12.2')
+MC_NAME='Minecraft 1.12.2'
+
+WIN=$(xdotool search --name "$MC_NAME")
+if test -z "$WIN";then
+	echo not found $MC_NAME
+	exit 1
+fi
 
 fishingRod="${1:-1}"
 food="${2:-2}"
 
-echo "假设钓鱼杆在物品栏第:${fishingRod}格"
-echo  "假设食物在物品栏第:${food}格"
+if grep -qE '[0-9]' "$fishingRod" && grep -qE '[0-9]' "$fodd";then
+	echo "钓鱼杆的食物必须是物品栏上的一个位置：0~9 之间。"
+	echo "例子：${0##*/} 6 4"
+	exit 1
+fi
+
+echo "默认使用物品栏第:${fishingRod}格为钓鱼杆"
+echo "默认使用物品栏第:${food}格为食物"
+echo
+echo "当前使用物品栏第:${fishingRod}格为钓鱼杆"
+echo "当前使用物品栏第:${food}格为食物"
+
 
 delay='xdotool sleep 0.1'
 
@@ -45,7 +61,7 @@ down_up3(){
 }
 
 
-xdotool windowfocus $WID
+xdotool windowfocus $WIN
 $delay
 xdotool key Escape
 $delay
