@@ -15,6 +15,8 @@ MC_NAME='Minecraft 1.12.2'
 
 delay='xdotool sleep 0.1'
 
+MINUTE=${1:-30}
+
 getFocus(){
 	SOURCE_WIN=$(xdotool getwindowfocus)
 }
@@ -58,7 +60,7 @@ send(){
 
 	reconveryFocus
 
-	xdotool sleep $[60 * 3]
+	xdotool sleep $[60 * "$MINTUE"]
 }
 
 eat(){
