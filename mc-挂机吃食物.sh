@@ -15,7 +15,6 @@ MC_NAME='Minecraft 1.12.2'
 
 delay='xdotool sleep 0.1'
 
-MINUTE=${1:-30}
 
 getFocus(){
 	SOURCE_WIN=$(xdotool getwindowfocus)
@@ -81,12 +80,19 @@ eat(){
 }
 
 food=${1:-4}
+MINUTE=${2:-30}
 
-echo "默认使用物品栏第:${food}格为食物"
+echo
+echo "默认使用物品栏第:4格为食物"
 echo
 echo "当前使用物品栏第:${food}格为食物"
 echo
 echo "请保证食物充足"
+echo
+echo "默认每过30分钟吃一次食物"
+echo
+echo "当前每过${MINUTE}分钟吃一次食"
+echo
 
 while :
 do
