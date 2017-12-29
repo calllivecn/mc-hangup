@@ -18,6 +18,7 @@ delay='xdotool sleep 0.1'
 
 getFocus(){
 	SOURCE_WIN=$(xdotool getwindowfocus)
+	eval $(xdotool getmouselocation --shell)
 }
 
 reconveryFocus(){
@@ -25,6 +26,8 @@ reconveryFocus(){
 	xdotool key t
 	$delay
 	xdotool windowfocus "$SOURCE_WIN"
+	$delay
+	xdotool mousemove --screen $SCREEN $X $Y
 }
 
 getMcFocus(){
