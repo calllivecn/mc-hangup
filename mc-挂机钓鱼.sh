@@ -18,11 +18,13 @@ if test -z "$WIN";then
 	exit 1
 fi
 
-fishingRod="${1:-1}"
-food="${2:-2}"
+fishingRod=${1:-1}
+food=${2:-2}
 
-if grep -qE '[0-9]' "$fishingRod" && grep -qE '[0-9]' "$fodd";then
-	echo "钓鱼杆的食物必须是物品栏上的一个位置：0~9 之间。"
+if echo "$fishingRod" | grep -qE '[1-9]' && echo "$food" |grep -qE '[1-9]';then
+	:
+else
+	echo "钓鱼杆的食物必须是物品栏上的一个位置：1~9 之间。"
 	echo "例子：${0##*/} 6 4"
 	exit 1
 fi

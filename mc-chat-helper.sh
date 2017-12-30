@@ -59,7 +59,7 @@ xdotool key t
 #sleep 0.5 && xdotools key Control+space 
 
 $delay
-xdotool type --delay 50 "$_mcchat_input"
+xdotool type --delay 150 "$_mcchat_input"
 $delay
 xdotool key Return
 $delay

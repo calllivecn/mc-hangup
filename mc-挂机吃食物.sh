@@ -56,7 +56,7 @@ send(){
 
 	xdotool key t
 	$delay
-	xdotool type --delay 50 "自动挂机中。。。"
+	xdotool type --delay 150 "自动挂机中。。。"
 	$delay
 	xdotool key Return
 
@@ -74,7 +74,8 @@ eat(){
 	$delay
 	xdotool key Escape 
 	$delay
-
+	xdotool key ${food}
+	$delay
 	xdotool mousedown 3
 	xdotool sleep 3
 	xdotool mouseup 3
