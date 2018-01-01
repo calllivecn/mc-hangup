@@ -9,7 +9,7 @@ delay='xdotool sleep 0.1'
 
 MC_NAME='Minecraft 1.12.2'
 
-which xdotool &>/dev/null || (echo '错误：xdotool 程序未安装。' >&2; zenity --error --text '错误：xdotool 程序未安装' --title 'Minecraft 中文聊天辅助工具'; exit 2)
+which xdotool &>/dev/null || (echo '错误：xdotool 程序未安装。' >&2; echo '错误：xdotool 程序未安装';exit 2)
 
 WIN=$(xdotool search --name "$MC_NAME")
 
