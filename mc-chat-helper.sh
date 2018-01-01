@@ -23,8 +23,6 @@
 # THE SOFTWARE.
 
 set -e
-which zenity &>/dev/null || (echo '错误：zenity 程序未安装。' >&2; exit 2)
-
 
 # quote libmc.sh
 program=$(dirname ${0})
