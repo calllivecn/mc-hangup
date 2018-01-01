@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-
+set -e
 
 safe_exit(){
 
@@ -11,18 +11,10 @@ safe_exit(){
 }
 trap safe_exit SIGINT
 
-delay='xdotool sleep 0.1'
+# quote libmc.sh
+program=$(dirname ${0})
+. "$program"/libmc.sh
 
-MC_NAME='Minecraft 1.12.2'
-
-WIN=$(xdotool search --name "$MC_NAME")
-if test -z $WIN;then
-	echo not found $MC_NAME
-	exit 1
-fi
-
-$delay
-xdotool windowfocus $WIN
 $delay
 xdotool key Escape 
 $delay

@@ -10,13 +10,9 @@ safe_exit(){
 
 trap safe_exit SIGINT
 
-MC_NAME='Minecraft 1.12.2'
-
-WIN=$(xdotool search --name "$MC_NAME")
-if test -z "$WIN";then
-	echo not found $MC_NAME
-	exit 1
-fi
+# quote libmc.sh
+program=$(dirname ${0})
+. "$program"/libmc.sh
 
 fishingRod=${1:-1}
 food=${2:-2}
@@ -71,7 +67,7 @@ xdotool key "$fishingRod"
 
 while :
 do
-	down_up3
 	eat
+	down_up3
 done
 

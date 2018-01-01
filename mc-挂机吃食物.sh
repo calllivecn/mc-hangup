@@ -2,6 +2,8 @@
 #
 # 每30分钟吃一次食物
 
+set -e
+
 safe_exit(){
 
 	#xdotool mouseup 1
@@ -11,77 +13,10 @@ safe_exit(){
 
 trap safe_exit SIGINT SIGTERM
 
-MC_NAME='Minecraft 1.12.2'
+# quote libmc.sh
+program=$(dirname ${0})
+. "$program"/libmc.sh
 
-delay='xdotool sleep 0.1'
-
-
-getFocus(){
-	SOURCE_WIN=$(xdotool getwindowfocus)
-	eval $(xdotool getmouselocation --shell)
-}
-
-reconveryFocus(){
-	$delay
-	xdotool key t
-	$delay
-	xdotool windowfocus "$SOURCE_WIN"
-	$delay
-	xdotool mousemove --screen $SCREEN $X $Y
-}
-
-getMcFocus(){
-	WIN=$(xdotool search --name "$MC_NAME")
-	if test -z $WIN;then
-		echo not found $MC_NAME
-		exit 1
-	fi
-}
-
-notify(){
-	notify-send "接下来的10秒钟内，不要动键盘或鼠标。"
-	xdotool sleep 5
-}
-
-send(){
-	notify
-	getFocus
-
-	getMcFocus
-
-	xdotool windowfocus $WIN
-	$delay
-	xdotool key Escape 
-	$delay
-
-	xdotool key t
-	$delay
-	xdotool type --delay 150 "自动挂机中。。。"
-	$delay
-	xdotool key Return
-
-	reconveryFocus
-
-	xdotool sleep $[60 * "$MINTUE"]
-}
-
-eat(){
-	notify
-	getFocus
-	getMcFocus
-
-	xdotool windowfocus $WIN
-	$delay
-	xdotool key Escape 
-	$delay
-	xdotool key ${food}
-	$delay
-	xdotool mousedown 3
-	xdotool sleep 3
-	xdotool mouseup 3
-
-	reconveryFocus
-}
 
 food=${1:-4}
 MINUTE=${2:-30}
@@ -101,13 +36,15 @@ echo
 while :
 do
 
-	#for i in {1..10}
-	#do
-	#	send
-	#done
-	
 	eat
 
-	xdotool sleep $[60 * 30]
+	for i in {0..29}
+	do
+		echo "还有$[ 30 - ${i}]分钟进食"
+		xdotool sleep 60
+
+	done
+	
+
 
 done

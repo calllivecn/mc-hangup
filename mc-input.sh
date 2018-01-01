@@ -3,25 +3,11 @@
 
 set -e
 which zenity &>/dev/null || (echo '错误：zenity 程序未安装。' >&2; exit 2)
-which xdotool &>/dev/null || (echo '错误：xdotool 程序未安装。' >&2; zenity --error --text '错误：xdotool 程序未安装' --title 'Minecraft 中文聊天辅助工具'; exit 2)
 
-delay='xdotool sleep 0.1'
 
-MC_NAME='Minecraft 1.12.2'
-
-WIN=$(xdotool search --name "$MC_NAME")
-
-if test -z "$WIN";then
-	echo not found "$WIN_NAME"
-	exit 1
-else
-	xdotool windowfocus $WIN
-fi
-
-ctrl_space(){
-	xdotool sleep 0.5
-	xdotool key Ctrl+space
-}
+# quote libmc.sh
+program=$(dirname ${0})
+. "$program"/libmc.sh
 
 ctrl_space &
 $delay
