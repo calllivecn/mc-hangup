@@ -9,7 +9,8 @@ delay='xdotool sleep 0.1'
 
 MC_NAME='Minecraft 1.12.2'
 
-which xdotool &>/dev/null || (echo '错误：xdotool 程序未安装。' >&2; echo '错误：xdotool 程序未安装';exit 2)
+which zenity &>/dev/null || { echo '错误：zenity 程序未安装。' >&2;exit 2; }
+which xdotool &>/dev/null || { echo '错误：xdotool 程序未安装。' >&2;exit 2; }
 
 WIN=$(xdotool search --name "$MC_NAME")
 
@@ -49,13 +50,15 @@ getMcFocus(){
 }
 
 notify(){
+	#zenity --notification --text "接下来的10秒钟内，不要动键盘或鼠标。"
 	notify-send "接下来的10秒钟内，不要动键盘或鼠标。"
 	xdotool sleep 5
 }
 
 send(){
-	notify
 	getFocus
+
+	notify
 
 	getMcFocus
 
@@ -76,8 +79,8 @@ send(){
 }
 
 eat(){
-	notify
 	getFocus
+	notify
 	getMcFocus
 
 	xdotool windowfocus $WIN
