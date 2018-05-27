@@ -93,5 +93,5 @@ eat(){
 	xdotool sleep 3
 	xdotool mouseup 3
 
-	reconveryFocus
+	#reconveryFocus
 }
