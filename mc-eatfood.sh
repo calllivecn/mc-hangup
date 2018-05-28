@@ -37,7 +37,6 @@ while :
 do
 
 	eat
-	reconveryFocus
 
 	for i in {0..29}
 	do
