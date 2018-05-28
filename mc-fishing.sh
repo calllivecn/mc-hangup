@@ -58,6 +58,11 @@ xdotool key "$fishingRod"
 while :
 do
 	down_up3
-	eat
+    $delay
+    xdotool key ${food}
+    $delay
+    xdotool mousedown 3
+    xdotool sleep 3
+	xdotool mouseup 3
 done
 
