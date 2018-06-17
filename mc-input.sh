@@ -4,8 +4,7 @@
 set -e
 
 # quote libmc.sh
-program=$(dirname ${0})
-. "$program"/libmc.sh
+. "$(dirname ${0})"/libmc.sh
 
 ctrl_space &
 $delay
