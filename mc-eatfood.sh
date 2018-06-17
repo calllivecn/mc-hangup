@@ -14,8 +14,7 @@ safe_exit(){
 trap safe_exit SIGINT SIGTERM
 
 # quote libmc.sh
-program=$(dirname ${0})
-. "$program"/libmc.sh
+. "$(dirname ${0})"/libmc.sh
 
 
 food=${1:-4}

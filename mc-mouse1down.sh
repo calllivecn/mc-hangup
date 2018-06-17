@@ -12,8 +12,7 @@ safe_exit(){
 trap safe_exit SIGINT
 
 # quote libmc.sh
-program=$(dirname ${0})
-. "$program"/libmc.sh
+. "$(dirname ${0})"/libmc.sh
 
 $delay
 xdotool key Escape 

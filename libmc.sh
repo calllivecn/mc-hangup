@@ -5,6 +5,8 @@
 
 set -e
 
+program=${0##*/}
+
 delay='xdotool sleep 0.1'
 
 MC_NAME='Minecraft 1.12.2'
