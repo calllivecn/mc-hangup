@@ -5,11 +5,29 @@
 
 set -e
 
-program=${0##*/}
-
 delay='xdotool sleep 0.1'
 
-MC_NAME='Minecraft 1.12.2'
+
+mc_cfg="$(dirname ${0})/mc.cfg"
+if [ -r "$mc_cfg" ];then
+	. "$mc_cfg"
+else
+	echo "需要配置$mc_cfg"
+	exit 1
+fi
+
+# MC_NAME='Minecraft 1.13.1'
+if [ -z "${MC_NAME}" ];then
+	echo "需要在 ${mc_cfg} 配置minecraft游戏窗口名称，如：Minrcraft 1.12.2"
+	exit 1
+fi
+
+# MOUSE="Logitech USB Optical Mouse"
+if [ -z "${MOUSE}" ];then
+	echo "可以用以下方法配置启动脚本时禁用鼠标。"
+	echo "xinput list --name-only 查看你想要禁用的鼠标。"
+	echo "然后配置${0##*/} 中的 MOUSE 变量。"
+fi
 
 which zenity &>/dev/null || { echo '错误：zenity 程序未安装。' >&2;exit 2; }
 which xdotool &>/dev/null || { echo '错误：xdotool 程序未安装。' >&2;exit 2; }
@@ -28,6 +46,18 @@ ctrl_space(){
 	xdotool key Ctrl+space
 }
 
+
+disable_mouse(){
+	set +e
+	xinput disable $(xinput list --id-only "$MOUSE")
+	set -e
+}
+
+enable_mouse(){
+	set +e
+	xinput enable $(xinput list --id-only "$MOUSE")
+	set -e
+}
 
 getFocus(){
 	SOURCE_WIN=$(xdotool getwindowfocus)

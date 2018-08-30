@@ -4,6 +4,7 @@
 safe_exit(){
 
 	xdotool mouseup 3
+	enable_mouse
 	exit 0
 
 }
@@ -11,7 +12,8 @@ safe_exit(){
 trap safe_exit SIGINT
 
 # quote libmc.sh
-. "$(dirname ${0})"/libmc.sh
+program=$(dirname ${0})
+. "$program"/libmc.sh
 
 fishingRod=${1:-1}
 food=${2:-2}
@@ -56,6 +58,8 @@ xdotool key "$fishingRod"
 
 while :
 do
+	disable_mouse
+
 	down_up3
     $delay
     xdotool key ${food}
@@ -63,5 +67,8 @@ do
     xdotool mousedown 3
     xdotool sleep 3
 	xdotool mouseup 3
+
+	enable_mouse
+
 done
 
