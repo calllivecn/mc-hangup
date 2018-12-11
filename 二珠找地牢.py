@@ -1,0 +1,60 @@
+#!/usr/bin/env py3
+#coding=utf-8
+# date 2018-12-11 09:06:47
+# author calllivecn <c-all@qq.com>
+
+import sys
+import math
+
+
+def angle2rad(du):
+    return du / 180 * math.pi
+
+if len(sys.argv) != 7:
+    print("使用方法: {} x1 y1 angle1 x2 y2 angle2".format(sys.argv[0]))
+    print("例子: {} 100 100 120 150 20 145".format(sys.argv[0]))
+    exit(1)
+
+nums = []
+for i in sys.argv[1:]:
+    try:
+        nums.append(int(i))
+    except ValueError:
+        print("六个参数都要是数字。")
+        print("使用方法: {} x1 y1 angle1 x2 y2 angle2".format(sys.argv[0]))
+        print("例子: {} 100 100 120 150 20 145".format(sys.argv[0]))
+        exit(1)
+
+
+x1, y1, angle1 = nums[0], nums[1], nums[2]
+x2, y2, angle2 = nums[3], nums[4], nums[5]
+
+b1 = y1 - math.sin(angle2rad(angle1)) * x1 
+
+
+# 判断 第一个点 和 第二个点是不是在同一条直线上
+check_y = x2 * math.sin(angle2rad(angle2)) + b1
+if y2 == round(check_y):
+    print("第一个点 和 第二个点在同一条直线上！！！")
+    print("这样是做不了三角定位的！")
+    print("应该向第一个方向垂直的方向跟100格左右，在丢出第二个点")
+    exit(1)
+
+# 判断是否出现平行线
+if math.sin(angle2rad(angle1)) == math.sin(angle2rad(angle2)):
+    print("俩点的斜率相同！！！")
+    print("可能是你跑在同一条线上。")
+    print("还有极少可能你跑的太远，第二次指向的是另外一个地牢。")
+    print("应该向第一个方向垂直的方向跑100格左右，在丢出第二个点")
+    exit(1)
+    
+b2 = y2 - math.sin(angle2) * x2
+
+x0 = (b1 - b2) / (math.sin(angle2rad(angle2)) - math.sin(angle2rad(angle1)))
+
+y0 = math.sin(angle2rad(angle1)) * x0 + b1
+
+print("第一个点: x1, y1:",(x1, y1),"角度:",nums[2], "⁰")
+print("第二个点: x2, y2:",(x2, y2),"角度:",nums[5], "⁰")
+#print("求出的: b1, b2:", (round(b1), round(b2)))
+print("目地点: x0, y0:",(round(x0), round(y0)))
