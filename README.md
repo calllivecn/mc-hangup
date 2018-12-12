@@ -7,12 +7,12 @@ Minecraft 中文聊天、挂机、辅助工具
 
 ### Linux：
 
-依赖项：zenity, xdotool
+依赖项：~~zenity,~~ xdotool
 
-在您的桌面环境提供的控制面板中，添加一组快捷键，比如 Super+T，来启动
-`mc-chat-.sh` 脚本。
+~~在您的桌面环境提供的控制面板中，添加一组快捷键，比如 Super+T，来启动
+`mc-chat.sh` 脚本。~~
 
-当进行 Minecraft 游戏的时候，按 Super+T，输入聊天内容并点击确定。
+~~当进行 Minecraft 游戏的时候，按 Super+T，输入聊天内容并点击确定。~~
 
 ### ~~Windows：~~
 
