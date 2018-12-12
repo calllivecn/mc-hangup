@@ -26,14 +26,31 @@ for i in sys.argv[1:]:
         exit(1)
 
 
-x1, z1, angle1 = nums[0], nums[1], 180 - nums[2] 
-x2, z2, angle2 = nums[3], nums[4], 180 - nums[5]
+x1, z1, angle1 = nums[0], nums[1], nums[2]
+x2, z2, angle2 = nums[3], nums[4], nums[5]
 
-b1 = z1 - math.sin(angle2rad(angle1)) * x1 
+if angle1 > 180 and angle1 < -180 and angle2 > 180 and angle2 < -180:
+    print("我的世界的角度在-180 ~ 180 之间")
+    print("请重新输入。")
+    exit(1)
+
+if 0 < angle1 <= 180:
+    angle1 = angle1 - 90
+elif -180 <= angle1 <= 0:
+    angle1 = angle1 + 90
+
+if 0 < angle2 <= 180:
+    angle2 = angle2 - 90
+elif -180 <= angle2 <= 0:
+    angle2 = angle2 + 90
+
+#print("angle1, angle2:", angle1, angle2)
+
+b1 = z1 - math.tan(angle2rad(angle1)) * x1 
 
 
 # 判断 第一个点 和 第二个点是不是在同一条直线上
-check_z = x2 * math.sin(angle2rad(angle2)) + b1
+check_z = x2 * math.tan(angle2rad(angle2)) + b1
 if z2 == round(check_z):
     print("第一个点 和 第二个点在同一条直线上！！！")
     print("这样是做不了三角定位的！")
@@ -41,20 +58,21 @@ if z2 == round(check_z):
     exit(1)
 
 # 判断是否出现平行线
-if math.sin(angle2rad(angle1)) == math.sin(angle2rad(angle2)):
+if math.tan(angle2rad(angle1)) == math.tan(angle2rad(angle2)):
     print("俩点的斜率相同！！！")
     print("可能是你跑在同一条线上。")
     print("还有极少可能你跑的太远，第二次指向的是另外一个地牢。")
     print("应该向第一个方向垂直的方向跑100格左右，在丢出第二个点")
     exit(1)
     
-b2 = z2 - math.sin(angle2) * x2
+b2 = z2 - math.tan(angle2) * x2
 
-x0 = (b1 - b2) / (math.sin(angle2rad(angle2)) - math.sin(angle2rad(angle1)))
+x0 = (b1 - b2) / (math.tan(angle2rad(angle2)) - math.tan(angle2rad(angle1)))
 
-z0 = math.sin(angle2rad(angle1)) * x0 + b1
+z0 = math.tan(angle2rad(angle1)) * x0 + b1
+
 
 print("第一个点: x1, z1:",(x1, z1),"角度:",nums[2], "⁰")
 print("第二个点: x2, z2:",(x2, z2),"角度:",nums[5], "⁰")
-#print("求出的: b1, b2:", (round(b1), round(b2)))
-print("目地点: x0, z0:",(round(x0), round(z0)))
+#print("求出的: b1, b2:", (b1, b2))
+print("目地点: x0, z0:",(round(x0,1), round(z0,1)))
