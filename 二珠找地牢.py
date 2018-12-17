@@ -65,7 +65,7 @@ if math.tan(angle2rad(angle1)) == math.tan(angle2rad(angle2)):
     print("应该向第一个方向垂直的方向跑100格左右，在丢出第二个点")
     exit(1)
     
-b2 = z2 - math.tan(angle2) * x2
+b2 = z2 - math.tan(angle2rad(angle2)) * x2
 
 x0 = (b1 - b2) / (math.tan(angle2rad(angle2)) - math.tan(angle2rad(angle1)))
 
@@ -74,5 +74,5 @@ z0 = math.tan(angle2rad(angle1)) * x0 + b1
 
 print("第一个点: x1, z1:",(x1, z1),"角度:",nums[2], "⁰")
 print("第二个点: x2, z2:",(x2, z2),"角度:",nums[5], "⁰")
-#print("求出的: b1, b2:", (b1, b2))
+print("求出的: b1, b2:", (b1, b2))
 print("目地点: x0, z0:",(round(x0,1), round(z0,1)))
