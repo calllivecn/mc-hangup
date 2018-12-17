@@ -74,5 +74,11 @@ z0 = math.tan(angle2rad(angle1)) * x0 + b1
 
 print("第一个点: x1, z1:",(x1, z1),"角度:",nums[2], "⁰")
 print("第二个点: x2, z2:",(x2, z2),"角度:",nums[5], "⁰")
-print("求出的: b1, b2:", (b1, b2))
-print("目地点: x0, z0:",(round(x0,1), round(z0,1)))
+#print("求出的: b1, b2:", (b1, b2))
+print("目的点: x0, z0:",(round(x0,1), round(z0,1)))
+
+prompt="""由于鼠标对角会有一些误差，所以一般使用两次连续定位，就能准确定位了。
+在到达上面计数出的目的点后，在进行一次定位的时候，就只要向垂直方向跑30格左右就可以了。"""
+print(prompt)
+
+
