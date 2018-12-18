@@ -106,12 +106,12 @@ print("第二个点: x2, z2:",(x2, z2),"角度:",nums[5], "⁰")
 #print("求出的: b1, b2:", (b1, b2))
 print("目的点: x0, z0:",(round(x0), round(z0)))
 
-distance = math.sqrt( (x1 - x2) ** 2 + (z1 - z2) ** 2)
+distance = math.sqrt( (x0 - x2) ** 2 + (z0 - z2) ** 2)
 
 print("当前距离目标地(直线距离)：", round(distance), "格")
 print("角度为：",round(angle0, 1), "⁰")
 
-if distance >= 300:
+if distance >= 700:
     msg = """
 你现在距离目标还有点远可以在到达以上目的点后，在次使用一次小距离的三角定位，以精准定位。
 在到达上面计数出的目的点后，在进行一次定位的时候，就只要向垂直方向跑30格左右就可以了。
