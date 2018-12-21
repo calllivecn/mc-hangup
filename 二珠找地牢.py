@@ -38,8 +38,8 @@ def angle2rad(du):
     return du / 180 * math.pi
 
 if len(sys.argv) != 7:
-    print("使用方法: {} x1 z1 angle1 x2 z2 angle2".format(sys.argv[0]))
-    print("例子: {} 100 100 120 150 20 145".format(sys.argv[0]))
+    print(usage_pre)
+    print(usage)
     exit(1)
 
 nums = []
