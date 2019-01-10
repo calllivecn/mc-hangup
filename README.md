@@ -3,20 +3,28 @@
 ![工作台](mc-icon.png  "工作台") Minecraft 中文聊天、挂机、辅助工具
 ----
 
+
+
 ## 使用方法：
 
 ### 二珠找地牢.py :
 这个工具使用三角定位法找地牢。
 由于鼠标对角会有一些误差，所以一般使用两次连续定位，就能准确定位了。
 
+### mc-checkupdate.py:
+检查新版本。
+
 ### Linux：
+### *注意:* 只能Xorg下使用，目前还不能在wayland下使用。
+依赖项：python3, zenity, xdotool
 
-依赖项：~~zenity,~~ xdotool
+在您的桌面环境添加一组快捷键，比如 Super + shift + T，来启动`mc-chat.sh` 或`mc-input.sh`脚本。
 
-~~在您的桌面环境提供的控制面板中，添加一组快捷键，比如 Super+T，来启动
-`mc-chat.sh` 脚本。~~
 
-~~当进行 Minecraft 游戏的时候，按 Super+T，输入聊天内容并点击确定。~~
+当进行 Minecraft 游戏的时候，按 Super + shift + T，输入聊天内容并点击确定。
+
+
+### 不管windows ～～～
 
 ### ~~Windows：~~
 
