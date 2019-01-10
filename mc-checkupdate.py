@@ -59,7 +59,7 @@ def test():
 
 if __name__ == "__main__":
     
-    parse = argparse.ArgumentParser(usage=" Usage: %(prog)s [--release|--snapshot|--all] [--shell]",
+    parse = argparse.ArgumentParser(usage=" Usage: %(prog)s [-n] [--release|--snapshot|--all] [--shell|--time]",
                                     description="检查我的世界最新版本。")
     
     parse.add_argument("-n", action="store_true", help="只输出版本字符串。")
