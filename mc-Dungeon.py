@@ -40,7 +40,7 @@ def angle2rad(du):
 if len(sys.argv) != 7:
     print(usage_pre)
     print(usage)
-    exit(1)
+    sys.exit(1)
 
 nums = []
 for i in sys.argv[1:]:
@@ -50,7 +50,7 @@ for i in sys.argv[1:]:
         print("六个参数都要是数字。")
         print("使用方法: {} x1 z1 angle1 x2 z2 angle2".format(sys.argv[0]))
         print("例子: {} 100 100 120 150 20 145".format(sys.argv[0]))
-        exit(1)
+        sys.exit(1)
 
 
 x1, z1, angle1 = nums[0], nums[1], nums[2]
@@ -61,7 +61,7 @@ angle0 = angle2
 if angle1 > 180 and angle1 < -180 and angle2 > 180 and angle2 < -180:
     print("我的世界的角度在-180 ~ 180 之间")
     print("请重新输入。")
-    exit(1)
+    sys.exit(1)
 
 if 0 < angle1 <= 180:
     angle1 = angle1 - 90
@@ -84,7 +84,7 @@ if z2 == round(check_z):
     print("第一个点 和 第二个点在同一条直线上！！！")
     print("这样是做不了三角定位的！")
     print("应该向第一个方向垂直的方向跟100格左右，在丢出第二个点")
-    exit(1)
+    sys.exit(1)
 
 # 判断是否出现平行线
 if math.tan(angle2rad(angle1)) == math.tan(angle2rad(angle2)):
@@ -92,7 +92,7 @@ if math.tan(angle2rad(angle1)) == math.tan(angle2rad(angle2)):
     print("可能是你跑在同一条线上。")
     print("还有极少可能你跑的太远，第二次指向的是另外一个地牢。")
     print("应该向第一个方向垂直的方向跑100格左右，在丢出第二个点")
-    exit(1)
+    sys.exit(1)
     
 b2 = z2 - math.tan(angle2rad(angle2)) * x2
 
