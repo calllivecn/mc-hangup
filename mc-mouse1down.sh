@@ -10,7 +10,7 @@ safe_exit(){
 	exit 0
 
 }
-trap safe_exit SIGINT SIGTERM ERR EXIT
+trap safe_exit SIGINT SIGTERM ERR
 
 # quote libmc.sh
 . "$(dirname ${0})"/libmc.sh
@@ -22,4 +22,7 @@ xdotool key Escape
 $delay
 xdotool mousedown 1
 
-wait
+while :
+do
+	xdotool sleep 3
+done
