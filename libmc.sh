@@ -41,6 +41,17 @@ else
 	xdotool windowfocus $WIN
 fi
 
+focusmc(){
+	local win
+	win=$(xdotool getwindowfocus)
+
+	if [ $win == $WIN ];then
+		return 0
+	else
+		return 1
+	fi
+}
+
 ctrl_space(){
 	xdotool sleep 0.5
 	xdotool key Ctrl+space
