@@ -3,7 +3,7 @@
 
 safe_exit(){
 
-	xdotool mouseup 3
+	#xdotool mouseup 3
 	enable_mouse
 	exit 0
 
@@ -36,13 +36,13 @@ echo
 echo "当前使用物品栏第:${fishingRod}格为钓鱼杆"
 echo "当前使用物品栏第:${food}格为食物"
 
-down_up3(){
-	$delay
-	xdotool key "$fishingRod"
-	$delay
-	xdotool mousedown 3
-	xdotool sleep $[60 * 40]
-	xdotool mouseup 3
+clickmouse3(){
+	if focusmc;then
+		xdotool click 3
+		xdotool sleep 1
+	else
+		xdotool sleep 1
+	fi
 }
 
 if [ "$1"x = "-h" ] || [ "$1"x = "--help"x ];then
@@ -60,7 +60,13 @@ while :
 do
 	disable_mouse
 
-	down_up3
+	# 每40分钟吃下食物
+	for _ in $(seq $[60 * 40])
+	do
+		clickmouse3
+	done
+
+	# 切换到食物物品栏，按下右键，吃食物。
     $delay
     xdotool key ${food}
     $delay
