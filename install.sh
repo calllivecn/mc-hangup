@@ -6,13 +6,13 @@
 if [ -d ~/bin ];then
 	:
 else
-	mkdir ~/bin/
+	mkdir -v ~/bin/
 fi
 
 if [ -f ~/bin/mc.cfg ];then
 	:
 else
-	cp mc.cfg ~/bin/
+	cp -v mc.cfg ~/bin/
 fi
 
 scripts="
@@ -28,5 +28,5 @@ mc-Dungeon.py
 
 for f in $scripts;
 do
-	install -m755 "$f" ~/bin/"$f"
+	install -v -m755 "$f" ~/bin/"$f"
 done
