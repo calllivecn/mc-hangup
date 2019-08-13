@@ -29,7 +29,7 @@ if [ -z "${MOUSE}" ];then
 	echo "然后配置${0##*/} 中的 MOUSE 变量。"
 fi
 
-which zenity &>/dev/null || { echo '错误：zenity 程序未安装。' >&2;exit 2; }
+which zenity &>/dev/null || { echo '警告：zenity 程序未安装。'; }
 which xdotool &>/dev/null || { echo '错误：xdotool 程序未安装。' >&2;exit 2; }
 
 WIN=$(xdotool search --name "$MC_NAME")
@@ -40,6 +40,14 @@ if test -z "$WIN";then
 else
 	xdotool windowfocus $WIN
 fi
+
+getMcFocus(){
+	WIN=$(xdotool search --name "$MC_NAME")
+	if test -z $WIN;then
+		echo not found $MC_NAME
+		exit 1
+	fi
+}
 
 focusmc(){
 	local win
@@ -82,14 +90,6 @@ reconveryFocus(){
 	xdotool windowfocus "$SOURCE_WIN"
 	$delay
 	xdotool mousemove --screen $SCREEN $X $Y
-}
-
-getMcFocus(){
-	WIN=$(xdotool search --name "$MC_NAME")
-	if test -z $WIN;then
-		echo not found $MC_NAME
-		exit 1
-	fi
 }
 
 notify(){

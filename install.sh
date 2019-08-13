@@ -6,11 +6,27 @@
 if [ -d ~/bin ];then
 	:
 else
-	mkdir ~/bin/
+	mkdir -v ~/bin/
 fi
 
+if [ -f ~/bin/mc.cfg ];then
+	:
+else
+	cp -v mc.cfg ~/bin/
+fi
 
-for f in *.sh *.py mc.cfg;
+scripts="
+libmc.sh
+mc-chat.sh
+mc-eatfood.sh
+mc-fishing.sh
+mc-input.sh
+mc-mouse1down.sh
+mc-sleep.sh
+mc-Dungeon.py
+"
+
+for f in $scripts;
 do
-	install -m755 "$f" ~/bin/"$f"
+	install -v -m755 "$f" ~/bin/"$f"
 done
