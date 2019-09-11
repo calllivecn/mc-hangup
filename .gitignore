@@ -1,3 +1,5 @@
 *.swp
 logs.py
 libkbm.py
+__pycache__/
+*.logs
