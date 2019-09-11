@@ -7,10 +7,21 @@
 
 ## 使用方法：
 
+### 配置mc.cfg:
+
+```shell
+MC\_NAME='Minecraft 1.14.4'
+
+# xinput list --name-only  or grep Name /proc/bus/input/devices
+# 显示的需要禁用的鼠标
+MOUSE="Logitech USB Optical Mouse"
+```
+
+
 ### mc-Dungeon.py :
 这个工具使用三角定位法找地牢。
 由于鼠标对角会有一些误差，所以一般使用两次连续定位，就能准确定位了。
-`python3  mc-Dungeon.py` 查看使用方法。
+python3  mc-Dungeon.py` 查看使用方法。
 
 ### mc-checkupdate.py:
 检查minecraft新版本。
