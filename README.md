@@ -12,7 +12,7 @@
 ```shell
 MC\_NAME='Minecraft 1.14.4'
 
-# xinput list --name-only  or grep Name /proc/bus/input/devices
+# xinput list --name-only  OR grep Name /proc/bus/input/devices
 # 显示的需要禁用的鼠标
 MOUSE="Logitech USB Optical Mouse"
 ```

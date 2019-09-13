@@ -8,6 +8,19 @@ import argparse
 
 import libkbm
 
+from logs import logger, setLevel
+
+
+
+def disableMouse():
+    """
+    通过 grab() 禁用鼠标。
+    """
+    mouses, keyboards = libkbm.getkbm()
+
+    for name in mouses:
+        logger.info("禁用鼠标: {}".format(name))
+        libkbm.disableDevice(name)
 
 
 def eatfood(kbm, food):
@@ -24,8 +37,12 @@ def eatfood(kbm, food):
 def fishing(kbm, args):
 
     # 切换物品栏，选项钓鱼竿
-    fishingrod = args.number[0]
-    food = args.number[1]
+    if len(args.number) == 0:
+        fishingrod = 1
+        food = 2
+    else:
+        fishingrod = args.number[0]
+        food = args.number[1]
 
     kbm.key(fishingrod)
 
@@ -60,12 +77,15 @@ def main():
     parse = argparse.ArgumentParser(#title="选项",
                                     description="MC 一些挂机的鼠标操作。")
 
+    parse.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。default: false")
+
+    parse.add_argument("-v", "--verbose", action="count", default=0, help="logging level, default: warn")
     subparse = parse.add_subparsers(title="功能", description="可用功能名称")
 
     parse_mouseleftdown = subparse.add_parser("leftdown", help="按住鼠标左键")
 
     parse_fishing = subparse.add_parser("fishing", usage="%(prog)s <1> <2>",
-                                        description="1： 钓鱼竿, 2：食物。(物品栏编号) 换成你对应的编号",
+                                        description="默认：1号物品栏为钓鱼竿, 2号物品栏为食物。",
                                         help="钓鱼机，挂机钓鱼。")
     parse_fishing.add_argument("number", nargs=2, choices=[str(x) for x in range(10)],
                                 help="物品栏编号，0~9。")
@@ -86,8 +106,15 @@ def main():
     args = parse.parse_args()
     #print(args);exit(0)
 
+
+    setLevel(args.verbose)
     kbm = libkbm.VirtualKeyboardMouse()
+
+    if args.disable:
+        disableMouse()
+
     args.func(args)
+
 
 
 if __name__ == "__main__":
