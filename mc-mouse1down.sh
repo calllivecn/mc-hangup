@@ -10,6 +10,7 @@ safe_exit(){
 	exit 0
 
 }
+
 trap safe_exit SIGINT SIGTERM ERR
 
 # quote libmc.sh
