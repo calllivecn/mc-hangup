@@ -53,7 +53,7 @@ focusmc(){
 	local win
 	win=$(xdotool getwindowfocus)
 
-	if [ $win == $WIN ];then
+	if [ "$win"x == "$WIN"x ];then
 		return 0
 	else
 		return 1
