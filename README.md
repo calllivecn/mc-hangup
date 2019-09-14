@@ -26,14 +26,13 @@ python3  mc-Dungeon.py` 查看使用方法。
 ### mc-checkupdate.py:
 检查minecraft新版本。
 
-### 目前只支持Linux：
+### 以下工具目前只支持Linux：
 
-### *mc-mouse.py能在Xorg和wayland下使用。*
+### mc-mouse.py 能在Xorg和wayland下使用。依赖：libevdev，需要root运行。
 
 ### *注意:*  以下工具只能Xorg下使用
 - mc-chat.sh
 - mc-eatfood.sh
-- mc-fastAttack.sh
 - mc-fishing.sh
 - mc-input.sh
 - mc-mouse1down.sh
@@ -47,6 +46,6 @@ python3  mc-Dungeon.py` 查看使用方法。
 
 当进行 Minecraft 游戏的时候，按 Super + shift + T，输入聊天内容并点击确定。
 
-##*Linux 上从1.13.x 开始可以直接输入聊天内容，不在需要辅助工具。(ubuntu18.04 测试)*
+## *Linux 上从1.13.x 开始可以直接输入聊天内容，不在需要辅助工具。(ubuntu18.04 测试)*
 
 本软件**不附带任何保证**，作者不承担本软件产生的任何潜在的损失。
