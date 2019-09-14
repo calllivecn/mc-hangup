@@ -28,7 +28,8 @@ python3  mc-Dungeon.py` 查看使用方法。
 
 ### 以下工具目前只支持Linux：
 
-### mc-mouse.py 能在Xorg和wayland下使用。依赖：libevdev，需要root运行。
+### mc-mouse.py 能在Xorg和wayland下使用。依赖：keyboardmouse包，需要root运行。
+- (keyboardmouse下载地址)[https://github.com/calllivecn/keyboardmouse]
 
 ### *注意:*  以下工具只能Xorg下使用
 - mc-chat.sh
