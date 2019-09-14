@@ -3,6 +3,9 @@
 # date 2019-09-11 21:24:52
 # author calllivecn <c-all@qq.com>
 
+
+
+import sys
 import time
 import argparse
 
@@ -74,15 +77,27 @@ def hangup(kbm, args):
 
 def main():
 
-    parse = argparse.ArgumentParser(#title="选项",
-                                    description="MC 一些挂机的鼠标操作。")
+    parse = argparse.ArgumentParser(usage="%(prog)s [选项] <功能> [参数]",
+                                    formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    #formatter_class=argparse.RawTextHelpFormatter,
+                                    description="MC 一些挂机的鼠标操作。\n"
+                                    "例子：\n"
+                                    "    %(prog)s leftdown\n",
+                                    add_help=False,
+                                    )
 
-    parse.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。default: false")
+    parse.add_argument("-h", "--help", action="store_true", help="输出帮助信息。")
 
-    parse.add_argument("-v", "--verbose", action="count", default=0, help="logging level, default: warn")
-    subparse = parse.add_subparsers(title="功能", description="可用功能名称")
+    parse.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。默认：不关闭鼠标")
 
-    parse_mouseleftdown = subparse.add_parser("leftdown", help="按住鼠标左键")
+    parse.add_argument("-v", "--verbose", action="count", default=0, help="运行过程详细。")
+
+    parse.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
+
+
+    subparse = parse.add_subparsers(title="功能", description="可用功能名称", metavar="")
+
+    parse_mouseleftdown = subparse.add_parser("leftdown", help="按住鼠标左键。")
 
     parse_fishing = subparse.add_parser("fishing", usage="%(prog)s <1> <2>",
                                         description="默认：1号物品栏为钓鱼竿, 2号物品栏为食物。",
@@ -106,8 +121,15 @@ def main():
     args = parse.parse_args()
     #print(args);exit(0)
 
+    if args.help:
+        parse.print_help()
+        sys.exit(0)
 
     setLevel(args.verbose)
+
+    time.sleep(args.wait)
+    print(args.wait, "秒钟等待时间。。。")
+
     kbm = libkbm.VirtualKeyboardMouse()
 
     if args.disable:
