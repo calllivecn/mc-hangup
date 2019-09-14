@@ -9,7 +9,11 @@ import sys
 import time
 import argparse
 
-import libkbm
+try:
+    import libkbm
+except ModuleNotFoundError:
+    logger.error("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
+    sys.exit(1)
 
 from logs import logger, setLevel
 
