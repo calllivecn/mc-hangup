@@ -26,9 +26,20 @@ python3  mc-Dungeon.py` 查看使用方法。
 ### mc-checkupdate.py:
 检查minecraft新版本。
 
-### Linux：
+### 目前只支持Linux：
 
-### *注意:* 只能Xorg下使用，目前还不能在wayland下使用。
+### *mc-mouse.py能在Xorg和wayland下使用。*
+
+### *注意:*  以下工具只能Xorg下使用
+- mc-chat.sh
+- mc-eatfood.sh
+- mc-fastAttack.sh
+- mc-fishing.sh
+- mc-input.sh
+- mc-mouse1down.sh
+- mc-sleep.sh
+
+
 依赖项：python3, zenity, xdotool
 
 在您的桌面环境添加一组快捷键，比如 Super + shift + T，来启动`mc-chat.sh` 或`mc-input.sh`脚本。
