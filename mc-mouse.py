@@ -83,6 +83,7 @@ def fishing(kbm, args):
                 time.sleep(1)
 
             eatfood(kbm, food)
+            kbm.key(fishingrod)
 
     except KeyboardInterrupt:
         print()
