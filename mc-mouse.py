@@ -9,6 +9,7 @@ import sys
 import time
 import random
 import string
+import signal
 import argparse
 
 try:
@@ -19,7 +20,8 @@ except ModuleNotFoundError:
 
 from logs import logger, setLevel
 
-
+def countdown(sig, frame):
+    sys.exit(0)
 
 def disableMouse():
     """
@@ -163,6 +165,8 @@ def main():
 
     group1.add_argument("-v", "--verbose", action="count", default=0, help="运行过程详细。例如：-v, -vv, -vvv")
 
+    group1.add_argument("-t", "--time", action="store", type=int, default=0, help="运行T分钟后退出，默认：0, 表示一直运行。")
+
     group1.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
 
 
@@ -210,6 +214,13 @@ def main():
 
     print(args.wait, "秒钟等待时间。。。")
     time.sleep(args.wait)
+
+    if args.time != 0:
+        signal.signal(signal.SIGALRM, countdown)
+        # *60 是分钟
+        signal.alarm(args.time * 60)
+        #signal.alarm(args.time)
+        print(f"{args.time}分钟后退出程序。")
 
     kbm = libkbm.VirtualKeyboardMouse()
 
