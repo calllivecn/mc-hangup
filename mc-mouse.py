@@ -169,6 +169,7 @@ def main():
 
     group1.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
 
+    parse.add_argument("--parse", action="store_true", help="输出命令行参数解析结果。")
 
     subparse = parse.add_subparsers(title="功能", description="可用功能名称", metavar="")
 
@@ -188,7 +189,7 @@ def main():
                                 help="物品栏编号，0~9。")
 
     parse_hangup = subparse.add_parser("hangup", help="长时间挂机，进食，产生活动：移动，发信息。")
-    parse_hangup.add_argument("-f", "--food", default="1", choices=[str(x) for x in range(10)], required=True, metavar="[0-9]", help="食物物品栏编号。")
+    parse_hangup.add_argument("-f", "--food", default="1", choices=[str(x) for x in range(10)], required=True, metavar="[0-9]", help="食物物品栏编号。(每30分钟吃一个食物)")
     parse_hangup.add_argument("-t", "--time", type=int, default=30, help="反挂机检测间隔时间。default: 30s")
     parse_hangup.add_argument("-m", "--move", action="store_true", help="是否随机按下1秒W,S,A,D模拟移动。")
     parse_hangup.add_argument("--message", type=__message, help="发送一个挂机消息。(只能是大小写字母和数字)")
@@ -203,7 +204,10 @@ def main():
     parse_hangup.set_defaults(func=lambda arg: hangup(kbm, arg))
 
     args = parse.parse_args()
-    #print(args);exit(0)
+    
+    if args.parse:
+        print(args)
+        sys.exit(0)
 
 
     if len(sys.argv) == 1:
