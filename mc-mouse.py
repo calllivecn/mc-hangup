@@ -107,18 +107,27 @@ def __chat(kbm, msg):
 
 def hangup(kbm, args):
 
+    logger.info("吃食物.")
+    eatfood(kbm, args.food)
+
     try:
         while True:
             print("按CTRL+C结束。")
             logger.info("等待...")
-            for _ in range(args.time):
-                time.sleep(1)
+
+            # 反挂机检测机制。
+            #if args.ahd != 0:
+            #    for _ in range(args.ahd):
+            #        time.sleep(1)
+
+            # 间隔 waiteat分钟吃食物
+            time.sleep(args.waiteat * 60)
 
             logger.info("吃食物.")
             eatfood(kbm, args.food)
 
             if args.message:
-                logger.info("发送挂机消息.")
+                logger.info(f"发送挂机消息: {args.message}")
                 __chat(kbm, args.message)
 
             if args.move:
@@ -127,6 +136,24 @@ def hangup(kbm, args):
 
     except KeyboardInterrupt:
         print()
+
+def nugong(kbm, args):
+    """
+    用法：把9把弩放在快捷栏，设置一个触发快捷键。
+    """
+    hotkey = libkbm.WatchHotKey(args.masterkey, args.key)
+
+    try:
+        while True:
+            if hotkey.watch():
+                logger.debug(f"hotkey: {hotkey} masterkey: {args.masterkey} key: {args.key}")
+                for i in range(args.start, args.end + 1):
+                    kbm.mouseclick("right")
+                    time.sleep(0.05)
+                    kbm.key(str(i))
+                    time.sleep(0.05)
+    except KeyboardInterrupt:
+        pass
 
 
 def __message(msg):
@@ -185,15 +212,24 @@ def main():
                                         "默认：1号物品栏为钓鱼竿, 2号物品栏为食物。\n",
                                         formatter_class=argparse.RawTextHelpFormatter)
 
-    parse_fishing.add_argument("number", nargs=2, choices=[str(x) for x in range(10)], metavar="number",
-                                help="物品栏编号，0~9。")
+    parse_fishing.add_argument("number", nargs=2, choices=[str(x) for x in range(10)], metavar="number", help="物品栏编号，0~9。")
+
 
     parse_hangup = subparse.add_parser("hangup", help="长时间挂机，进食，产生活动：移动，发信息。")
-    parse_hangup.add_argument("-f", "--food", default="1", choices=[str(x) for x in range(10)], required=True, metavar="[0-9]", help="食物物品栏编号。(每30分钟吃一个食物)")
-    parse_hangup.add_argument("-t", "--time", type=int, default=30, help="反挂机检测间隔时间。default: 30s")
-    parse_hangup.add_argument("-m", "--move", action="store_true", help="是否随机按下1秒W,S,A,D模拟移动。")
+    parse_hangup.add_argument("--food", default="1", choices=[str(x) for x in range(10)], required=True, metavar="[0-9]", help="食物物品栏编号。(每30分钟吃一个食物)")
+    parse_hangup.add_argument("--waiteat", type=int, default=30, help="间隔<wait eat>吃一次食物。default: 30分钟")
+    #parse_hangup.add_argument("--ahd", type=int, default=0, help="反挂机检测间隔时间。default: 30s")
+    parse_hangup.add_argument("--move", action="store_true", help="是否随机按下1秒W,S,A,D模拟移动。")
     parse_hangup.add_argument("--message", type=__message, help="发送一个挂机消息。(只能是大小写字母和数字)")
     
+
+    nu3gong1 = subparse.add_parser("nugong", help="九连发弩弓!!!(default: 按下alt+g触发)")
+    nu3gong1.add_argument("--masterkey", default="alt", help="触发的主键。(default: alt)")
+    nu3gong1.add_argument("--key", default="g", help="触发的副键。(default: g)")
+    nu3gong1.add_argument("--interval",type=float, default=0.06, help="触发按键的间隔时间。(default: g)")
+    nu3gong1.add_argument("--start", type=int, default=1, help="快捷栏弩的开始位置。(default: 1)")
+    nu3gong1.add_argument("--end", type=int, default=9, help="快捷栏弩的结束位置。(default: 9)")
+
 
     parse_mouseleftdown.set_defaults(func=lambda arg: mouseLeftDown(kbm, arg))
 
@@ -202,6 +238,8 @@ def main():
     parse_fishing.set_defaults(func=lambda arg: fishing(kbm, arg))
 
     parse_hangup.set_defaults(func=lambda arg: hangup(kbm, arg))
+
+    nu3gong1.set_defaults(func=lambda arg: nugong(kbm, arg))
 
     args = parse.parse_args()
     
@@ -232,7 +270,6 @@ def main():
         disableMouse()
 
     args.func(args)
-
 
 
 if __name__ == "__main__":
