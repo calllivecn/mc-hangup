@@ -24,6 +24,7 @@ mc-input.sh
 mc-mouse1down.sh
 mc-sleep.sh
 mc-Dungeon.py
+mc-mouse.py
 "
 
 for f in $scripts;
