@@ -28,5 +28,5 @@ cp mc-mouse.py "$TMP/mcmouse.py"
 download https://github.com/calllivecn/keyboardmouse/raw/master/libkbm.py
 download https://github.com/calllivecn/keyboardmouse/raw/master/logs.py
 
-python3 -m zipapp "$TMP" -o mc-mouse.pyz -m "mcmouse:main"
+python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -m "mcmouse:main"
 
