@@ -7,10 +7,45 @@
 import sys
 import json
 import argparse
+from os import path
 from urllib import request
 
 
 URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
+
+
+class Save:
+
+    # default2: ~/.mc-update
+    def __init__(self, filepath=None):
+
+        self._filename = ".mc-update"
+        directory, _  =  path.dirname(sys.argv[0])
+
+        flag = True
+        if filepath is None:
+            # default1: 
+            self.filepath = path.join(directory, self._filename)
+            try:
+                self._fp = open(self.filepath, "rb")
+            except Exception:
+                flag = False
+            
+            # default2:
+            self.filepath = path.join(path.expanduser("~"), self._filename)
+            try:
+                self._fp = open(self.filepath, "rb")
+            except Exception:
+                
+
+def head_check(url=URL):
+    req = request.Request(url, method="HEAD")
+    result = request.urlopen(req)
+    Etag = result.getheader("Etag")
+
+    save2file = Save()
+
+    if Etag == local_Etag:
 
 def download(url=URL):
     html = request.urlopen(url)
