@@ -17,15 +17,22 @@ URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
 class Save:
 
     # default: ~/.mc-update
-    def __init__(self, filepath=None):
-
+    def __init__(self):
         self._filename = ".mc-update"
         self.filepath = path.join(path.expanduser("~"), self._filename)
-        try:
-            self._fp = open(self.filepath, "r+b")
-        except Exception:
-            print(f"打开文件：{self.filepath} 失败")
-            sys.exit(1)
+
+        self.etag = b""
+
+        self.latest_release = None
+        self.release_time = None
+        self.release_update = None
+
+        self.latest_snapshot = None
+        self.snapshot_time = None
+        self.snapshot_update = None
+    
+        self.__read()
+
     @property
     def etag(self):
         return self._etag
@@ -34,14 +41,13 @@ class Save:
     def etag(self, v):
         self._etag = v
     
-    
     @property
-    def release(self):
-        return self._release
+    def latest_release(self):
+        return self._latest_release
     
-    @release.setter
-    def release(self, v):
-        self._release = v
+    @latest_release.setter
+    def latest_release(self, v):
+        self._latest_release = v
     
     @property
     def release_time(self):
@@ -52,64 +58,101 @@ class Save:
         self._release_time = v
     
     @property
-    def snapshot(self):
-        return self._snaphost
+    def release_update(self):
+        return self._release_update
     
-    @snapshot.setter
-    def snapshot(self, v):
-        self._snapshot = v
+    @release_update.setter
+    def release_update(self, v):
+        self._release_update = v
+    
+    @property
+    def latest_snapshot(self):
+        return self._latest_snapshot
+    
+    @latest_snapshot.setter
+    def latest_snapshot(self, v):
+        self._latest_snapshot = v
     
     @property
     def snapshot_time(self):
-        return self._snaphost_time
+        return self._snapshot_time
     
     @snapshot_time.setter
     def snapshot_time(self, v):
         self._snapshot_time = v
     
-    def read(self):
-
-        data = self._fp.read()
+    @property
+    def snapshot_update(self):
+        return self._snapshot_update
+    
+    @snapshot_update.setter
+    def snapshot_update(self, v):
+        self._snapshot_update = v
+    
+    def __read(self):
+        if not path.exists(self.filepath):
+            return
 
         try:
-            self._etag, self._release, self._snapshot, self._release_time, self._snapshot_time = data.split('\n')
+            with open(self.filepath, "r") as fp:
+                data = fp.read().split("\n")
         except Exception:
-            os.remove(sefl.filepath)
-            return False
-        
-        return True
-    
-    def write(self):
-        self._fp.seek(0, os.SEEK_SET)
-        self._fp.write("\n".join(self._etag, self._release, self._release_time, self._snapshot, self._snapshot_time))
-    
-    def close(self):
-        if not self._fp.closed:
-            self._fp.close()
+            print(f"打开文件：{self.filepath} 失败")
+            sys.exit(1)
 
+        self.etag = data[0]
 
-def head_check(url=URL):
+        self.latest_release = data[1]
+        self.release_time = data[2]
+        self.release_update = data[3]
+
+        self.latest_snapshot = data[4]
+        self.snapshot_time = data[5]
+        self.snapshot_update = data[6]
+
+    def save(self):
+        data = "\n".join([self.etag,
+                        self.latest_release,
+                        self.release_time,
+                        self.release_update,
+                        self.latest_snapshot,
+                        self.snapshot_time,
+                        self.snapshot_update,
+                        ])
+        try:
+            with open(self.filepath, "w") as fp:
+                fp.write(data)
+        except Exception:
+            print(f"写入文件：{self.filepath} 失败")
+            sys.exit(1)
+    
+
+def head_check(save, url=URL):
+    # head http 请求
     req = request.Request(url, method="HEAD")
     result = request.urlopen(req)
     Etag = result.getheader("Etag")
 
-    save = Save()
-
-    if Etag == local_Etag:
+    if Etag == save.etag:
+        return False
+    else:
+        save.etag = Etag
+        return True
 
 def download(url=URL):
     html = request.urlopen(url)
     data = html.read()
     return data.decode()
 
-def check(data):
+def get_release(data):
     json_data = json.loads(data)
 
     latest = json_data.get("latest")
 
     latest_release = latest.get("release")
     latest_snapshot = latest.get("snapshot")
-    versions = json_data.get("versions")
+
+    #versions = json_data.get("versions")
     
     #print("最新正式版：", latest_release)
     #print("资源json地址：", version.get(lstest_release))
@@ -127,7 +170,6 @@ def get_time(data, release_id):
             releasetime = re_id.get("releaseTime")
             time = re_id.get("time")
             break
-
 
     return releasetime, time
 
@@ -167,24 +209,33 @@ if __name__ == "__main__":
     else:
         put_release = lambda t: print("最新正式版:",t)
         put_snapshot = lambda s: print("最新快照版:",s)
+    
+    # head check
+    save = Save()
 
-    json_data = download()
+    if head_check(save):
+        json_data = download()
 
-    latest_release, latest_snapshot = check(json_data)
+        save.latest_release, save.latest_snapshot = get_release(json_data)
 
-    releasetime_release, time_release = get_time(json_data,latest_release)
-    releasetime_snapshot, time_snapshot = get_time(json_data,latest_snapshot)
+        save.release_time, save.release_update = get_time(json_data, save.latest_release)
+        save.snapshot_time, save.snapshot_update = get_time(json_data, save.latest_snapshot)
+
+        #print("save.etag", type(save.etag), save.etag)
+        save.save()
+    else:
+        print("没有更新。。。查看缓存:")
 
     if args.shell:
-        print(f"RELEASE={latest_release}")
-        print(f"SNAPSHOT={latest_snapshot}")
+        print(f"RELEASE={save.latest_release}")
+        print(f"SNAPSHOT={save.latest_snapshot}")
     else:
 
         if args.release:
-            put_release(latest_release + " 版本发布时间:" + releasetime_release + " 更新时间:" + time_release)
+            put_release(save.latest_release + " 版本发布时间:" + save.release_time + " 更新时间:" + save.release_update)
         elif args.snapshot:
-            put_snapshot(latest_snapshot + " 版本发布时间:" + releasetime_snapshot + " 更新时间:" + time_snapshot)
+            put_snapshot(save.latest_snapshot + " 版本发布时间:" + save.snapshot_time + " 更新时间:" + save.snapshot_update)
         else:
-            put_release(latest_release + " 版本发布时间:" + releasetime_release + " 更新时间:" + time_release)
-            put_snapshot(latest_snapshot + " 版本发布时间:" + releasetime_snapshot + " 更新时间:" + time_snapshot)
+            put_release(save.latest_release + " 版本发布时间:" + save.release_time + " 更新时间:" + save.release_update)
+            put_snapshot(save.latest_snapshot + " 版本发布时间:" + save.snapshot_time + " 更新时间:" + save.snapshot_update)
 
