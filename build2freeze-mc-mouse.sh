@@ -10,11 +10,6 @@ safe_exit(){
 	rm -rv "$TMP"
 }
 
-download(){
-	pushd "$TMP"
-	wget "$1"
-	popd
-}
 
 mkdir "$TMP"
 
@@ -25,8 +20,7 @@ trap "safe_exit" SIGTERM SIGINT EXIT
 
 cp mc-mouse.py "$TMP/mcmouse.py"
 
-download https://github.com/calllivecn/keyboardmouse/raw/master/libkbm.py
-download https://github.com/calllivecn/keyboardmouse/raw/master/logs.py
+pip3 install --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
 
 python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -m "mcmouse:main"
 

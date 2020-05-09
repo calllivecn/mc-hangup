@@ -182,7 +182,7 @@ class Argument(argparse.ArgumentParser):
         super().__init__(**kwargs)
 
         self._positionals = self.add_argument_group("位置参数")
-        self._optionals = self.add_argument_group("选项参数")
+        self._optionals = self.add_argument_group("通用选项")
 
 def main():
 
@@ -198,19 +198,16 @@ def main():
                                     )
 
     # 默认组
+    parse.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。默认：不关闭鼠标")
+
+    parse.add_argument("-v", "--verbose", action="count", default=0, help="运行过程详细。例如：-v, -vv, -vvv")
+
+    parse.add_argument("-t", "--time", action="store", type=int, default=0, help="运行T分钟后退出，默认：0, 表示一直运行。")
+
+    parse.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
+
     parse.add_argument("-h", "--help", action="store_true", help="输出帮助信息。")
     parse.add_argument("--parse", action="store_true", help="输出命令行参数解析结果。")
-
-
-    group1 = parse.add_argument_group(title="通用选项")
-
-    group1.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。默认：不关闭鼠标")
-
-    group1.add_argument("-v", "--verbose", action="count", default=0, help="运行过程详细。例如：-v, -vv, -vvv")
-
-    group1.add_argument("-t", "--time", action="store", type=int, default=0, help="运行T分钟后退出，默认：0, 表示一直运行。")
-
-    group1.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
 
 
     subparse = parse.add_subparsers(title="功能", description="可用功能名称", metavar="")
