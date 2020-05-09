@@ -12,13 +12,14 @@ import string
 import signal
 import argparse
 
+from logs import logger, setLevel
+
 try:
     import libkbm
 except ModuleNotFoundError:
     logger.error("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
     sys.exit(1)
 
-from logs import logger, setLevel
 
 def countdown(sig, frame):
     sys.exit(0)
@@ -175,9 +176,17 @@ HELP="""
 -w, --wait WAIT 开始前的等时间。
 """
 
+class Argument(argparse.ArgumentParser):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._positionals = self.add_argument_group("位置参数")
+        self._optionals = self.add_argument_group("选项参数")
+
 def main():
 
-    parse = argparse.ArgumentParser(usage="%(prog)s [选项] <功能> [参数]",
+    parse = Argument(usage="%(prog)s [选项] <功能> [参数]",
                                     formatter_class=argparse.RawDescriptionHelpFormatter,
                                     #formatter_class=argparse.RawTextHelpFormatter,
                                     description="MC 一些挂机的鼠标操作。(需要root权限)\n"
@@ -185,11 +194,15 @@ def main():
                                     "   %(prog)s leftdown\n"
                                     "   %(prog)s fishing 1 2\n"
                                     "   %(prog)s fishing --help\n",
+                                    add_help=False,
                                     )
 
-    group1 = parse.add_argument_group(title="通用选项")
+    # 默认组
+    parse.add_argument("-h", "--help", action="store_true", help="输出帮助信息。")
+    parse.add_argument("--parse", action="store_true", help="输出命令行参数解析结果。")
 
-    #group1.add_argument("-h", "--help", action="store_true", help="输出帮助信息。")
+
+    group1 = parse.add_argument_group(title="通用选项")
 
     group1.add_argument("-d", "--disable", action="store_true", help="运行期间关闭鼠标。默认：不关闭鼠标")
 
@@ -199,11 +212,9 @@ def main():
 
     group1.add_argument("-w", "--wait", type=int, default=3, help="开始前的等时间。")
 
-    parse.add_argument("--parse", action="store_true", help="输出命令行参数解析结果。")
 
     subparse = parse.add_subparsers(title="功能", description="可用功能名称", metavar="")
 
-    #group2 = subparse.add_argument_group(title="选项")
 
     parse_mouseleftdown = subparse.add_parser("leftdown", add_help=False, help="按住鼠标左键。")
 
@@ -214,6 +225,7 @@ def main():
                                         description="fishing <1> <2>\n"
                                         "默认：1号物品栏为钓鱼竿, 2号物品栏为食物。\n",
                                         formatter_class=argparse.RawTextHelpFormatter)
+
 
     parse_fishing.add_argument("number", nargs=2, choices=[str(x) for x in range(10)], metavar="number", help="物品栏编号，0~9。")
 
@@ -246,9 +258,15 @@ def main():
     nu3gong1.set_defaults(func=lambda arg: nugong(kbm, arg))
 
     args = parse.parse_args()
+
     
-    if args.parse:
-        print(args)
+    if args.parse or args.help:
+        if args.help:
+            parse.print_help()
+
+        if args.parse:
+            print(args)
+
         sys.exit(0)
 
 
