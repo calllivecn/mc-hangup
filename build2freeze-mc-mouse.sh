@@ -20,7 +20,7 @@ trap "safe_exit" SIGTERM SIGINT EXIT
 
 cp mc-mouse.py "$TMP/mcmouse.py"
 
-pip3 install --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
+pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
 
 python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -m "mcmouse:main"
 
