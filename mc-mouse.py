@@ -156,6 +156,7 @@ def nugong(kbm, args):
                     time.sleep(args.interval)
                     kbm.mouseclick("right")
                     time.sleep(args.interval)
+                kbm.key("1")
     except KeyboardInterrupt:
         pass
 
