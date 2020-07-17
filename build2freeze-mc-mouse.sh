@@ -26,5 +26,5 @@ else
 	pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
 fi
 
-python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -m "mcmouse:main"
+python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -p "/usr/bin/env python3" -m "mcmouse:main"
 

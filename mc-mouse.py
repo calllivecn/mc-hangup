@@ -158,7 +158,7 @@ def nugong(kbm, args):
                     time.sleep(args.interval)
                 kbm.key("1")
     except KeyboardInterrupt:
-        pass
+        hotkey.close()
 
 
 def __message(msg):
