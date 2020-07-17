@@ -6,8 +6,8 @@
 TMP="mc-mouse"
 
 safe_exit(){
-	echo "clear tmp directory"
-	rm -rv "$TMP"
+	echo "clear tmp directory $TMP"
+	rm -r "$TMP"
 }
 
 
@@ -20,7 +20,11 @@ trap "safe_exit" SIGTERM SIGINT EXIT
 
 cp mc-mouse.py "$TMP/mcmouse.py"
 
-pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
+if [ -n "$1" ];then
+	pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@"${1}"
+else
+	pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
+fi
 
 python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -m "mcmouse:main"
 
