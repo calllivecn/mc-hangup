@@ -3,7 +3,7 @@
 # date 2019-01-08 09:35:55
 # https://github.com/calllivecn
 
-
+import os
 import sys
 import json
 import argparse
@@ -16,34 +16,84 @@ URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
 
 class Save:
 
-    # default2: ~/.mc-update
+    # default: ~/.mc-update
     def __init__(self, filepath=None):
 
         self._filename = ".mc-update"
-        directory, _  =  path.dirname(sys.argv[0])
+        self.filepath = path.join(path.expanduser("~"), self._filename)
+        try:
+            self._fp = open(self.filepath, "r+b")
+        except Exception:
+            print(f"打开文件：{self.filepath} 失败")
+            sys.exit(1)
+    @property
+    def etag(self):
+        return self._etag
+    
+    @etag.setter
+    def etag(self, v):
+        self._etag = v
+    
+    
+    @property
+    def release(self):
+        return self._release
+    
+    @release.setter
+    def release(self, v):
+        self._release = v
+    
+    @property
+    def release_time(self):
+        return self._release_time
+    
+    @release_time.setter
+    def release_time(self, v):
+        self._release_time = v
+    
+    @property
+    def snapshot(self):
+        return self._snaphost
+    
+    @snapshot.setter
+    def snapshot(self, v):
+        self._snapshot = v
+    
+    @property
+    def snapshot_time(self):
+        return self._snaphost_time
+    
+    @snapshot_time.setter
+    def snapshot_time(self, v):
+        self._snapshot_time = v
+    
+    def read(self):
 
-        flag = True
-        if filepath is None:
-            # default1: 
-            self.filepath = path.join(directory, self._filename)
-            try:
-                self._fp = open(self.filepath, "rb")
-            except Exception:
-                flag = False
-            
-            # default2:
-            self.filepath = path.join(path.expanduser("~"), self._filename)
-            try:
-                self._fp = open(self.filepath, "rb")
-            except Exception:
-                
+        data = self._fp.read()
+
+        try:
+            self._etag, self._release, self._snapshot, self._release_time, self._snapshot_time = data.split('\n')
+        except Exception:
+            os.remove(sefl.filepath)
+            return False
+        
+        return True
+    
+    def write(self):
+        self._fp.seek(0, os.SEEK_SET)
+        self._fp.write("\n".join(self._etag, self._release, self._release_time, self._snapshot, self._snapshot_time))
+    
+    def close(self):
+        if not self._fp.closed:
+            self._fp.close()
+
 
 def head_check(url=URL):
     req = request.Request(url, method="HEAD")
     result = request.urlopen(req)
     Etag = result.getheader("Etag")
 
-    save2file = Save()
+    save = Save()
 
     if Etag == local_Etag:
 
