@@ -16,6 +16,7 @@ from logs import logger, setLevel
 
 try:
     import libkbm
+    import libhotkey
 except ModuleNotFoundError:
     logger.error("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
     sys.exit(1)
@@ -138,25 +139,43 @@ def hangup(kbm, args):
     except KeyboardInterrupt:
         print()
 
+
+
+
 def nugong(kbm, args):
     """
     用法：把9把弩放在快捷栏，设置一个触发快捷键。
     """
-    hotkey = libkbm.WatchHotKey(args.masterkey, args.key)
 
-    #nugong_up = libkbm.WatchHotKey(args.masterkey, args.up)
+    # 发射连弩
+    def nugong_callback():
+        for i in range(args.start, args.end + 1):
+            logger.debug(f"使用快捷栏：{i}")
+            kbm.key(str(i))
+            time.sleep(args.interval)
+            kbm.mouseclick("right")
+            time.sleep(args.interval)
+        kbm.key("1")
+    
+    def up_nugong_callback():
+        for i in range(args.start, args.end + 1):
+            logger.debug(f"使用快捷栏：{i}")
+            kbm.key(str(i))
+            time.sleep(args.interval)
+            kbm.mousebtndown("right")
+            time.sleep(1.5)
+            kbm.mousebtnup("right")
+            time.sleep(args.interval)
+        kbm.key("1")
+
+
+    hotkey = libhotkey.HotKey()
+    hotkey.addhotkey((args.masterkey, args.key), nugong_callback)
+    hotkey.addhotkey((args.masterkey, args.up), up_nugong_callback)
 
     try:
         while True:
-            if hotkey.watch():
-                logger.debug(f"hotkey: {hotkey} masterkey: {args.masterkey} key: {args.key}")
-                for i in range(args.start, args.end + 1):
-                    logger.debug(f"使用快捷栏：{i}")
-                    kbm.key(str(i))
-                    time.sleep(args.interval)
-                    kbm.mouseclick("right")
-                    time.sleep(args.interval)
-                kbm.key("1")
+            hotkey.watchrun()
     except KeyboardInterrupt:
         hotkey.close()
 
@@ -239,7 +258,7 @@ def main():
     nu3gong1 = subparse.add_parser("nugong", help="九连发弩弓!!!(default: 按下alt+g触发)")
     nu3gong1.add_argument("--masterkey", default="alt", help="触发的主键。(default: alt)")
     nu3gong1.add_argument("--key", default="g", help="触发的副键，发射键。(default: g)")
-    #nu3gong1.add_argument("--up", default="v", help="触发的副键，给弩上箭。(default: v)")
+    nu3gong1.add_argument("--up", default="v", help="触发的副键，给弩上箭。(default: v)")
     nu3gong1.add_argument("--interval",type=float, default=0.05, help="触发按键的间隔时间。(default: 0.05 秒)")
     nu3gong1.add_argument("--start", type=int, default=1, help="快捷栏弩的开始位置。(default: 1)")
     nu3gong1.add_argument("--end", type=int, default=9, help="快捷栏弩的结束位置。(default: 9)")
