@@ -151,8 +151,9 @@ def nugong(kbm, args):
     def nugong_callback():
         for i in range(args.start, args.end + 1):
             logger.debug(f"使用快捷栏：{i}")
+            time.sleep(0.05)
             kbm.key(str(i))
-            time.sleep(args.interval)
+            time.sleep(0.05)
             kbm.mouseclick("right")
             time.sleep(args.interval)
         kbm.key("1")
@@ -160,10 +161,11 @@ def nugong(kbm, args):
     def up_nugong_callback():
         for i in range(args.start, args.end + 1):
             logger.debug(f"使用快捷栏：{i}")
+            time.sleep(0.05)
             kbm.key(str(i))
-            time.sleep(args.interval)
+            time.sleep(0.05)
             kbm.mousebtndown("right")
-            time.sleep(1.5)
+            time.sleep(args.first)
             kbm.mousebtnup("right")
             time.sleep(args.interval)
         kbm.key("1")
@@ -259,7 +261,8 @@ def main():
     nu3gong1.add_argument("--masterkey", default="alt", help="触发的主键。(default: alt)")
     nu3gong1.add_argument("--key", default="g", help="触发的副键，发射键。(default: g)")
     nu3gong1.add_argument("--up", default="v", help="触发的副键，给弩上箭。(default: v)")
-    nu3gong1.add_argument("--interval",type=float, default=0.05, help="触发按键的间隔时间。(default: 0.05 秒)")
+    nu3gong1.add_argument("--interval",type=float, default=0.4, help="发射的间隔时间。(default: 0.4 秒, 在快就不能造成连续伤害了。)")
+    nu3gong1.add_argument("--first",type=float, default=1.4, choices=[1.45, 1.15, 0.85, 0.55], help="触发按键的间隔时间， 分别对应快速装填,无,1,2,3。(default: 1.5 秒)")
     nu3gong1.add_argument("--start", type=int, default=1, help="快捷栏弩的开始位置。(default: 1)")
     nu3gong1.add_argument("--end", type=int, default=9, help="快捷栏弩的结束位置。(default: 9)")
 
