@@ -206,6 +206,19 @@ class Argument(argparse.ArgumentParser):
         self._positionals = self.add_argument_group("位置参数")
         self._optionals = self.add_argument_group("通用选项")
 
+
+def quick_charge(number):
+    if number == 0:
+        return 1.45
+    elif number == 1:
+        return 1.15
+    elif number == 2:
+        return 0.85
+    elif number == 3:
+        return 0.55
+    else:
+        raise argparse.ArgumentTypeError("choices=[0, 1, 2, 3]")
+
 def main():
 
     parse = Argument(usage="%(prog)s [选项] <功能> [参数]",
@@ -262,7 +275,7 @@ def main():
     nu3gong1.add_argument("--key", default="g", help="触发的副键，发射键。(default: g)")
     nu3gong1.add_argument("--up", default="v", help="触发的副键，给弩上箭。(default: v)")
     nu3gong1.add_argument("--interval",type=float, default=0.4, help="发射的间隔时间。(default: 0.4 秒, 在快就不能造成连续伤害了。)")
-    nu3gong1.add_argument("--first",type=float, default=1.4, choices=[1.45, 1.15, 0.85, 0.55], help="触发按键的间隔时间， 分别对应快速装填,无,1,2,3。(default: 1.5 秒)")
+    nu3gong1.add_argument("--first",type=quick_charge, default=1.45, choices=[0, 1, 2, 3], help="装填间隔时间， 分别对应快速装填: 0,1,2,3。(default: 0)")
     nu3gong1.add_argument("--start", type=int, default=1, help="快捷栏弩的开始位置。(default: 1)")
     nu3gong1.add_argument("--end", type=int, default=9, help="快捷栏弩的结束位置。(default: 9)")
 
