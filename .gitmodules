@@ -1,0 +1,3 @@
+[submodule "keyboardmouse"]
+	path = keyboardmouse
+	url = https://github.com/calllivecn/keyboardmouse.git
