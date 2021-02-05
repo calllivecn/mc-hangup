@@ -1,0 +1,16 @@
+#!/bin/bash
+# date 2021-01-23 16:37:09
+# author calllivecn <c-all@qq.com>
+
+
+. "$(dirname ${0})"/libmc.sh
+
+
+
+while :;
+do
+	xdotool click 3
+	xdotool sleep 2
+	xdotool click 1
+	xdotool sleep 0.5
+done
