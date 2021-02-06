@@ -111,15 +111,14 @@ def ls(src, ctx):
 
 	server.logger.debug(f"list ctx -------------->\n{ctx}")
 
-def tp(src, ctx):
+def teleport(src, ctx):
 	server, info = __get(src)
-
 	msg = [
 	f"{'='*10} 当前没有收藏点, 快使用下面命令收藏一个吧。 {'='*10}",
 	f"{cmdprefix} add <收藏点名>",
 	]
 
-	server.logger.info(f"tp() 执行了。")
+	server.logger.debug(f"tp() 执行了。src --------->\n{src} ctx ------------>\n{ctx}")
 
 	u = USERTP.get(info.player)
 	if u is None:
@@ -128,15 +127,13 @@ def tp(src, ctx):
 		label_name = ctx.get("label_name")
 		label = u.get(label_name)
 
-		server.logger.debug(f"label_name: {label}")
-
 		if label is None:
 			server.reply(info, f"没有 {label_name} 收藏点")
 		else:
 			world = label["world"]
 			x, y, z = label["x"], label["y"], label["z"]
-			server.execute(f"execute at {info.player} in {world} run tp {x} {y} {z}")
-			server.logger.debug(f"execute at {info.player} in {world} run tp {x} {y} {z}")
+
+			server.execute(f"execute at {info.player} in {world} run tp {info.player} {x} {y} {z}")
 
 		server.logger.debug(f"label_name: {label_name} 收藏点：  {label}")
 
@@ -182,13 +179,16 @@ def add(src, ctx):
 def remove(src, ctx):
 	server, info = __get(src)
 
-	if USERTP.get(info.player) is None:
+	u = USERTP.get(info.player)
+
+	if u is None:
 		server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
 	else:
-		u = USERTP.get(info.player)
 		label_name = ctx.get("label_name")
 
-		if label_name is None:
+		label = u.get(label_name)
+
+		if label is None:
 			server.reply(info, RTextList(RText("没有 "), RText(label_name, RColor.blue), RText(" 收藏点")))
 			return
 
@@ -223,13 +223,14 @@ def rename(src, ctx):
 	server.logger.debug(f"rename ctx -------------->\n{ctx}")
 
 def build_command():
-	#c = Literal(cmdprefix).then(Literal("tp").then(Text("label_name").runs(tp)))
-	c = Literal(cmdprefix).then(Text("label_name").runs(tp))
-	c.then(Literal("help").runs(help))
+	# c = Literal(cmdprefix).then(Literal("tp").then(Text("label_name").runs(tp)))
+	c = Literal(cmdprefix).runs(help)
+	# c.then(Literal("help").runs(help))
 	c.then(Literal("list").runs(ls))
 	c.then(Literal("add").then(QuotableText("label_name").runs(add)))
-	c.then(Literal("remove").then(Text("label_name").runs(remove)))
-	c.then(Literal("rename").then(Text("label_name").then(Text("label_name2").runs(rename))))
+	c.then(Literal("remove").then(QuotableText("label_name").runs(remove)))
+	c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(rename))))
+	c = c.then(QuotableText("label_name").runs(teleport))
 	return c
 
 
