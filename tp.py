@@ -223,14 +223,12 @@ def rename(src, ctx):
 	server.logger.debug(f"rename ctx -------------->\n{ctx}")
 
 def build_command():
-	# c = Literal(cmdprefix).then(Literal("tp").then(Text("label_name").runs(tp)))
 	c = Literal(cmdprefix).runs(help)
-	# c.then(Literal("help").runs(help))
+	c = c.then(QuotableText("label_name").runs(teleport))
 	c.then(Literal("list").runs(ls))
 	c.then(Literal("add").then(QuotableText("label_name").runs(add)))
 	c.then(Literal("remove").then(QuotableText("label_name").runs(remove)))
 	c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(rename))))
-	c = c.then(QuotableText("label_name").runs(teleport))
 	return c
 
 
