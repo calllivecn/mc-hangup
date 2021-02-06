@@ -64,8 +64,9 @@ def player_save(player, data):
 
 def click_text(player, label_name, world, x, y, z):
 	r = RText(label_name, RColor.blue)
-	r.set_hover_text(RText("点击传送", RColor.green))
-	r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run tp {x} {y} {z}")
+	r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
+	# r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
+	r.set_click_event(RAction.run_command, f"{cmdprefix} {label_name}")
 	return r
 
 
@@ -77,16 +78,33 @@ def help(src):
 	server, info = __get(src)
 
 	msg=[f"{'='*10} 使用方法 {'='*10}",
-	".tp help                       查看使用方法",
+	".tp                            查看使用方法",
 	".tp <收藏点>                    tp 到收藏点",
 	".tp list                       列出所有收藏点",
-	".tp add <收藏点名字>             添加当前位置为收藏点",
+	".tp add <收藏点名字>             添加或修改当前位置为收藏点",
 	".tp remove <收藏点名字>          删除收藏点",
 	".tp rename <收藏点名字> <新名字>  修改收藏点名字",
 	]
 	server.reply(info, "\n".join(msg))
 
 	server.logger.debug(f"{USERTP}")
+
+
+def check_level(server, info):
+	# 查看玩家的等级够不够
+	level = server.rcon_query(f"experience query {info.player} levels")
+
+	l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
+
+	server.logger.debug(f"玩家 {info.player} 等级： {l}")
+
+	if int(l) < 1:
+		server.reply(info, RText("经验不足，至少需要1级", RColor.red))
+		return False
+	else:
+		# 扣掉1级
+		server.rcon_query(f"experience add {info.player} -1 levels")
+		return True
 
 def ls(src, ctx):
 	server, info = __get(src)
@@ -133,7 +151,8 @@ def teleport(src, ctx):
 			world = label["world"]
 			x, y, z = label["x"], label["y"], label["z"]
 
-			server.execute(f"execute at {info.player} in {world} run tp {info.player} {x} {y} {z}")
+			if check_level(server, info):
+				server.execute(f"execute at {info.player} in {world} run teleport {info.player} {x} {y} {z}")
 
 		server.logger.debug(f"label_name: {label_name} 收藏点：  {label}")
 
@@ -165,13 +184,15 @@ def add(src, ctx):
 		server.reply(info, RText(f"收藏起点已到最大数： {PLAYER_MAX_POINT} 请删除后添加", RColor.red))
 		return 
 
-	label_name = ctx["label_name"]
+	# 查看玩家的等级够不够
+	if check_level(server, info):
+		label_name = ctx["label_name"]
 
-	u[label_name] = {"world": world, "x": x, "y": y, "z":z}
+		u[label_name] = {"world": world, "x": x, "y": y, "z":z}
 
-	server.tell(info.player, RTextList("地点: ", RText(label_name, RColor.blue), " 收藏成功"))
+		server.tell(info.player, RTextList("地点: ", RText(label_name, RColor.blue), " 收藏成功"))
 
-	player_save(info.player, u)
+		player_save(info.player, u)
 
 	server.logger.debug(f"add ctx -------------->\n{ctx}")
 
@@ -214,13 +235,14 @@ def rename(src, ctx):
 		if label is None:
 			server.reply(info, RText(f"没有 {label_name} 收藏点", RColor.red))
 		else:
-			v = u.pop(label_name)
-			u[ctx["label_name2"]] = v
-
-			player_save(info.player, u)
-
+			if check_level(server, info):
+				v = u.pop(label_name)
+				u[ctx["label_name2"]] = v
+				player_save(info.player, u)
+				server.reply(info, RText("修改名称成功"))
 
 	server.logger.debug(f"rename ctx -------------->\n{ctx}")
+
 
 def build_command():
 	c = Literal(cmdprefix).runs(help)
