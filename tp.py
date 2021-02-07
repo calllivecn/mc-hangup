@@ -101,6 +101,9 @@ def player_save(player, data):
     with open(fullpathname, "w+") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+def playsound(server, player):
+    server.rcon_query(f"execute at {player} run playsound minecraft:entity.player.levelup player {player}")
+
 def click_text(player, label_name, world, x, y, z):
     r = RText(label_name, RColor.blue)
     r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
@@ -199,6 +202,7 @@ def teleport(src, ctx):
 
             if check_level(server, info):
                 server.rcon_query(f"execute at {info.player} in {world} run teleport {info.player} {x} {y} {z}")
+                playsound(server, info.player)
 
         server.logger.debug(f"label_name: {label_name} 收藏点：  {label}")
 
@@ -237,6 +241,7 @@ def add(src, ctx):
         u[label_name] = {"world": world, "x": x, "y": y, "z":z}
 
         server.tell(info.player, RTextList("地点: ", RText(label_name, RColor.blue), " 收藏成功"))
+        playsound(server, info.player)
 
         player_save(info.player, u)
 
@@ -264,6 +269,7 @@ def remove(src, ctx):
         player_save(info.player, u)
 
         server.reply(info, RTextList("地点: ", RText(label_name, RColor.blue, RStyle.strikethrough), " 删除成功"))
+        playsound(server, info.player)
 
     server.logger.debug(f"remove ctx -------------->\n{ctx}")
 
@@ -285,6 +291,7 @@ def rename(src, ctx):
                 v = u.pop(label_name)
                 u[ctx["label_name2"]] = v
                 player_save(info.player, u)
+                playsound(server, info.player)
                 server.reply(info, RText("修改名称成功", RColor.green))
 
     server.logger.debug(f"rename ctx -------------->\n{ctx}")
@@ -324,9 +331,9 @@ def invite(src, ctx):
             v = int(time.time())
             INVITE[k] = v
 
-            server.reply(info, RTextList("向玩家 ", RText(f"{invite_player}", RColor.blue), " 发送tp邀请"))
-
             server.tell(invite_player, click_invite(info.player, invite_player))
+            server.reply(info, RTextList("向玩家 ", RText(f"{invite_player}", RColor.blue), " 发送tp邀请"))
+            playsound(server, info.player)
 
     else:
         server.reply(info, RTextList("玩家 ", RText(f"{invite_player}", RColor.yellow), " 不在线"))
@@ -351,6 +358,7 @@ def accept(src, ctx):
                 server.rcon_query(f"execute at {info.player} run teleport {info.player} {accept_player}")
             else:
                 server.reply(info, RText("玩家没有邀请你或邀请已超过3分钟", RColor.yellow))
+                playsound(server, info.player)
 
             pop_invite(k)
 
