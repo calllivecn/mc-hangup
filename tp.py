@@ -28,11 +28,11 @@ PLUGIN_METADATA = {
 PLAYER_MAX_POINT = 20
 
 # set it to 0 to disable hightlight
-# 将其设为0以禁用高亮
 plugin_id = PLUGIN_METADATA["id"]
 cmdprefix = "." + plugin_id
 config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_id)
 
+"""
 def display(server, name, position, dimension):
 	x, y, z = position
 	dimension_convert = {
@@ -40,12 +40,12 @@ def display(server, name, position, dimension):
 		'minecraft:the_nether': '-1',
 		'minecraft:the_end': '1',
 	}
+"""
 
 
 USERTP = {}
 
 def user_tp_store_init(server):
-
 
 	if not config_dir.exists():
 		os.makedirs(config_dir)
@@ -67,8 +67,13 @@ def click_text(player, label_name, world, x, y, z):
 	r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
 	# r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
 	r.set_click_event(RAction.run_command, f"{cmdprefix} {label_name}")
+	# r.set_click_event(RAction.run_command, f"/tell {player} {cmdprefix} {label_name}") # 等回去测试这种能不能，隐藏交互。
 	return r
 
+def click_invite(player1, player2, world):
+    r = RText(f"{player1} 邀请你tp TA.", RColor.green)
+    r.set_click_event(RAction.run_command, f"/execute at {player2} in {world} run teleport @s {player1}")
+    return r
 
 def __get(src):
 	return src.get_server(), src.get_info()
@@ -78,12 +83,13 @@ def help(src):
 	server, info = __get(src)
 
 	msg=[f"{'='*10} 使用方法 {'='*10}",
-	".tp                            查看使用方法",
-	".tp <收藏点>                    tp 到收藏点",
-	".tp list                       列出所有收藏点",
-	".tp add <收藏点名字>             添加或修改当前位置为收藏点",
-	".tp remove <收藏点名字>          删除收藏点",
-	".tp rename <收藏点名字> <新名字>  修改收藏点名字",
+	f"{cmdprefix}                               查看使用方法",
+	f"{cmdprefix} <收藏点>                      tp 到收藏点",
+	f"{cmdprefix} list                          列出所有收藏点",
+	f"{cmdprefix} add <收藏点名字>              添加或修改当前位置为收藏点",
+	f"{cmdprefix} remove <收藏点名字>           删除收藏点",
+	f"{cmdprefix} rename <收藏点名字> <新名字>  修改收藏点名字",
+	#f"{cmdprefix} invite <玩家>                 邀请玩家到你当前的位置",
 	]
 	server.reply(info, "\n".join(msg))
 
@@ -181,7 +187,7 @@ def add(src, ctx):
 		u = {}
 		USERTP[info.player] = u
 	elif len(u) > PLAYER_MAX_POINT:
-		server.reply(info, RText(f"收藏起点已到最大数： {PLAYER_MAX_POINT} 请删除后添加", RColor.red))
+		server.reply(info, RText(f"收藏点已到最大数： {PLAYER_MAX_POINT} 请删除后添加", RColor.red))
 		return 
 
 	# 查看玩家的等级够不够
@@ -203,7 +209,7 @@ def remove(src, ctx):
 	u = USERTP.get(info.player)
 
 	if u is None:
-		server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
+	    server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
 	else:
 		label_name = ctx.get("label_name")
 
@@ -217,7 +223,7 @@ def remove(src, ctx):
 
 		player_save(info.player, u)
 
-		server.reply(info, RTextList("地点: ", RText(label_name, RColor.blue), " 删除成功"))
+		server.reply(info, RTextList("地点: ", RText(label_name, RColor.blue, RStyle.strike_through), " 删除成功"))
 
 	server.logger.debug(f"remove ctx -------------->\n{ctx}")
 
@@ -244,6 +250,13 @@ def rename(src, ctx):
 	server.logger.debug(f"rename ctx -------------->\n{ctx}")
 
 
+def invite(src, ctx):
+    server, info = __get(src)
+    
+    if check_level(server, info):
+        pass
+
+
 def build_command():
 	c = Literal(cmdprefix).runs(help)
 	c = c.then(QuotableText("label_name").runs(teleport))
@@ -251,20 +264,28 @@ def build_command():
 	c.then(Literal("add").then(QuotableText("label_name").runs(add)))
 	c.then(Literal("remove").then(QuotableText("label_name").runs(remove)))
 	c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(rename))))
+    #c.then(Literal("invite").then(QuotableText("player").tuns(invite)))
 	return c
 
 
 def on_load(server, old_plugin):
 	server.logger.debug(f"{plugin_id}: 的配置目录： {config_dir}")
 
-	user_tp_store_init(server)
+	#user_tp_store_init(server)
 
 	server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.')
 	server.register_command(build_command())
 
+def on_player_joind(server, player, info):
+    server.logger.info(f"加载玩家 {player} 收藏点")
+    player_json = config_dir / player + ".json"
+    if player_json.exists():
+        with open(player_json) as f:
+            USERTP[player] = json.load(f)
+
 
 def on_player_left(server, player):
+    server.logger.info(f"卸载玩家 {player} 收藏点"
     u = USERTP.get(player)
     if u is not None:
         USERTP.pop(player)
-        server.logger.debug(f"玩家{player}退出"
