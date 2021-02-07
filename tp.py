@@ -262,3 +262,9 @@ def on_load(server, old_plugin):
 	server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.')
 	server.register_command(build_command())
 
+
+def on_player_left(server, player):
+    u = USERTP.get(player)
+    if u is not None:
+        USERTP.pop(player)
+        server.logger.debug(f"玩家{player}退出"
