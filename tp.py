@@ -17,12 +17,12 @@ from mcdreforged.command.builder.command_node import Literal, QuotableText, Text
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
     'id': 'tp', 
-    'version': '0.1.0',
+    'version': '1.0.0',
     'name': '玩家位置点记录和传送',
     'author': [
         'calllivecn'
    ],
-    'link': 'https://github.com/calllivecn/mcdr/tp.py',
+    'link': 'https://github.com/calllivecn/mc-hangup/tp.py',
     'dependencies': {
         'mcdreforged': '>=1.0.0',
     }
