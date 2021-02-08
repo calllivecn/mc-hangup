@@ -110,21 +110,22 @@ def store(src, ctx):
         reduce_xp = number_all * EXPERIENCE_BOTTLE
         server.rcon_query(f"execute at {info.player} experience add {info.player} -{reduce_xp} points")
         server.rcon_query(f"execute at {info.player} run give {info.player} minecraft:experience_bottle {number_all}")
-        server.cron_query()
 
 def store_all(src, ctx):
     server, info = __get(src)
     number = int(ctx.get("number"))
     server.rcon_query(f"{cmdprefix} {number}")
+    #server.rcon_query(f"execute at {info.player} run say {cmdprefix} {number}")
 
     
 def store_30(src, ctx):
     server, info = __get(src)
     number = int(ctx.get("number"))
     server.rcon_query(f"{cmdprefix} {number}")
+    #server.rcon_query(f"execute at {info.player} run say {cmdprefix} {number}")
 
 def build_command():
-    c = Literal(cmdprefix).runs(help)
+    c = Literal(cmdprefix).runs(help_and_run)
     c.then(Literal("store").then(Integer("number").runs(ls)))
     c.then(Literal("store-all").then(Integer("number").runs(store_all)))
     c.then(Literal("store-30").then(Integer("number").runs(store_30)))
