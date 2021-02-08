@@ -22,9 +22,9 @@ PLUGIN_METADATA = {
     'author': [
         'calllivecn'
    ],
-    'link': 'https://github.com/calllivecn/mc-hangup/tp.py',
+    'link': 'https://github.com/calllivecn/mc-hangup/',
     'dependencies': {
-        'mcdreforged': '>=1.0.0',
+        'mcdreforged': '>=1.3.0',
     }
 }
 
@@ -34,17 +34,6 @@ PLAYER_MAX_POINT = 20
 plugin_id = PLUGIN_METADATA["id"]
 cmdprefix = "." + plugin_id
 config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_id)
-tmp_reload = config_dir / ".tmp_reload"
-
-"""
-def display(server, name, position, dimension):
-    x, y, z = position
-    dimension_convert = {
-        'minecraft:overworld': '0',
-        'minecraft:the_nether': '-1',
-        'minecraft:the_end': '1',
-    }
-"""
 
 
 USERTP = {}

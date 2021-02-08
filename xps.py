@@ -19,9 +19,9 @@ PLUGIN_METADATA = {
     'author': [
         'calllivecn'
    ],
-    'link': 'https://github.com/calllivecn/mcdr/xps.py',
+    'link': 'https://github.com/calllivecn/mc-hangup',
     'dependencies': {
-        'mcdreforged': '>=1.0.0',
+        'mcdreforged': '>=1.3.0',
     }
 }
 
