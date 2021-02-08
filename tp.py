@@ -17,14 +17,14 @@ from mcdreforged.command.builder.command_node import Literal, QuotableText, Text
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
     'id': 'tp', 
-    'version': '0.1.0',
+    'version': '1.0.0',
     'name': '玩家位置点记录和传送',
     'author': [
         'calllivecn'
    ],
-    'link': 'https://github.com/calllivecn/mcdr/tp.py',
+    'link': 'https://github.com/calllivecn/mc-hangup/',
     'dependencies': {
-        'mcdreforged': '>=1.0.0',
+        'mcdreforged': '>=1.3.0',
     }
 }
 
@@ -34,17 +34,6 @@ PLAYER_MAX_POINT = 20
 plugin_id = PLUGIN_METADATA["id"]
 cmdprefix = "." + plugin_id
 config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_id)
-tmp_reload = config_dir / ".tmp_reload"
-
-"""
-def display(server, name, position, dimension):
-    x, y, z = position
-    dimension_convert = {
-        'minecraft:overworld': '0',
-        'minecraft:the_nether': '-1',
-        'minecraft:the_end': '1',
-    }
-"""
 
 
 USERTP = {}
