@@ -105,12 +105,14 @@ def store(src, ctx):
 
     xp_total = __get_xp_total(server, info.player)
 
+    server.logger.debug(f"玩家 {info.player} 当前总经验 {xp_total}")
+
     number_all, _ = __store_space(xp_total)
 
     if number_all < number:
         server.reply(info, RText(f"当前最多只能存储{number_all}瓶", RColor.red))
     else:
-        reduce_xp = number_all * EXPERIENCE_BOTTLE
+        reduce_xp = number * EXPERIENCE_BOTTLE
         server.rcon_query(f"execute at {info.player} run experience add {info.player} -{reduce_xp} points")
         server.rcon_query(f"execute at {info.player} run give {info.player} minecraft:experience_bottle {number}")
 
