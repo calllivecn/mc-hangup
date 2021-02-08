@@ -298,7 +298,7 @@ def clear_expire_invite(server):
         time.sleep(180)
         c_t = int(time.time())
         for k, v in INVITE.items():
-            if (t - v) > 180:
+            if (c_t - v) > 180:
                 pop_invite(k)
 
 def invite(src, ctx):
