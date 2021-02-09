@@ -205,7 +205,7 @@ def add(src, ctx):
     if rcon_result is None:
         prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
         server.logger.warning(prompt)
-        server.tell(info.player, Rtext(f"{cmdprefix} 插件没有配置成功，请联系服主。", RColor.red))
+        server.tell(info.player, RText(f"{cmdprefix} 插件没有配置成功，请联系服主。", RColor.red))
 
     world = re.match('{} has the following entity data: "(.*)"'.format(info.player), rcon_result).group(1)
 
