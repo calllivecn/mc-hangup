@@ -10,6 +10,7 @@ import json
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
+from mcdreforged.permission.permission_level import PermissionLevel
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
@@ -141,7 +142,7 @@ def on_unload(server):
     pass
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, PLUGIN_METADATA["name"])
+    server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.USER)
     server.register_command(build_command())
 
 def on_player_joined(server, player):

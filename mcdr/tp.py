@@ -13,6 +13,7 @@ from pathlib import Path
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
+from mcdreforged.permission.permission_level import PermissionLevel
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
@@ -401,7 +402,7 @@ def on_load(server, old_plugin):
         INVITE = copy.deepcopy(old_plugin.INVITE)
         USERTP = copy.deepcopy(old_plugin.USERTP)
         
-    server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.')
+    server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.', PermissionLevel.USER)
     server.register_command(build_command())
 
 
