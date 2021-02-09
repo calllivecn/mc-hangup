@@ -5,6 +5,7 @@
 
 import re
 import os
+import sys
 import json
 from pathlib import Path
 
@@ -60,8 +61,10 @@ def set_soul_info(player, soul_info):
 def __get(src):
     return src.get_server(), src.get_info()
 
+    
+def soul(src, ctx):
+    server, info = __get(src)
 
-def soul(server, info):
     # 查询游戏模式
     rcon_result = server.rcon_query(f"data get entity {info.player} playerGameType")
 
@@ -119,12 +122,11 @@ def soul(server, info):
 
 def soul_runs(src, ctx):
     server, info = __get(src)
-
     perm = server.get_permission_level(info) 
     #server.logger.info(f"info --> {info}\n permission --> {perm}")
 
     if perm >= PermissionLevel.USER:
-        soul(server, info)
+        soul(src, ctx)
 
 def on_user_info(server, info):
     pass

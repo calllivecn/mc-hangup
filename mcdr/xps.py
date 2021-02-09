@@ -5,6 +5,7 @@
 
 import re
 import os
+import sys
 import json
 
 from mcdreforged.api.decorator import new_thread
@@ -71,7 +72,21 @@ def __store_space(xp):
 
     return int(number), int(storespace)
 
+def permission(func):
 
+    def warp(*args, **kwargs):
+        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        server, info = __get(args[0])
+        perm = server.get_permission_level(info)
+
+        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        if perm >= PermissionLevel.USER:
+            func(*args, **kwargs)
+
+    return warp
+
+
+@permission
 def help_and_run(src):
     server, info = __get(src)
 
@@ -98,7 +113,7 @@ def help_and_run(src):
     server.reply(info, "\n".join([line1, line2, line3]))
     server.reply(info, RTextList(line4, "\n", line5))
 
-
+@permission
 def store(src, ctx):
     server, info = __get(src)
 
@@ -121,6 +136,7 @@ def store(src, ctx):
         server.rcon_query(f"execute at {info.player} run experience add {info.player} -{reduce_xp} points")
         server.rcon_query(f"execute at {info.player} run give {info.player} minecraft:experience_bottle {number}")
 
+@permission
 def store_all(src, ctx):
     server, info = __get(src)
     number = int(ctx.get("number"))
@@ -128,18 +144,21 @@ def store_all(src, ctx):
     #server.rcon_query(f"execute at {info.player} run say {cmdprefix} {number}")
 
     
+@permission
 def store_30(src, ctx):
     server, info = __get(src)
     number = int(ctx.get("number"))
     server.rcon_query(f"{cmdprefix} {number}")
     #server.rcon_query(f"execute at {info.player} run say {cmdprefix} {number}")
 
+
 def build_command():
-    c = Literal(cmdprefix).runs(help_and_run)
-    c.then(Literal("store").then(Integer("number").runs(store)))
-    c.then(Literal("store-all").then(Integer("number").runs(store_all)))
-    c.then(Literal("store-30").then(Integer("number").runs(store_30)))
+    c = Literal(cmdprefix).runs(lambda src: help_and_run(src))
+    c.then(Literal("store").then(Integer("number").runs(lambda src, ctx: store(src, ctx))))
+    c.then(Literal("store-all").then(Integer("number").runs(lambda src, ctx: store_all(src, ctx))))
+    c.then(Literal("store-30").then(Integer("number").runs(lambda src, ctx: store_30(src, ctx))))
     return c
+
 
 
 def on_unload(server):

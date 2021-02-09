@@ -40,6 +40,19 @@ config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_i
 USERTP = {}
 INVITE = {}
 
+def permission(func):
+
+    def warp(*args, **kwargs):
+        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        server, info = __get(args[0])
+        perm = server.get_permission_level(info)
+
+        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        if perm >= PermissionLevel.USER:
+            func(*args, **kwargs)
+ 
+    return warp
+
 def get_players(server):
     # 获取在线玩家
     result = server.rcon_query("list")
@@ -60,13 +73,14 @@ def get_players(server):
 def player_online(server, player):
 
     #result = server.rcon_query(f"data get entity {player} Name")
-    result = server.rcon_query(f"expreince query {player} levels")
+    result = server.rcon_query(f"experience query {player} points")
+
 
     #if re.search("No entity was found", result).group():
-    if re.search("No player was found", result).group():
-        return False
-    else:
+    if re.search(f"{player} has ([0-9]+) experience points", result).group():
         return True
+    else:
+        return False
 
 def user_tp_store_init(server):
 
@@ -114,7 +128,7 @@ def click_invite(player1, player2):
 def __get(src):
     return src.get_server(), src.get_info()
 
-
+@permission
 def help(src):
     server, info = __get(src)
 
@@ -149,6 +163,8 @@ def check_level(server, info):
         server.rcon_query(f"experience add {info.player} -1 levels")
         return True
 
+
+@permission
 def ls(src, ctx):
     server, info = __get(src)
 
@@ -172,6 +188,8 @@ def ls(src, ctx):
 
     server.logger.debug(f"list ctx -------------->\n{ctx}")
 
+
+@permission
 def teleport(src, ctx):
     server, info = __get(src)
     msg = [
@@ -201,6 +219,7 @@ def teleport(src, ctx):
         server.logger.debug(f"label_name: {label_name} 收藏点：  {label}")
 
 
+@permission
 def add(src, ctx):
     server, info = __get(src)
 
@@ -241,7 +260,7 @@ def add(src, ctx):
 
     server.logger.debug(f"add ctx -------------->\n{ctx}")
 
-
+@permission
 def remove(src, ctx):
     server, info = __get(src)
 
@@ -267,6 +286,8 @@ def remove(src, ctx):
 
     server.logger.debug(f"remove ctx -------------->\n{ctx}")
 
+
+@permission
 def rename(src, ctx):
     server, info = __get(src)
 
@@ -306,6 +327,7 @@ def clear_expire_invite(server):
             if (c_t - v) > 180:
                 pop_invite(k)
 
+@permission
 def invite(src, ctx):
     server, info = __get(src)
 
@@ -332,7 +354,7 @@ def invite(src, ctx):
     else:
         server.reply(info, RTextList("玩家 ", RText(f"{invite_player}", RColor.yellow), " 不在线"))
 
-
+@permission
 def accept(src, ctx):
     server, info = __get(src)
 
@@ -361,14 +383,14 @@ def accept(src, ctx):
 
 
 def build_command():
-    c = Literal(cmdprefix).runs(help)
-    c = c.then(QuotableText("label_name").runs(teleport))
-    c.then(Literal("list").runs(ls))
-    c.then(Literal("add").then(QuotableText("label_name").runs(add)))
-    c.then(Literal("remove").then(QuotableText("label_name").runs(remove)))
-    c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(rename))))
-    c.then(Literal("invite").then(QuotableText("player").runs(invite)))
-    c.then(Literal("accept").then(QuotableText("player").runs(accept)))
+    c = Literal(cmdprefix).runs(lambda src: help(src))
+    c = c.then(QuotableText("label_name").runs(lambda src, ctx: teleport(src, ctx)))
+    c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
+    c.then(Literal("add").then(QuotableText("label_name").runs(lambda src, ctx: add(src, ctx))))
+    c.then(Literal("remove").then(QuotableText("label_name").runs(lambda src, ctx: remove(src, ctx))))
+    c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(lambda src, ctx: rename(src, ctx)))))
+    c.then(Literal("invite").then(QuotableText("player").runs(lambda src, ctx: invite(src, ctx))))
+    c.then(Literal("accept").then(QuotableText("player").runs(lambda src, ctx: accept(src, ctx))))
     return c
 
 
@@ -410,7 +432,7 @@ def on_load(server, old_plugin):
     server.register_command(build_command())
 
 
-# 有下面两种用法
+# 有下面两种用法??
 #def on_player_joined(server, player):
     #pass
 
