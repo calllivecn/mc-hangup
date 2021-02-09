@@ -217,7 +217,6 @@ def add(src, ctx):
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
     position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
-    position.group()
     x, y, z = position.group(1), position.group(2), position.group(3)
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
