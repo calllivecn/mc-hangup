@@ -104,6 +104,10 @@ def store(src, ctx):
 
     number = int(ctx.get("number"))
 
+    if number <= 0:
+        server.reply(info, RText("不能这样存储经验", RColor.red))
+        return
+
     xp_total = __get_xp_total(server, info.player)
 
     server.logger.debug(f"玩家 {info.player} 当前总经验 {xp_total}")
@@ -144,9 +148,6 @@ def on_unload(server):
 def on_load(server, old_plugin):
     server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.USER)
     server.register_command(build_command())
-
-def on_player_joined(server, player):
-    pass
 
 def on_player_joined(server, player, info):
     pass

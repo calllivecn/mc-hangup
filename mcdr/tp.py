@@ -59,10 +59,14 @@ def get_players(server):
 
 def player_online(server, player):
 
-    if player in get_players(server):
-        return True
-    else:
+    #result = server.rcon_query(f"data get entity {player} Name")
+    result = server.rcon_query(f"expreince query {player} levels")
+
+    #if re.search("No entity was found", result).group():
+    if re.search("No player was found", result).group():
         return False
+    else:
+        return True
 
 def user_tp_store_init(server):
 
@@ -406,19 +410,24 @@ def on_load(server, old_plugin):
     server.register_command(build_command())
 
 
-def on_player_joined(server, player):
-    pass
+# 有下面两种用法
+#def on_player_joined(server, player):
+    #pass
 
 def on_player_joined(server, player, info):
-    server.logger.info(f"加载玩家 {player} 收藏点")
+
     player_json = config_dir / (player + ".json")
+
     if player_json.exists():
+        server.logger.info(f"加载玩家 {player} 收藏点")
         with open(player_json) as f:
             USERTP[player] = json.load(f)
 
 
 def on_player_left(server, player):
-    server.logger.info(f"卸载玩家 {player} 收藏点")
+
     u = USERTP.get(player)
+
     if u is not None:
+        server.logger.info(f"卸载玩家 {player} 收藏点")
         USERTP.pop(player)
