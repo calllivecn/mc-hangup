@@ -16,7 +16,7 @@ from mcdreforged.permission.permission_level import PermissionLevel
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
     'id': 'xps', 
-    'version': '0.1.0',
+    'version': '1.0.0',
     'name': '把经验存在附魔瓶',
     'author': [
         'calllivecn'

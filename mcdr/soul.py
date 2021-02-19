@@ -95,7 +95,7 @@ def condition(server, info):
             set_soul_info(info.player, {"timestamp": timestamp()})
             return True
 
-new_thread
+@new_thread
 def timing(server, player):
 
     # time.sleep(10) # 测试

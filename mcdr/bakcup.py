@@ -17,7 +17,7 @@ from mcdreforged.permission.permission_level import PermissionLevel
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
-    'id': 'autobackup', 
+    'id': 'backup', 
     'version': '0.1.0',
     'name': '服务端自动备份工具(rsync)',
     'author': [
@@ -42,14 +42,11 @@ backup_dir = cur_dir / "server"
 def build_command():
     pass
 
-def on_unload(server):
-    pass
-
 def on_load(server, old_plugin):
     server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.ADMIN)
     server.register_command(build_command())
 
-def on_player_joined(server, player):
+def on_unload(server):
     pass
 
 def on_player_joined(server, player, info):
