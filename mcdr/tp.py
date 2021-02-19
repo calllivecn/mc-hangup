@@ -57,7 +57,7 @@ def get_players(server):
     # 获取在线玩家
     result = server.rcon_query("list")
     server.logger.debug(f"result = server.rcon_query('list') -->\n{result}")
-    match = re.match("There are ([0-9]+) of a max of ([0-5]+) players online: (.*)", result)
+    match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online: (.*)", result)
 
     if match.group(1) == "0":
         return []
