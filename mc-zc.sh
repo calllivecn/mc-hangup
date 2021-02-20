@@ -3,9 +3,9 @@
 # author calllivecn <c-all@qq.com>
 
 
-. "$(dirname ${0})"/libmc.sh
+#. "$(dirname ${0})"/libmc.sh
 
-
+xdotool sleep 3
 
 while :;
 do
