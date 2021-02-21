@@ -5,10 +5,11 @@
 
 import re
 import os
+import ssl
 import time
 import json
+import binascii
 import socket
-import ssl
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 from pathlib import Path
 
@@ -34,7 +35,7 @@ PLUGIN_METADATA = {
 
 cmdprefix = "." + PLUGIN_METADATA["id"]
 
-PORT = 25665
+PORT = 35565
 SECRET = b""
 
 cfg = Path("config") / "mcsleep.json"
@@ -52,7 +53,7 @@ def get_set_secret():
     else:
         SECRET = binascii.b2a_hex(ssl.RAND_bytes(16)).decode()
         with open(cfg, "w") as f:
-            json.dump({"port": 25665, "secret": SECRET}, f, ensure_ascii=False, indent=4)
+            json.dump({"port": 35565, "secret": SECRET}, f, ensure_ascii=False, indent=4)
 
 
 
@@ -86,7 +87,7 @@ def send_handler(conn, selector):
     selector.unregister(conn)
 
 def recv_handler(conn, selector):
-    data = conn.recv(4096)
+    data = conn.recv(1024)
     oneline = data.split("\r\n")
     selector.modify(conn, EVENT_WRITE, send_handler)
 
@@ -153,7 +154,8 @@ def mcsleep(server):
 def permission(func):
 
     def warp(*args, **kwargs):
-        server, info = __get(args[0])
+        server = args[0].get_server()
+        info = args[0].get_info()
         perm = server.get_permission_level(info)
         if perm >= PermissionLevel.ADMIN:
             func(*args, **kwargs)
