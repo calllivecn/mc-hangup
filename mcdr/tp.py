@@ -317,7 +317,7 @@ def pop_invite(k):
     except KeyError:
         pass
 
-@new_thread(f"{cmdprefix} thread")
+@new_thread(f"{cmdprefix} 清理过期的邀请")
 def clear_expire_invite(server):
     while True:
         server.logger.info(f"clear_expire_invite() 我有执行哦")

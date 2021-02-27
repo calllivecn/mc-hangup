@@ -95,7 +95,7 @@ def condition(server, info):
             set_soul_info(info.player, {"timestamp": timestamp()})
             return True
 
-@new_thread
+@new_thread("soul")
 def timing(server, player):
 
     # time.sleep(10) # 测试
@@ -132,7 +132,7 @@ def timing(server, player):
         server.rcon_query(f"execute at {player} in {world} run teleport {player} {x} {y} {z}")
         server.rcon_query(f"execute at {player} run gamemode survival {player}")
     else:
-        server.reply(info, RText("出了点问题，请联系管理员。", RColor.red))
+        server.tell(player, RText("出了点问题，请联系管理员。", RColor.red))
         server.logger.warning(f"玩家 {player} 被卡在灵魂模式了。。。")
 
 
@@ -212,8 +212,8 @@ def soul(src, ctx):
         return
 
 
-def on_user_info(server, info):
-    pass
+# def on_user_info(server, info):
+    # pass
 
 def on_player_joined(server, player, info):
 
@@ -226,7 +226,7 @@ def on_player_joined(server, player, info):
 
     if gamemode == "3":
         t = timestamp()
-        if (t - soul_info["timestamp"]) >= 180:
+        if (t - soul_player["timestamp"]) >= 180:
         # if (t - soul_player["timestamp"]) >= 25:
             world = soul_player["world"]
             x, y, z = soul_player["x"], soul_player["y"], soul_player["z"]

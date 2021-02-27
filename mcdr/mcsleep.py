@@ -5,6 +5,7 @@
 
 import re
 import os
+from re import S
 import ssl
 import sys
 import time
@@ -40,22 +41,31 @@ cmdprefix = "." + PLUGIN_METADATA["id"]
 PORT = 35565
 SECRET = b""
 
+# 没有玩家后10分钟关闭服务器
+WAITTIME = 2
+
 cfg = Path("config") / "mcsleep.json"
 
+
+# 插件重载时，退出线程
+PLUGIN_RELOAD = False
+
 def get_set_secret():
-    global SECRET
+    global WAITTIME
     global PORT
+    global SECRET
     if cfg.exists():
         with open(cfg) as f:
            data = json.load(f) 
 
         SECRET = data["secret"]
         PORT = data["port"]
+        WAITTIME = data["waittime"]
 
     else:
         SECRET = binascii.b2a_hex(ssl.RAND_bytes(16)).decode()
         with open(cfg, "w") as f:
-            json.dump({"port": PORT, "secret": SECRET}, f, ensure_ascii=False, indent=4)
+            json.dump({"waittime": WAITTIME, "port": PORT, "secret": SECRET}, f, ensure_ascii=False, indent=4)
 
 
 ##########################################
@@ -69,12 +79,14 @@ def get_set_secret():
 class State:
     def __init__(self):
         self._lock = Lock()
-        self._state = 0
 
         self.PLAYERS = 1
+        self.IDLE = self.PLAYERS
         self.SERVER_UP = 2
         self.NOTPLAYERS = 3
         self.SERVER_DOWN = 4
+
+        self._state = self.SERVER_UP
 
     @property    
     def state(self):
@@ -87,9 +99,6 @@ class State:
             self._state = value
 
 STATE = State()
-
-# 没有玩家后10分钟关闭服务器
-WAITMIN = 1
 
 #################
 #
@@ -122,12 +131,9 @@ def send_handler(conn, selector):
     ip = conn.getpeername()[0]
     conn.send(httpResponse(ip))
     conn.close()
-    selector.unregister(conn)
 
 
 def recv_handler(conn, selector):
-
-    global STATE
 
     data = conn.recv(1024).decode()
     oneline = data.split("\r\n")[0]
@@ -172,6 +178,12 @@ def httpmcsleep(server):
     sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
+    sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+    sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+
+    sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
+    sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
+
     sock4.bind(("0.0.0.0", PORT))
     sock6.bind(("::", PORT))
     
@@ -187,10 +199,15 @@ def httpmcsleep(server):
 
     try:
         while True:
-            for key, event in selector.select():
+            for key, event in selector.select(0.1):
                 conn = key.fileobj
                 func = key.data
                 func(conn, selector)
+
+            # selector.select(0.1) 超时处理。
+            if PLUGIN_RELOAD == True:
+                return
+
     except Exception as e:
         server.logger.warning(f"httpmcsleep() 异常： {e}")
 
@@ -206,54 +223,94 @@ def httpmcsleep(server):
 #
 #################
 
-@new_thread("server stop 倒计时")
-def waitsleep(server):
+@new_thread("mc sleep 执行器")
+def execute(server):
 
-    for i in range(WAITMIN * 60):
-
-        if STATE.state == STATE.PLAYERS:
-            return
+    waittime = WAITTIME * 60
+    print_count = 60
+    while True:
 
         time.sleep(1)
 
-    server.logger.info("mc sleep 关闭服务器中...")
-    server.stop()
-    server.wait_for_start()
-    server.logger.info("mc sleep 服务器以关闭")
+        if PLUGIN_RELOAD:
+            server.logger.info("olg_plugin 执行器退出...")
+            return
+        
+
+        if STATE.state != STATE.NOTPLAYERS:
+            waittime = WAITTIME * 60
+
+        
+        if STATE.state == STATE.SERVER_UP:
+            server.logger.info("启动服务器中...")
+
+            if not server.is_server_running():
+                server.start()
+
+            STATE.state = STATE.NOTPLAYERS
+
+        elif STATE.state == STATE.SERVER_DOWN:
+
+            if server.is_server_running():
+                server.logger.info("关闭服务器中...")
+                server.stop()
+                server.wait_for_start()
+                server.logger.info("服务器已关闭")
+
+        elif STATE.state == STATE.PLAYERS:
+            pass
+
+        elif STATE.state == STATE.NOTPLAYERS:
+            waittime -= 1
+
+            if (waittime % print_count) == 0:
+                server.logger.info(f"等待玩家加入... {waittime}秒后关闭服务器")
+
+            if waittime < 0:
+                STATE.state = STATE.SERVER_DOWN
+            else:
+                continue
+        
+
+def waitrcon(server):
+    # server刚启动时，等待rcon
+    while True:
+
+        if server.is_rcon_running():
+            # server.logger.info("rcon is running")
+            break
+        # else:
+            # server.logger.info("wait rcon is running")
+        
+        time.sleep(5)
 
 
 @new_thread("检查在线玩家数")
 def players(server):
 
-    global STATE
-
-    while True:
-        if server.is_rcon_running():
-            server.logger.info("rcon is running")
-            break
-        else:
-            server.logger.info("wait rcon is running")
-            time.sleep(5)
-
     while True:
 
         if server.is_server_startup():
+
+            waitrcon(server)
+
             result = server.rcon_query("list")
-            server.logger.info(f"players() server.rcon_query() --> {result}")
+            # server.logger.info(f"players() server.rcon_query() --> {result}")
 
             match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
             players = int(match.group(1))
 
             if players == 0:
                 STATE.state = STATE.NOTPLAYERS
-                waitsleep(server)
             else:
                 STATE.state = STATE.PLAYERS
-        
-        if STATE.state == STATE.SERVER_DOWN:
-            return
 
-        time.sleep(30)
+        # 每秒check退出标志
+        for _ in range(30):
+            if PLUGIN_RELOAD:
+                return
+            else:
+                time.sleep(1)
 
 
 
@@ -271,13 +328,13 @@ def permission(func):
 
 def wakeup(src):
     server = src.get_server()
-    server.start()
+    server.logger.info("mc sleep 启动服务器中...")
+    STATE.state = STATE.SERVER_UP
 
 
 def on_info(server, info):
     if info.source == 1 and info.content == cmdprefix + " wakeup":
-        server.logger.info("mcsleep wakeup")
-        server.start()
+        STATE.state = STATE.SERVER_UP
 
 
 def on_load(server, old_plugin):
@@ -289,17 +346,29 @@ def on_load(server, old_plugin):
     # 启动http开关
     if old_plugin is None:
         httpmcsleep(server)
+        players(server)
+        execute(server)
+    else:
+        old_plugin.PLUGIN_RELOAD = True
+        STATE.state = old_plugin.STATE.state
+        time.sleep(3)
+
+        httpmcsleep(server)
+        players(server)
+        execute(server)
 
     if server.is_server_startup():
         server.logger.info(f"server is up")
-        STATE.state = STATE.SERVER_UP
-    else:
-        server.logger.info(f"server is down")
-        STATE.state = STATE.SERVER_UP
+        STATE.state = STATE.NOTPLAYERS
 
 
-def on_server_startup(server):
-    players(server)
+#def on_server_startup(server):
+#    server.logger.info("on_server_startup()")
+#    STATE.state = STATE.NOTPLAYERS
+#
+#def on_server_stop(server):
+#    server.logger.info("on_server_stop()")
+#    STATE.state = STATE.SERVER_DOWN
 
 
 # def on_player_left(server, player):
@@ -307,7 +376,6 @@ def on_server_startup(server):
 # 
 
 def on_player_joined(server, player, info):
-    global STATE
     if STATE.state == STATE.NOTPLAYERS:
-        server.logger.info(f"玩家 {player} 加入游戏，中断 waitsleep()")
+        server.logger.info(f"玩家 {player} 加入游戏，中断 waitsleep")
         STATE.state = STATE.PLAYERS
