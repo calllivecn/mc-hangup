@@ -42,7 +42,7 @@ PORT = 35565
 SECRET = b""
 
 # 没有玩家后10分钟关闭服务器
-WAITTIME = 2
+WAITTIME = 10
 
 cfg = Path("config") / "mcsleep.json"
 
