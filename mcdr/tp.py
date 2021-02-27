@@ -40,6 +40,9 @@ config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_i
 USERTP = {}
 INVITE = {}
 
+# 如果插件重载，则退出。线程
+PLUGIN_RELOAD = False
+
 def permission(func):
 
     def warp(*args, **kwargs):
@@ -320,6 +323,10 @@ def pop_invite(k):
 @new_thread(f"{cmdprefix} 清理过期的邀请")
 def clear_expire_invite(server):
     while True:
+
+        if PLUGIN_RELOAD:
+            break
+
         server.logger.info(f"clear_expire_invite() 我有执行哦")
         time.sleep(180)
         c_t = int(time.time())
@@ -427,6 +434,7 @@ def on_load(server, old_plugin):
 
         INVITE = copy.deepcopy(old_plugin.INVITE)
         USERTP = copy.deepcopy(old_plugin.USERTP)
+        old_plugin.PLUGIN_RELOAD = True
         
     server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.', PermissionLevel.USER)
     server.register_command(build_command())
