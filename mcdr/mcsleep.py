@@ -138,6 +138,8 @@ def conn_exit(conn, selector):
 
 def recv_handler(conn, selector):
 
+    print("client:", conn.getpeername(), file=sys.stderr)
+
     data = conn.recv(1024)
 
     if data:
@@ -145,7 +147,6 @@ def recv_handler(conn, selector):
         content = data.decode()
 
         oneline = content.split("\r\n")[0]
-        print("client:", conn.getpeername(), file=sys.stderr)
 
         try:
             method, path, protocol = oneline.split(" ")
