@@ -130,39 +130,46 @@ def return_ip(conn):
 def send_handler(conn, selector):
     ip = conn.getpeername()[0]
     conn.send(httpResponse(ip))
+
+def conn_exit(conn, selector):
     conn.close()
+    selector.unregister(conn)
 
 
 def recv_handler(conn, selector):
 
-    data = conn.recv(1024).decode()
-    oneline = data.split("\r\n")[0]
-    print("client:", conn.getpeername(), file=sys.stderr)
+    data = conn.recv(1024)
 
-    try:
-        method, path, protocol = oneline.split(" ")
-    except Exception as e:
-        return_ip(conn)
-        selector.unregister(conn)
-        return
+    if data:
 
-    if path == "/" + SECRET:
-        # check_mc_server_is_running
-        if STATE.state == STATE.NOTPLAYERS:
-            conn.send(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
-        elif STATE.state == STATE.PLAYERS:
-            conn.send(httpResponse("服务器在运行，且有玩家。"))
-        elif STATE.state == STATE.SERVER_DOWN:
-            conn.send(httpResponse("正在开启服务器..."))
-            STATE.state = STATE.SERVER_UP
+        content = data.decode()
+
+        oneline = content.split("\r\n")[0]
+        print("client:", conn.getpeername(), file=sys.stderr)
+
+        try:
+            method, path, protocol = oneline.split(" ")
+        except Exception as e:
+            return_ip(conn)
+            conn_exit(conn, selector)
+            return
+
+        if path == "/" + SECRET:
+            # check_mc_server_is_running
+            if STATE.state == STATE.NOTPLAYERS:
+                conn.send(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
+            elif STATE.state == STATE.PLAYERS:
+                conn.send(httpResponse("服务器在运行，且有玩家。"))
+            elif STATE.state == STATE.SERVER_DOWN:
+                conn.send(httpResponse("正在开启服务器..."))
+                STATE.state = STATE.SERVER_UP
+            else:
+                conn.send(httpResponse("未知状态..."))
+
         else:
-            conn.send(httpResponse("未知状态..."))
-
-        conn.close()
-    else:
-        return_ip(conn)
+            return_ip(conn)
     
-    selector.unregister(conn)
+    conn_exit(conn, selector)
     # selector.modify(conn, EVENT_WRITE, send_handler)
 
 
