@@ -217,7 +217,8 @@ def teleport(src, ctx):
 
             if check_level(server, info):
                 server.rcon_query(f"execute at {info.player} in {world} run teleport {info.player} {x} {y} {z}")
-                playsound(server, info.player)
+                #playsound(server, info.player)
+                server.rcon_query(f"execute at {info.player} run playsound minecraft:item.chorus_fruit.teleport player {info.player}")
 
         server.logger.debug(f"label_name: {label_name} 收藏点：  {label}")
 
@@ -379,9 +380,10 @@ def accept(src, ctx):
 
             if t < 180:
                 server.rcon_query(f"execute at {info.player} run teleport {info.player} {accept_player}")
+                server.rcon_query(f"execute at {info.player} run playsound minecraft:item.chorus_fruit.teleport player {info.player}")
             else:
                 server.reply(info, RText("玩家没有邀请你或邀请已超过3分钟", RColor.yellow))
-                playsound(server, info.player)
+                #playsound(server, info.player)
 
             pop_invite(k)
 
