@@ -137,17 +137,15 @@ def help(src):
 
     msg=[f"{'='*10} 使用方法 {'='*10}",
     f"{cmdprefix}                               查看使用方法",
-    f"{cmdprefix} <收藏点>                      tp 到收藏点",
+    f"{cmdprefix} <收藏点>                       tp 到收藏点",
     f"{cmdprefix} list                          列出所有收藏点",
-    f"{cmdprefix} add <收藏点名字>              添加或修改当前位置为收藏点",
-    f"{cmdprefix} remove <收藏点名字>           删除收藏点",
-    f"{cmdprefix} rename <收藏点名字> <新名字>  修改收藏点名字",
-    f"{cmdprefix} invite <玩家>                 邀请玩家到你当前的位置",
-    f"{cmdprefix} accept <玩家>                 接收一个玩家对你的邀请(时效3分钟)",
+    f"{cmdprefix} add <收藏点名字>                添加或修改当前位置为收藏点",
+    f"{cmdprefix} remove <收藏点名字>             删除收藏点",
+    f"{cmdprefix} rename <收藏点名字> <新名字>     修改收藏点名字",
+    f"{cmdprefix} invite <玩家>                  邀请玩家到你当前的位置",
+    f"{cmdprefix} accept <玩家>                  接收一个玩家对你的邀请(时效3分钟)",
     ]
     server.reply(info, "\n".join(msg))
-
-    server.logger.debug(f"{USERTP}")
 
 
 def check_level(server, info):
