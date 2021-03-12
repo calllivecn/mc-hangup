@@ -108,7 +108,7 @@ STATE = State()
 
 
 def httpResponse(msg):
-    msg += "<h1>" + msg + "</h1>\n"
+    msg = "<h1>" + msg + "</h1>\n"
     msg = msg.encode("utf8")
     response = [
             "HTTP/1.1 200 ok",
