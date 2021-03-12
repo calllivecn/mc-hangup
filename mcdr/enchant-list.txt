@@ -1,0 +1,5 @@
+# 给个驽：
+/give zx minecraft:crossbow{Enchantments:[{id:"minecraft:unbreaking",lvl:3},{id:"minecraft:mending",lvl:1},{id:"minecraft:quick_charge",lvl:5},{id:"minecraft:piercing",lvl:4},{id:"minecraft:infinity",lvl:1}]} 1
+
+# 一个伤害很高剑
+/give zx minecraft:netherite_sword{Enchantments:[{id:"minecraft:unbreaking",lvl:3},{id:"minecraft:mending",lvl:1},{id:"minecraft:sharpness",lvl:5000},{id:"minecraft:looting",lvl:50},{id:"minecraft:sweeping",lvl:10}]} 1
