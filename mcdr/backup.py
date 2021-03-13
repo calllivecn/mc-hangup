@@ -145,12 +145,14 @@ def __get(src):
 
 
 def backup2current(source, target):
+    if not source.endswith("/"):
+        source = source + "/"
+
     try:
         # subprocess.check_call(["rsync", "-av", "--delete", source, target])
         subprocess.check_call(["rsync", "-a", "--delete", source, target])
     except FileNotFoundError as e:
         raise e
-
 
 
 def autobackup(server):
@@ -175,7 +177,7 @@ def autobackup(server):
         # server.logger.info(f"server.rcon_query() ==> {result}")
         time.sleep(1)
 
-        if c >= 60:
+        if c >= 180:
             server.say(RText("服务器可能 过于卡顿 备份失败。。。", RColor.red))
             return
         c += 1
@@ -282,7 +284,9 @@ def ls(src, ctx):
     msg=[f"{'='*10} 当前存档 {'='*10}"]
 
     i = 0
-    for archive in os.listdir(BACKUP_DIR):
+    archives = os.listdir(BACKUP_DIR)
+    archives.sort()
+    for archive in archives:
 
         if archive == "autobackup":
             continue
