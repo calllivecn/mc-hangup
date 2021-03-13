@@ -4,8 +4,6 @@
 # author calllivecn <c-all@qq.com>
 
 import re
-import os
-from re import S
 import ssl
 import sys
 import time
