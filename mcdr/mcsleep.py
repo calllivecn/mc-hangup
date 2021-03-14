@@ -111,7 +111,7 @@ def httpResponse(msg):
     response = [
             "HTTP/1.1 200 ok",
             "Server: server",
-            "Content-Type: text/plain;charset=UTF-8",
+            "Content-Type: text/html;charset=UTF-8",
             "Content-Length: " + str(len(msg)),
             "\r\n",
             ]
