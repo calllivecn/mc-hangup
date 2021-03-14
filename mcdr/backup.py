@@ -99,7 +99,7 @@ class BackupInternal:
         with self._lock:
             self._internal = value
     
-    def is_locked(self):
+    def locked(self):
         return self._lock.locked()
     
     def __enter__(self):
@@ -111,12 +111,13 @@ class BackupInternal:
 
 class BackInfo:
 
-    def __init__(self, autobackup):
+    def __init__(self):
 
         self.backup_seq = CFG["backup_seq"]
         self.backup_info = BACKUP_DIR / "backupinfo.json"
 
-        self.backup_last = autobackup
+        self.archivename = ""
+        self.backup_last = ""
         self.rollback_last = ""
         self.backup_seq_count = []
 
@@ -147,7 +148,7 @@ class BackInfo:
         
         return ls
     
-    def update(self):
+    def update(self, archivename):
         """
         更新 value archivename
         return 要被删除的 archivename, 没有 return ""
@@ -155,30 +156,38 @@ class BackInfo:
 
         self.autobackup2archivename = False
 
-        cur_archivename = self.backup_last
+        #archivename
+        cur = self.backup_last
 
+        deletes = []
         seq_len = len(self.backup_seq)
+        print("self.backup_seq_count ==> ", self.backup_seq_count)
         for i in range(seq_len):
 
-            print("self.backup_seq_count ==> ", self.backup_seq_count)
             self.backup_seq_count[i]["value"] += 1
 
             if self.backup_seq[i] <= self.backup_seq_count[i]["value"]:
                 self.backup_seq_count[i]["value"] = 0
-                self.backup_seq_count[i]["archivename"], cur_archivename = cur_archivename, self.backup_seq_count[i]["archivename"]
+                self.backup_seq_count[i]["archivename"], cur = cur, self.backup_seq_count[i]["archivename"]
                 if i == 0:
                     self.autobackup2archivename = True
 
             else:
-                # 如果没有进位就可以结束了
-                cur_archivename = ""
-                break
-        
-        print("self.backup_seq_count ==> 执行后 ", self.backup_seq_count)
-        self.__write()
 
-        if cur_archivename != "":
-            self.__rmtree(self, cur_archivename)
+                if self.backup_seq_count[i]["archivename"] != "" and cur != self.backup_last:
+                    deletes.append(self.backup_seq_count[i]["archivename"])
+
+                self.backup_seq_count[i]["archivename"] = cur
+                break
+
+        print("self.backup_seq_count ==> 执行后 ", self.backup_seq_count)
+        
+        # 写入时，才能更新
+        self.backup_last = archivename
+        self.__write()
+        print("deletes ==> ", deletes)
+        for arch in deletes:
+            self.__rmtree(arch)
 
 
     def select_seq(self, seq):
@@ -188,8 +197,8 @@ class BackInfo:
             return self.backup_seq_count[seq-1]["archivename"]
 
     
-    def last_backup(self):
-        return self.backup_last
+    def backup_last_set(self, archivename):
+        self.backup_last = archivename
 
     
     def last_rollback(self):
@@ -200,7 +209,7 @@ class BackInfo:
         with open(BACKUP_INFO, "r") as f:
             j = json.load(f)
 
-        # self.backup_last = j["backup_last"]
+        self.backup_last = j["backup_last"]
         self.backup_seq_count = j["backup_seq_count"]
         self.rollback_last = j["rollback_last"]
         
@@ -219,6 +228,7 @@ class BackInfo:
 SAVED_THE_GAME = False
 PLUGIN_RELOAD = False
 BI = BackupInternal()
+backing = Lock()
 
 def permission(func):
 
@@ -252,7 +262,6 @@ def backup2current(source, target):
         raise e
     except Exception as e:
         raise e
-
 
 def autobackup(server):
 
@@ -300,12 +309,22 @@ def autobackup(server):
     server.say(RTextList(RText("备份存档： "), RText(f"{archivename}", RColor.yellow), RText(" 完成 "), RText(f"耗时：{round(t2-t1, 2)}s", RColor.yellow)))
 
     # 移动存档
-    backinfo = BackInfo(archivename)
-    backinfo.update()
+    backinfo = BackInfo()
+    backinfo.update(archivename)
     if backinfo.autobackup2archivename:
         with BI:
             backup2current(str(AUTOBACKUP_DIR), str(archivename_path))
 
+
+@new_thread("auto backup")
+def autobackup_lock(server):
+
+    if backing.locked():
+        server.say(RText("备份的太频繁...", RColor.red))
+    else:
+        server.say(RText("手动触发备份存档 ..."))
+        with backing:
+            autobackup(server)
 
 
 def waitrcon(server):
@@ -360,7 +379,12 @@ def wait30minute(server):
                 server.logger.info("backup Timer 线程退出")
                 return
             
-        autobackup(server)
+        if backing.locked():
+            with backing:
+                pass
+        else:
+            with backing:
+                autobackup(server)
 
         # 这里之后加上，轮替的处理
 
@@ -388,17 +412,15 @@ def ls(src, ctx):
     
     msg=[f"{'='*10} 当前存档 {'='*10}"]
 
-    i = 0
-    archives = os.listdir(BACKUP_DIR)
+
+    bi = BackInfo()
+    archives = bi.list()
     archives.sort()
-    for archive in archives:
+    archives.reverse()
 
-        if archive == "autobackup":
-            continue
-
+    for i, archive in enumerate(archives):
         msg.append(f"[{i}] 存档： {archive}")
 
-        i += 1
     
     msg.append(f"{'-'*30}")
     msg.append(f"使用： {cmdprefix} rollback <序号> 回滚")
@@ -412,11 +434,7 @@ def backup(src, ctx):
     server = src.get_server()
     info = src.get_info()
 
-    if BI.is_locked():
-        server.say(RText("已有任务，正在备份中...", RColor.red))
-    else:
-        server.say(RText("手动触发备份存档 ..."))
-        autobackup(server)
+    autobackup_lock(server)
 
 
 
@@ -446,6 +464,8 @@ def on_info(server, info):
     if info.source == 0 and info.content == "Saved the game":
         SAVED_THE_GAME = True
         server.logger.info("标记到 `Saved th game`")
+    # else:
+        # server.logger.info(f"都看到了啥？＝＝> {info.content}")
 
 
 def on_load(server, old_plugin):
