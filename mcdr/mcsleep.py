@@ -136,19 +136,25 @@ def conn_exit(conn, selector):
 
 def recv_handler(conn, selector):
 
-    print("client:", conn.getpeername(), file=sys.stderr)
+    addr = conn.getpeername()
+    print("client:", addr, file=sys.stderr)
 
     data = conn.recv(1024)
 
     if data:
 
-        content = data.decode()
-
-        oneline = content.split("\r\n")[0]
-
         try:
+            content = data.decode()
+
+            oneline = content.split("\r\n")[0]
+
             method, path, protocol = oneline.split(" ")
+        except UnicodeDecodeError as e:
+            print(e, addr)
+            conn_exit(conn, selector)
+            return
         except Exception as e:
+            print("有异常:", e)
             return_ip(conn)
             conn_exit(conn, selector)
             return
