@@ -8,6 +8,7 @@ import re
 import sys
 import json
 import time
+import shutil
 import subprocess
 from pathlib import Path
 from threading import Lock
@@ -32,7 +33,7 @@ PLUGIN_METADATA = {
     }
 }
 
-cmdprefix = "." + "backup"
+cmdprefix = "." + "bak"
 
 cur_dir = Path(os.path.dirname(os.path.dirname(__file__)))
 
@@ -42,6 +43,7 @@ config_file = cur_dir / "config" / "backup.json"
 BACKUP_DIR = Path("backup")
 AUTOBACKUP_DIR = BACKUP_DIR / "autobackup"
 WORLD_DIR = Path("server") / "world"
+BACKUP_INFO = BACKUP_DIR / "backupinfo.json"
 
 # 配置文件
 
@@ -49,7 +51,7 @@ CFG = {
     "world_dir": str(WORLD_DIR),
     "backup_dir": str(BACKUP_DIR),
     "backup_interval": 30 * 60,
-    "backup_seq": [2, 6, 16, 48, 144]
+    "backup_seq": [2, 2, 4, 3],
 }
 
 def read_cfg(server):
@@ -77,17 +79,6 @@ def read_cfg(server):
     # init autobackup 目录
     if not AUTOBACKUP_DIR.exists():
         os.makedirs(AUTOBACKUP_DIR)
-    
-    #
-    # backup_seq 必须是单调递增的
-    seq = CFG["backup_seq"]
-    if seq[0] < 2:
-        server.logger.warning(f"{config_file} 中 backup_seq[0]: {seq} 配置错误；必须大于等 2")
-
-    for i in range(len(seq) - 1):
-        if seq[i] >= seq[i+1]:
-            server.logger.warning(f"{config_file} 中 backup_seq: {seq} 配置错误；backup_seq 必须是单调递增且不相等的,")
-            return False
     
     return True
 
@@ -117,6 +108,112 @@ class BackupInternal:
 
     def __exit__(self, typ, value, traceback):
         self._lock.release()
+
+class BackInfo:
+
+    def __init__(self, autobackup):
+
+        self.backup_seq = CFG["backup_seq"]
+        self.backup_info = BACKUP_DIR / "backupinfo.json"
+
+        self.backup_last = autobackup
+        self.rollback_last = ""
+        self.backup_seq_count = []
+
+        for _ in self.backup_seq:
+            self.backup_seq_count.append({"value": 0, "archivename": ""})
+
+        #self._info = {
+        #    "backup_last": "",
+        #    "rollback_last": "",
+        #    # "backup_seq_count": [{"value": 0, "archivename": ""}]
+        #    "backup_seq_count": []
+        #}
+
+        if BACKUP_INFO.exists():
+            self.__read()
+        else:
+            self.__write()
+
+    
+    def list(self):
+        ls = [self.backup_last]
+
+        for d in self.backup_seq_count:
+            if d["archivename"] == "":
+                return ls
+            else:
+                ls.append(d["archivename"])
+        
+        return ls
+    
+    def update(self):
+        """
+        更新 value archivename
+        return 要被删除的 archivename, 没有 return ""
+        """
+
+        self.autobackup2archivename = False
+
+        cur_archivename = self.backup_last
+
+        seq_len = len(self.backup_seq)
+        for i in range(seq_len):
+
+            print("self.backup_seq_count ==> ", self.backup_seq_count)
+            self.backup_seq_count[i]["value"] += 1
+
+            if self.backup_seq[i] <= self.backup_seq_count[i]["value"]:
+                self.backup_seq_count[i]["value"] = 0
+                self.backup_seq_count[i]["archivename"], cur_archivename = cur_archivename, self.backup_seq_count[i]["archivename"]
+                if i == 0:
+                    self.autobackup2archivename = True
+
+            else:
+                # 如果没有进位就可以结束了
+                cur_archivename = ""
+                break
+        
+        print("self.backup_seq_count ==> 执行后 ", self.backup_seq_count)
+        self.__write()
+
+        if cur_archivename != "":
+            self.__rmtree(self, cur_archivename)
+
+
+    def select_seq(self, seq):
+        if seq == 0:
+            return self.backup_last
+        else:
+            return self.backup_seq_count[seq-1]["archivename"]
+
+    
+    def last_backup(self):
+        return self.backup_last
+
+    
+    def last_rollback(self):
+        return self.rollback_last
+
+    def __read(self):
+
+        with open(BACKUP_INFO, "r") as f:
+            j = json.load(f)
+
+        # self.backup_last = j["backup_last"]
+        self.backup_seq_count = j["backup_seq_count"]
+        self.rollback_last = j["rollback_last"]
+        
+    def __write(self):
+        with open(BACKUP_INFO, "w") as f:
+            j = {"backup_last": self.backup_last, "rollback_last": self.rollback_last, "backup_seq_count": self.backup_seq_count}
+            json.dump(j, f, ensure_ascii=False, indent=4)
+    
+    def __rmtree(self, cur_archivename):
+            realpath = BACKUP_DIR / cur_archivename
+            shutil.rmtree(realpath)
+
+
 
 
 SAVED_THE_GAME = False
@@ -153,10 +250,14 @@ def backup2current(source, target):
         subprocess.check_call(["rsync", "-a", "--delete", source, target])
     except FileNotFoundError as e:
         raise e
+    except Exception as e:
+        raise e
 
 
 def autobackup(server):
-    archivename = BACKUP_DIR / time.strftime("%Y-%m-%d_%H:%M:%S")
+
+    archivename = time.strftime("%Y-%m-%d_%H:%M:%S")
+    archivename_path = BACKUP_DIR / archivename
 
     server.say(RTextList(RText("开始备份存档： "), RText(f"{archivename} ", RColor.yellow), RText("...")))
 
@@ -198,8 +299,12 @@ def autobackup(server):
 
     server.say(RTextList(RText("备份存档： "), RText(f"{archivename}", RColor.yellow), RText(" 完成 "), RText(f"耗时：{round(t2-t1, 2)}s", RColor.yellow)))
 
-    with BI:
-        backup2current(str(AUTOBACKUP_DIR), str(archivename))
+    # 移动存档
+    backinfo = BackInfo(archivename)
+    backinfo.update()
+    if backinfo.autobackup2archivename:
+        with BI:
+            backup2current(str(AUTOBACKUP_DIR), str(archivename_path))
 
 
 
@@ -321,7 +426,8 @@ def rollback(src, ctx):
     server = src.get_server()
     info = src.get_info()
 
-    server.say(f"功能还没实现～")
+    number = int(ctx.get("number"))
+    server.reply(info, f"功能还没实现～")
 
 
 
