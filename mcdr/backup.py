@@ -158,6 +158,8 @@ class BackInfo:
 
         self.server = server
 
+        self.cur_timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+
         self.backup_seq = CFG["backup_seq"]
         self.backup_info = BACKUP_DIR / "backupinfo.json"
 
@@ -218,16 +220,10 @@ class BackInfo:
             if self.backup_seq[i] <= self.backup_list[i]["value"]:
                 self.backup_list[i]["value"] = 0
 
-                if self.backup_list[i]["timestamp"] == "":
-                    self.backup_list[i]["timestamp"] = cur
-                else:
-                    self.backup_list[i]["timestamp"], cur = cur, self.backup_list[i]["timestamp"]
+                self.backup_list[i]["timestamp"], cur = cur, self.backup_list[i]["timestamp"]
                 
                 #update 备份注释
-                if self.backup_list[i]["msg"] == "":
-                    self.backup_list[i]["msg"] = cur_msg
-                else:
-                    self.backup_list[i]["msg"], cur_msg = cur_msg, self.backup_list[i]["msg"]
+                self.backup_list[i]["msg"], cur_msg = cur_msg, self.backup_list[i]["msg"]
 
                 # 准备执行备份递进
                 baks.append(BACKUP_DIR / f"bak-{i}")
@@ -326,7 +322,6 @@ class BackInfo:
 
     def autobackup(self, msg=""):
 
-        self.cur_timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
 
         self.server.say(RTextList(RText("开始备份存档： "), RText(f"{self.cur_timestamp} ", RColor.yellow), RText("...")))
 
