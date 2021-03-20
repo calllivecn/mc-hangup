@@ -186,13 +186,10 @@ class BackInfo:
         ls = []
 
         for d in self.backup_list:
-            if d["timestamp"] == "":
-                return ls
-            else:
-                ls.append((d["timestamp"], d["msg"]))
+            ls.append((d["timestamp"], d["msg"]))
         
         if self.rollback_last != "":
-            ls.append((self.rollback_last["timestamp"], self.rollback_last["msg"])
+            ls.append((self.rollback_last["timestamp"], self.rollback_last["msg"]))
         
         return ls
     
@@ -226,9 +223,9 @@ class BackInfo:
                 
                 #update 备份注释
                 if self.backup_list[i]["msg"] == "":
-                    self.backup_list[i]["msg"] = cur
+                    self.backup_list[i]["msg"] = cur_msg
                 else:
-                    self.backup_list[i]["msg"], cur_msg = = cur_msg, self.backup_list[i]["msg"]
+                    self.backup_list[i]["msg"], cur_msg = cur_msg, self.backup_list[i]["msg"]
 
                 # 准备执行备份递进
                 baks.append(BACKUP_DIR / f"bak-{i}")
@@ -438,9 +435,9 @@ def ls(src, ctx):
     archives = bi.list()
     for i, archive in enumerate(archives):
         if archive[1] == "":
-            msg.append(f"[{i}] 存档：{archive}")
+            msg.append(f"[{i}] 存档：{archive[0]}")
         else:
-            msg.append(f"[{i}] 存档：{archive} 注释：{archive[1]}")
+            msg.append(f"[{i}] 存档：{archive[0]} 注释：{archive[1]}")
 
     msg.append(f"{'-'*30}")
     msg.append(f"使用： {cmdprefix} rollback <序号> 回滚")
@@ -459,6 +456,7 @@ def backup_msg(src, ctx):
 
     server = src.get_server()
     msg = ctx.get("msg")
+    manual_backup_lock(server, msg)
 
 
 @permission
@@ -476,7 +474,7 @@ def build_command():
     c = Literal(cmdprefix).runs(lambda src: help(src))
     c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
     c.then(Literal("backup").runs(lambda src, ctx: backup(src, ctx)))
-    c.then(Literal("bakmsg").then(QuotableText("msg").runs(lambda src, ctx: backup_msg(src, ctx))))
+    c.then(Literal("backupmsg").then(QuotableText("msg").runs(lambda src, ctx: backup_msg(src, ctx))))
     c.then(Literal("rollback").then(Integer("number").runs(lambda src, ctx: rollback(src, ctx))))
     return c
 
