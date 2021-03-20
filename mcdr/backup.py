@@ -12,6 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from threading import Lock
+
 from pprint import pprint
 
 from mcdreforged import config
@@ -188,10 +189,11 @@ class BackInfo:
         for d in self.backup_list:
             ls.append((d["timestamp"], d["msg"]))
         
-        if self.rollback_last != "":
-            ls.append((self.rollback_last["timestamp"], self.rollback_last["msg"]))
+        if self.rollback_last["timestamp"] == "":
+            return ls, None
+        else:
+            return ls, (self.rollback_last["timestamp"], self.rollback_last["msg"])
         
-        return ls
     
     def __update(self, msg):
         """
@@ -256,12 +258,52 @@ class BackInfo:
         self.__write()
 
 
-    def select_list(self, number):
-        return self.backup_list[number]["timestamp"]
+    def rollback(self, number):
+        tm = self.backup_list[number]["timestamp"]
+        msg = self.backup_list[number]["msg"]
 
-    
-    def last_rollback(self):
-        return self.rollback_last
+        if msg == "":
+            self.server.say(RText(f"服务器30s 后回滚到：{tm}", RColor.green))
+        else:
+            self.server.say(RText(f"服务器30s 后回滚到：{tm} 注释： {msg}", RColor.green))
+        
+        time.sleep(25)
+        
+        for i in range(5, 1, -1):
+            if msg == "":
+                self.server.say(RText(f"服务器{i}s 后回滚到：{tm}", RColor.green))
+            else:
+                self.server.say(RText(f"服务器{i}s 后回滚到：{tm} 注释： {msg}", RColor.green))
+        
+        
+        if self.server.is_server_running():
+            self.server.logger.info("关闭服务器中...")
+            self.server.stop()
+            self.server.wait_for_start()
+            self.server.logger.info("等待服务器，关闭后，执行回滚.")
+        else:
+            self.server.logger.info("服务器没有运行")
+            return
+
+        
+        rollback_dir = BACKUP_DIR/"rollback"
+        if rollback_dir.exists():
+            shutil.rmtree(str(rollback_dir))
+
+        try:
+            shutil.move(str(WORLD_DIR), str(rollback_dir))
+            backup2current(str(BACKUP_DIR/f"bak-{number}"), str(WORLD_DIR))
+        except Exception as e:
+            raise e
+        
+        # 更新 BackInfo
+        self.rollback_last["timestamp"] = time.strftime("%Y-%m-%d_%H:%M:%S")
+        self.rollback_last["msg"] =  msg
+        self.__write()
+        
+        self.server.start()
+
+
 
     def __read(self):
 
@@ -331,7 +373,7 @@ def autobackup_lock(server):
             bi = BackInfo(server)
             bi.autobackup()
         
-        # 每次手动备份后，需要reset 自动备份计时器（B.value）
+        # 每次备份后，需要reset 自动备份计时器（B.value）
         B.value = 0
 
 @new_thread("manual backup")
@@ -345,7 +387,22 @@ def manual_backup_lock(server, msg):
             bi = BackInfo(server)
             bi.autobackup(msg)
         
-        # 每次手动备份后，需要reset 自动备份计时器（B.value）
+        # 每次备份后，需要reset 自动备份计时器（B.value）
+        B.value = 0
+
+
+@new_thread("rollback")
+def rollback_lock(server, number):
+
+    if backing.locked():
+        server.say(RText("有备份在进行中... 等会吧", RColor.red))
+    else:
+        server.say(RText(f"回滚备份存档 ... {number}", RColor.yellow))
+        with backing:
+            bi = BackInfo(server)
+            bi.rollback(number)
+        
+        # 每次备份后，需要reset 自动备份计时器（B.value）
         B.value = 0
 
 
@@ -432,14 +489,18 @@ def ls(src, ctx):
     msg=[f"{'='*10} 当前存档 {'='*10}"]
 
     bi = BackInfo(server)
-    archives = bi.list()
+    archives, rollback = bi.list()
     for i, archive in enumerate(archives):
         if archive[1] == "":
-            msg.append(f"[{i}] 存档：{archive[0]}")
+            msg.append(f"[{i}] 存档： {archive[0]}")
         else:
-            msg.append(f"[{i}] 存档：{archive[0]} 注释：{archive[1]}")
+            msg.append(f"[{i}] 存档： {archive[0]} 注释： {archive[1]}")
 
     msg.append(f"{'-'*30}")
+
+    if rollback:
+        msg.append(f"上次回滚前的存档： {rollback[0]} 注释： {rollback[1]}")
+
     msg.append(f"使用： {cmdprefix} rollback <序号> 回滚")
 
     server.reply(info, "\n".join(msg))
@@ -466,7 +527,16 @@ def rollback(src, ctx):
     info = src.get_info()
 
     number = int(ctx.get("number"))
-    server.reply(info, f"功能还没实现～")
+    server.reply(info, f"{number}")
+
+    bi = BackInfo(server)
+    ls = bi.list()
+    ls_len = len(ls)
+    if 0 > number or number > ls_len - 1:
+        server.reply(info, RText(f"回滚号，只能在 0-{ls_len - 1} 范围", RColor.red))
+        return
+    
+    rollback_lock(server, number)
 
 
 
