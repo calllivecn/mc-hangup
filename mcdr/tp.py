@@ -80,7 +80,7 @@ def player_online(server, player):
 
 
     #if re.search("No entity was found", result).group():
-    if re.search(f"{player} has ([0-9]+) experience points", result).group():
+    if re.search(f"{player} has ([0-9]+) experience points", result):
         return True
     else:
         return False
@@ -116,7 +116,8 @@ def playsound(server, player):
     server.rcon_query(f"execute at {player} run playsound minecraft:entity.player.levelup player {player}")
 
 def click_text(player, label_name, world, x, y, z):
-    r = RText(label_name, RColor.blue)
+    #r = RText(label_name, RColor.blue)
+    r = RText(label_name, RColor.yellow)
     r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
     # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
     r.set_click_event(RAction.run_command, f"{cmdprefix} {label_name}")
@@ -164,6 +165,31 @@ def check_level(server, info):
         server.rcon_query(f"experience add {info.player} -1 levels")
         return True
 
+def fmt(ls, delimite=10):
+    ls_len = len(ls)
+
+    c, i = divmod(ls_len, delimite)
+    if i > 0:
+        c+=1
+
+    output_list = []
+    for j in range(delimite):
+        line = ""
+        for i in range(c):
+            l = j + delimite * i
+
+            if l >= ls_len:
+                break
+
+            #print(ls[l], end=", ")
+            line += ls[l] + RText(", ")
+
+        #print()
+        line = line + RText("\n")
+        output_list.append(line)
+    #print("\n".join(output_list))
+    #return "\n".join(output_list)
+    return output_list[:-1]
 
 @permission
 def ls(src, ctx):
@@ -179,12 +205,12 @@ def ls(src, ctx):
     if u is None:
         server.reply(info, "\n".join(msg))
     else:
-        msg = [RText(f"{'='*10} 收藏点 {'='*10}\n", RColor.white)]
-
+        msg1 = [RText(f"{'='*10} 收藏点 {'='*10}\n", RColor.white)]
+        msg2 = []
         for label_name, data in u.items():
-            msg.append(click_text(info.player, label_name, data["world"], data["x"], data["y"], data["z"]))
-            msg.append("\n")
+            msg2.append(click_text(info.player, label_name, data["world"], data["x"], data["y"], data["z"]))
 
+        msg = msg1 + fmt(msg2)
         server.reply(info, RTextList(*msg))
 
     server.logger.debug(f"list ctx -------------->\n{ctx}")
@@ -255,7 +281,7 @@ def add(src, ctx):
 
         u[label_name] = {"world": world, "x": x, "y": y, "z":z}
 
-        server.tell(info.player, RTextList("地点: ", RText(label_name, RColor.blue), " 收藏成功"))
+        server.tell(info.player, RTextList("地点: ", RText(label_name, RColor.yellow), " 收藏成功"))
         playsound(server, info.player)
 
         player_save(info.player, u)
@@ -276,14 +302,14 @@ def remove(src, ctx):
         label = u.get(label_name)
 
         if label is None:
-            server.reply(info, RTextList(RText("没有 "), RText(label_name, RColor.blue), RText(" 收藏点")))
+            server.reply(info, RTextList(RText("没有 "), RText(label_name, RColor.yellow), RText(" 收藏点")))
             return
 
         u.pop(label_name)
 
         player_save(info.player, u)
 
-        server.reply(info, RTextList("地点: ", RText(label_name, RColor.blue, RStyle.strikethrough), " 删除成功"))
+        server.reply(info, RTextList("地点: ", RText(label_name, RColor.yellow, RStyle.strikethrough), " 删除成功"))
         playsound(server, info.player)
 
     server.logger.debug(f"remove ctx -------------->\n{ctx}")
@@ -354,11 +380,11 @@ def invite(src, ctx):
             INVITE[k] = v
 
             server.tell(invite_player, click_invite(info.player, invite_player))
-            server.reply(info, RTextList("向玩家 ", RText(f"{invite_player}", RColor.blue), " 发送tp邀请"))
+            server.reply(info, RTextList("向玩家 ", RText(f"{invite_player}", RColor.yellow), " 发送tp邀请"))
             playsound(server, info.player)
 
     else:
-        server.reply(info, RTextList("玩家 ", RText(f"{invite_player}", RColor.yellow), " 不在线"))
+        server.reply(info, RTextList("玩家 ", RText(f"{invite_player}", RColor.red), " 不在线"))
 
 @permission
 def accept(src, ctx):
