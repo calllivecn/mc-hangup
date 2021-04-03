@@ -31,7 +31,6 @@ PLUGIN_METADATA = {
 
 PLAYER_MAX_POINT = 20
 
-# set it to 0 to disable hightlight
 plugin_id = PLUGIN_METADATA["id"]
 cmdprefix = "." + plugin_id
 config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_id)
@@ -352,7 +351,7 @@ def clear_expire_invite(server):
         if PLUGIN_RELOAD:
             break
 
-        server.logger.info(f"clear_expire_invite() 我有执行哦")
+        #server.logger.info(f"clear_expire_invite() 我有执行哦")
         time.sleep(180)
         c_t = int(time.time())
         for k, v in INVITE.items():
