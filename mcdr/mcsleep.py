@@ -8,6 +8,7 @@ import ssl
 import sys
 import time
 import json
+import ipaddress
 import binascii
 import socket
 from threading import Lock
@@ -120,7 +121,14 @@ def httpResponse(msg):
 
 
 def return_ip(conn):
-    ip = conn.getpeername()[0]
+    ip46, port, _, _ = conn.getpeername()
+
+    ip46 = ipaddress.IPv6Address(ip46)
+    if ip46.ipv4_mapped:
+        ip = ip46.ipv4_mapped
+    else:
+        ip = ip46.compressed
+
     conn.send(httpResponse(ip))
     conn.close()
 
@@ -187,26 +195,26 @@ def handler_accept(conn, selector):
 @new_thread(cmdprefix)
 def httpmcsleep(server):
 
-    sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
-    sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+    #sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
     sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
 
-    sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
+    #sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
     sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
 
-    sock4.bind(("0.0.0.0", PORT))
+    #sock4.bind(("0.0.0.0", PORT))
     sock6.bind(("::", PORT))
     
-    sock4.listen(128)
+    #sock4.listen(128)
     sock6.listen(128)
 
-    sock4.setblocking(False)
+    #sock4.setblocking(False)
     sock6.setblocking(False)
 
     selector = DefaultSelector()
-    selector.register(sock4, EVENT_READ, handler_accept)
+    #selector.register(sock4, EVENT_READ, handler_accept)
     selector.register(sock6, EVENT_READ, handler_accept)
 
     try:
@@ -225,7 +233,7 @@ def httpmcsleep(server):
 
     finally:
         selector.close()
-        sock4.close()
+        #sock4.close()
         sock6.close()
 
 
