@@ -129,7 +129,7 @@ def return_ip(conn):
     else:
         ip = ip46.compressed
 
-    conn.send(httpResponse(ip))
+    conn.send(httpResponse(str(ip)))
     conn.close()
 
 
