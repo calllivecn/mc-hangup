@@ -43,6 +43,7 @@ SECRET = b""
 # 没有玩家后10分钟关闭服务器
 WAITTIME = 10
 
+
 cfg = Path("config") / "mcsleep.json"
 
 
@@ -346,15 +347,13 @@ def permission(func):
     return warp
 
 
-def wakeup(src):
-    server = src.get_server()
-    server.logger.info("mc sleep 启动服务器中...")
-    STATE.state = STATE.SERVER_UP
-
-
 def on_info(server, info):
     if info.source == 1 and info.content == cmdprefix + " wakeup":
+        server.logger.info("mc sleep 启动服务器中...")
         STATE.state = STATE.SERVER_UP
+    elif info.source == 1 and info.content == cmdprefix + " sleep":
+        server.logger.info("mc sleep 关闭服务器...")
+        STATE.state = STATE.SERVER_DOWN
 
 
 def on_load(server, old_plugin):
