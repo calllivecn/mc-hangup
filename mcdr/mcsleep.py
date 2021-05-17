@@ -148,7 +148,11 @@ def recv_handler(conn, selector):
     addr = conn.getpeername()
     print("client:", addr, file=sys.stderr)
 
-    data = conn.recv(1024)
+    try:
+        data = conn.recv(1024)
+    except socket.timeout:
+        return_ip(conn)
+
 
     if data:
 
@@ -189,6 +193,7 @@ def recv_handler(conn, selector):
 
 def handler_accept(conn, selector):
     sock , addr = conn.accept()
+    sock.settimeout(16)
     sock.setblocking(False)
     selector.register(sock, EVENT_READ, recv_handler)
 
