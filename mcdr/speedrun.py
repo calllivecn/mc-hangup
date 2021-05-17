@@ -10,6 +10,7 @@ import sys
 import time
 import json
 import ipaddress
+import random
 import binascii
 import socket
 from threading import Lock
@@ -40,6 +41,17 @@ cmdprefix = "." + PLUGIN_METADATA["id"]
 
 # 
 TEAM = None
+
+
+def get_pos(server, name):
+        # 查询坐标
+        rcon_result = server.rcon_query(f"data get entity {name} Pos")
+        position = re.match(f"{name} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+        x, y, z = position.group(1), position.group(2), position.group(3)
+        x, y, z = round(float(x)), round(float(y)), round(float(z))
+
+        return x, y, z
+
 
 class Team:
     teamname = "tmp"
@@ -74,8 +86,11 @@ class Team:
         self.readys.add(player)
         self.unreadys.discard(player)
 
-        if len(self.unreadys) == 0 and len(self.readys) > 0:
+        if len(self.unreadys) == 0 and len(self.readys) > 1:
             self.game_start()
+        else:
+            # check 玩家人数，够不够开局
+            self.server.say(f"还有人没有准备好，或人数不够。")
     
     def unready(self, player):
         self.unreadys.add(player)
@@ -83,22 +98,37 @@ class Team:
 
     @new_thread("Speed run thread")
     def game_start(self):
-        pass
+        # 选出一个逃亡者
+        rand = random.randint(len(self.players))
+        self.player_running = self.players[rand]
+
+        # self.server.say()
+
+        # 10秒后游戏开始
+        for i in range(10, 0, -1):
+            self.server.say(RTextList(RText(f"{i}", RColor.green), " 秒钟后游戏开始, 请不要中途退出。"))
+            time.sleep(1)
+        
+
+        self.server.rcon_query(f"""title @a subtitle {"text":"游戏开始！", "bold": true, "color":"red"}""")
+        self.server.rcon_query(f"""title @a title {"text":"逃亡者是：{self.player_running}","bold":true, "color": "yellow"}""")
+
+        # 如果 逃亡者存活过30分钟，逃亡者胜利。
+        for i in range(6):
+            time.sleep(5*60)
+
+            # 广播逃亡者位置，并高亮1分钟。
+            x, y, z = get_pos(self.server, self.player_running)
+            self.server.say(RtextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green))
+            self.server.rcon_query(f"effect give {self.player_running} minecraft:glowing 60")
+
+        # 怎么结束？
     
 
     def game_end(self):
         pass
     
 
-
-def get_pos(server, name):
-        # 查询坐标
-        rcon_result = server.rcon_query(f"data get entity {name} Pos")
-        position = re.match(f"{name} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
-        x, y, z = position.group(1), position.group(2), position.group(3)
-        x, y, z = round(float(x)), round(float(y)), round(float(z))
-
-        return x, y, z
 
 
 def on_server_startup(server):
