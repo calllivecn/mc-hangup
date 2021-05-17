@@ -124,7 +124,7 @@ def permission(func):
         perm = server.get_permission_level(info)
 
         # print(f"warp(): {args} {kwargs}", file=sys.stdout)
-        if perm >= PermissionLevel.USER:
+        if perm >= PermissionLevel.ADMIN:
             func(*args, **kwargs)
  
     return warp
