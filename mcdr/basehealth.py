@@ -70,7 +70,7 @@ def haveplayer(server, content):
         players.append(p.split())
 
     for player in players:
-        if re.serach(player, content):
+        if re.search(player, content):
             return player
     
     return None
