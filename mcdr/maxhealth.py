@@ -93,6 +93,21 @@ def haveplayer(server, content):
 # def on_death_message(server, death_message):
     # server.logger.info(f"什么信息--> {death_message}")
 
+# 等玩家重生
+@new_thread
+def life(server, player):
+    while True:
+        time.sleep(0.2)
+        result = server.rcon_query(f"data get entity {player} DeathTime")
+        deathtime = re.match(f"{player} has the following entity data: ([0-9]+)s", result)
+        # 说明玩家以选择重生
+        if int(deathtime.group(1)) == 0:
+            server.rcon_query(f"attribute {player} minecraft:generic.max_health base set 40")
+            server.rcon_query(f"effect give {player} minecraft:instant_health 1 40")
+            break
+
+        time.sleep(1)
+
 def on_info(server, info):
     if info.source == 0:
         death_player = haveplayer(server, info.content)
@@ -103,8 +118,10 @@ def on_info(server, info):
             c = int(count.group(1))
 
             if players_deathcount[death_player] != c:
+                players_deathcount[death_player] = c
                 server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
-                server.rcon_query(f"attribute {death_player} minecraft:generic.max_health base set 40")
+                life(server, death_player)
+
 
 
     # server.logger.info(f"监控控制台输出：{info}")
@@ -123,6 +140,8 @@ def on_player_joined(server, player, info):
         players_deathcount[player] = int(deathcount.group(1))
     else:
         players_deathcount[player] = 0
+    
+    server.logger.info(f"输出玩家字典 --> {players_deathcount}")
 
 def on_player_left(server, player):
     if player in players_deathcount:
@@ -133,7 +152,7 @@ def on_player_left(server, player):
     # return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, RText("招唤出你的灵魂", RColor.yellow), PermissionLevel.USER)
+    server.register_help_message(cmdprefix, RText("最大血量", RColor.yellow), PermissionLevel.USER)
 
     # 如果是第一次启动
     if old_plugin == None:
