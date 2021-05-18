@@ -71,6 +71,10 @@ class Team:
         self.readys = set()
         self.unreadys = set()
 
+        # 设置记分板
+        self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡次数"]""")
+        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
+
     def join(self, player):
         self.players.append(player)
         self.server.rcon_query(f"team join {self.teamname} {player}")
@@ -109,6 +113,7 @@ class Team:
             self.server.say(RTextList(RText(f"{i}", RColor.green), " 秒钟后游戏开始, 请不要中途退出。"))
             time.sleep(1)
         
+        self.game_started = True
 
         self.server.rcon_query(f"""title @a subtitle {"text":"游戏开始！", "bold": true, "color":"red"}""")
         self.server.rcon_query(f"""title @a title {"text":"逃亡者是：{self.player_running}","bold":true, "color": "yellow"}""")
@@ -125,8 +130,8 @@ class Team:
         # 怎么结束？不好检测，玩家死亡。
         # 1. 使用 scoresbaord 记录玩家死亡数。
         # 2. 每次有玩家死亡，就拿到他的死亡计数，看看是否是逃亡者死亡。
-        # 3. 使用signal ?
 
+        self.server.rcon_query(f"""title @a title {"text":"游戏时间到","bold":true, "color": "yellow"}""")
 
     def game_end(self):
         pass
