@@ -62,7 +62,7 @@ def init_player(server):
     match = re.match("There are [0-9]+ of a max of ([0-9]+) players online: (.*)", result)
     players_raw = match.group(1).split(",")
     for p in players_raw:
-        PLAYERS.append(p.strip())
+        players_deathcount.append(p.strip())
     
     for p in Players_deathcount.keys():
         result = server.rcon_query(f"scoreboard players get {p} death")
