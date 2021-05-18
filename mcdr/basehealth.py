@@ -99,7 +99,7 @@ def on_info(server, info):
 
 def on_player_joined(server, player, info):
     #result = server.rcon_query(f"scoreboard players get {player} death")
-    result = server.rcon_query(f" lkjd scoreboard players get {player} death")
+    result = server.rcon_query(f"scoreboard players get ddvu death")
     server.logger.info(f"死亡计数 --> {result}")
 
 # def build_command():
