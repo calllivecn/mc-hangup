@@ -122,8 +122,11 @@ class Team:
             self.server.say(RtextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green))
             self.server.rcon_query(f"effect give {self.player_running} minecraft:glowing 60")
 
-        # 怎么结束？
-    
+        # 怎么结束？不好检测，玩家死亡。
+        # 1. 使用 scoresbaord 记录玩家死亡数。
+        # 2. 每次有玩家死亡，就拿到他的死亡计数，看看是否是逃亡者死亡。
+        # 3. 使用signal ?
+
 
     def game_end(self):
         pass
