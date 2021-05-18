@@ -54,7 +54,7 @@ def permission(func):
 def __get(src):
     return src.get_server(), src.get_info()
 
-PLAYERS = []
+players_deathcount = {}
 
 def init_player(server):
     result = server.rcon_query("list")
@@ -64,21 +64,26 @@ def init_player(server):
     for p in players_raw:
         PLAYERS.append(p.strip())
     
-    for p in PLAYERS:
+    for p in Players_deathcount.keys():
         result = server.rcon_query(f"scoreboard players get {p} death")
+        if result:
+            death = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
+            deathcount = int(death.group(1))
+            players_deathcount[p] = deathcount
+        else:
+            server.rcon_query(f"scoreboard players set {p} death 0")
+            players_deathcount[p] = 0
 
-
-   
 
 """
 /attribute zx minecraft:generic.max_health base set 40
 """
 
-
 def haveplayer(server, content):
 
-    for player in PLAYERS:
-        if re.search(player, content):
+    for player in players_deathcount.keys():
+        result = re.search(player, content)
+        if result:
             return player
     
     return None
@@ -91,23 +96,49 @@ def haveplayer(server, content):
 def on_info(server, info):
     if info.source == 0:
         death_player = haveplayer(server, info.content)
-        if death_player and daethCount:
-            server.logger.info("玩家：{death_player} 死亡")
+        result = server.rcon_query(f"scoreboard players get {death_player} death")
+        count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
+
+        if death_player and count:
+            c = int(count.group(1))
+
+            if players_deathcount[death_player] != c:
+                server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
+                server.rcon_query(f"attribute {death_player} minecraft:generic.max_health base set 40")
+
+
+    # server.logger.info(f"监控控制台输出：{info}")
 
 # def on_user_info(server, info):
     # pass
 
 def on_player_joined(server, player, info):
     result = server.rcon_query(f"scoreboard players get {player} death")
-    # result = server.rcon_query(f"scoreboard players get ddvu death")
-    server.logger.info(f"输出 --> {result}")
+    server.logger.info(f"输出玩家字典 --> {players_deathcount}")
 
-    deathcount = re.match(f"{player} has ([0-9]+) [死亡记数]", result)
-    server.logger.info(f"玩家：{player} 死亡计数 --> {deathcount}")
+    deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
+    server.logger.info(f"玩家：{player} 死亡计数 --> {deathcount.group(1)}")
+
+    if deathcount:
+        players_deathcount[player] = int(deathcount.group(1))
+    else:
+        players_deathcount[player] = 0
+
+def on_player_left(server, player):
+    if player in players_deathcount:
+        players_deathcount.pop(player)
+
 
 # def build_command():
     # return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
 
-# def on_load(server, old_plugin):
-    # server.register_help_message(cmdprefix, RText("招唤出你的灵魂", RColor.yellow), PermissionLevel.USER)
+def on_load(server, old_plugin):
+    server.register_help_message(cmdprefix, RText("招唤出你的灵魂", RColor.yellow), PermissionLevel.USER)
+
+    # 如果是第一次启动
+    if old_plugin == None:
+        init_player(server)
+    else:
+        players_deathcount.update(old_plugin.players_deathcount)
+
     # server.register_command()
