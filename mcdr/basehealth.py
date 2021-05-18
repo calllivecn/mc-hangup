@@ -63,9 +63,15 @@ def init_player(server):
     players_raw = match.group(1).split(",")
     for p in players_raw:
         PLAYERS.append(p.strip())
+    
+    for p in PLAYERS:
+        result = server.rcon_query(f"scoreboard players get {p} death")
+
+
+   
 
 """
-/attribute zx minecraft:generic.max_health base set 200
+/attribute zx minecraft:generic.max_health base set 40
 """
 
 
@@ -79,8 +85,8 @@ def haveplayer(server, content):
 
 
 # 根本拿不到死亡信息
-def on_death_message(server, death_message):
-    server.logger.info(f"什么信息--> {death_message}")
+# def on_death_message(server, death_message):
+    # server.logger.info(f"什么信息--> {death_message}")
 
 def on_info(server, info):
     if info.source == 0:
@@ -88,17 +94,17 @@ def on_info(server, info):
         if death_player and daethCount:
             server.logger.info("玩家：{death_player} 死亡")
 
-def on_user_info(server, info):
-    pass
+# def on_user_info(server, info):
+    # pass
 
 def on_player_joined(server, player, info):
-    result = server.rcon_query(f"scoreboard players get {player} death")
+    #result = server.rcon_query(f"scoreboard players get {player} death")
+    result = server.rcon_query(f" lkjd scoreboard players get {player} death")
     server.logger.info(f"死亡计数 --> {result}")
 
-def build_command():
-    return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
+# def build_command():
+    # return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
 
-def on_load(server, old_plugin):
+# def on_load(server, old_plugin):
     # server.register_help_message(cmdprefix, RText("招唤出你的灵魂", RColor.yellow), PermissionLevel.USER)
     # server.register_command()
-    pass
