@@ -67,7 +67,7 @@ def haveplayer(server, content):
     players = []
 
     for p in players_raw:
-        players.append(p.split())
+        players.append(p.strip())
 
     for player in players:
         if re.search(player, content):
