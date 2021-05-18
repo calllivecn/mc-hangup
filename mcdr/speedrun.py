@@ -18,7 +18,7 @@ from pathlib import Path
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 
 from mcdreforged.api.decorator import new_thread
-# from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
+from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 from mcdreforged.permission.permission_level import PermissionLevel
 
@@ -60,13 +60,13 @@ class Team:
         self.server = server
         self.server.rcon_query(f"""team add {self.teamname}""")
         # 关闭团队PVP
-        self.server.cron_query(f"team modify {self.teamname} friendlyFire false")
+        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
 
         # team 已建好
         self.team = True
 
         # 玩家列表
-        self.players = []
+        self.players = set()
 
         self.readys = set()
         self.unreadys = set()
@@ -76,14 +76,22 @@ class Team:
         self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
 
     def join(self, player):
-        self.players.append(player)
+        self.players.add(player)
         self.server.rcon_query(f"team join {self.teamname} {player}")
+        # 死记记数设置为0
+        self.server.rcon_query(f"scoreboard players set {player} death 0")
 
         welcome_title = f"{player} 欢迎来来大逃杀~！"
-        self.server.rcon_query(f"""title {player} title [{"text":"{welcome_title}","bold":false,"italic":false,"underlined":false,"strikethrough":false,"obfuscated":false}]""")
-        self.server.rcon_query(f"gamemode {player} adventure")
+        self.server.rcon_query(f"""title {player} title {{"text":"{welcome_title}","bold":false,"italic":false,"underlined":false,"strikethrough":false,"obfuscated":false}}""")
+        self.server.rcon_query(f"gamemode adventure {player}")
 
         self.unreadys.add(player)
+    
+
+    def leave(self, player):
+        self.players.discard(player)
+        self.unreadys.discard(player)
+        self.readys.discard(player)
     
 
     def ready(self, player):
@@ -103,8 +111,9 @@ class Team:
     @new_thread("Speed run thread")
     def game_start(self):
         # 选出一个逃亡者
-        rand = random.randint(len(self.players))
-        self.player_running = self.players[rand]
+        ps = list(self.players)
+        rand = random.randint(0, len(ps) - 1)
+        self.player_running = ps[rand]
 
         # self.server.say()
 
@@ -113,10 +122,15 @@ class Team:
             self.server.say(RTextList(RText(f"{i}", RColor.green), " 秒钟后游戏开始, 请不要中途退出。"))
             time.sleep(1)
         
+        self.server.rcon_query(f"team empty {self.teamname}")
+        for player in self.players:
+            self.server.rcon_query(f"gamemode survival {player}")
+        
         self.game_started = True
 
-        self.server.rcon_query(f"""title @a subtitle {"text":"游戏开始！", "bold": true, "color":"red"}""")
-        self.server.rcon_query(f"""title @a title {"text":"逃亡者是：{self.player_running}","bold":true, "color": "yellow"}""")
+        self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
+        self.server.rcon_query("""title @a subtitle {"text":"游戏开始！", "bold": true, "color":"red"}""")
+        self.server.rcon_query(f"""title @a title {{"text":"逃亡者是：{self.player_running}","bold":true, "color": "yellow"}}""")
 
         # 如果 逃亡者存活过30分钟，逃亡者胜利。
         for i in range(6):
@@ -124,14 +138,15 @@ class Team:
 
             # 广播逃亡者位置，并高亮1分钟。
             x, y, z = get_pos(self.server, self.player_running)
-            self.server.say(RtextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green))
+            self.server.say(RTextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green)))
             self.server.rcon_query(f"effect give {self.player_running} minecraft:glowing 60")
 
         # 怎么结束？不好检测，玩家死亡。
         # 1. 使用 scoresbaord 记录玩家死亡数。
         # 2. 每次有玩家死亡，就拿到他的死亡计数，看看是否是逃亡者死亡。
 
-        self.server.rcon_query(f"""title @a title {"text":"游戏时间到","bold":true, "color": "yellow"}""")
+        self.server.rcon_query(f"""title @a subtitle {{"text":"逃亡者 {self.player_running} 胜利", "bold": true, "color":"red"}}""")
+        self.server.rcon_query("""title @a title {"text":"游戏时间到!","bold":true, "color": "yellow"}""")
 
     def game_end(self):
         pass
@@ -140,14 +155,20 @@ class Team:
 
 
 def on_server_startup(server):
-    global TEAM
     server.logger.info("Speed Run Server running")
-    TEAM = Team(server)
 
 
 def on_player_joined(server, player, info):
+    global TEAM
+
+    if TEAM == None:
+        TEAM = Team(server)
+
     TEAM.join(player)
 
+def on_player_left(sever, player):
+    global TEAM
+    TEAM.leave(player)
 
 def on_info(server, info):
 
