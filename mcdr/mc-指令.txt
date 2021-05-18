@@ -4,3 +4,15 @@
 
 # 把实体（如玩家、生物、物品等）随机传送到区域内地表的某个位置
 spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
+
+
+# 设置死亡记分板
+scoresboard objectives add death deathCount ["死亡次数"]
+
+# 显示死亡记分板
+scoresboard objectives setdisplay sidebar death
+
+# 拿到玩家zx的死亡计数
+scoresboard players get zx death
+
+

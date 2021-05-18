@@ -57,12 +57,37 @@ def __get(src):
 """
 /attribute zx minecraft:generic.max_health base set 200
 """
+
+
+def haveplayer(content):
+    result = server.rcon_query("list")
+    # server.logger.info(f"players() server.rcon_query() --> {result}")
+    match = re.match("There are [0-9]+ of a max of ([0-9]+) players online: (.*)", result)
+    players_raw = match.group(1).split(",")
+    players = []
+
+    for p in players_raw:
+        players.append(p.split())
+
+    for player in players:
+        if re.serach(player, content):
+            return player
+    
+    return None
+
+
+# 根本拿不到死亡信息
 def on_death_message(server, death_message):
     server.logger.info(f"什么信息--> {death_message}")
-    
+
+def on_info(server, info):
+    if info.source == 1:
+        death_player = haveplayer(info.content)
+        if death_player and daethCount:
+            server.logger.info("玩家：{death_player} 死亡")
 
 def on_user_info(server, info):
-    pass
+    server.logger.info(f"这算用户信息：{info}")
 
 def on_player_joined(server, player, info):
     pass
