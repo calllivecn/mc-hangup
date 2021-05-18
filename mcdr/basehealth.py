@@ -54,22 +54,24 @@ def permission(func):
 def __get(src):
     return src.get_server(), src.get_info()
 
+PLAYERS = []
+
+def init_player(server):
+    result = server.rcon_query("list")
+    # server.logger.info(f"players() server.rcon_query() --> {result}")
+    match = re.match("There are [0-9]+ of a max of ([0-9]+) players online: (.*)", result)
+    players_raw = match.group(1).split(",")
+    for p in players_raw:
+        PLAYERS.append(p.strip())
+
 """
 /attribute zx minecraft:generic.max_health base set 200
 """
 
 
 def haveplayer(server, content):
-    result = server.rcon_query("list")
-    # server.logger.info(f"players() server.rcon_query() --> {result}")
-    match = re.match("There are [0-9]+ of a max of ([0-9]+) players online: (.*)", result)
-    players_raw = match.group(1).split(",")
-    players = []
 
-    for p in players_raw:
-        players.append(p.strip())
-
-    for player in players:
+    for player in PLAYERS:
         if re.search(player, content):
             return player
     
@@ -81,16 +83,17 @@ def on_death_message(server, death_message):
     server.logger.info(f"什么信息--> {death_message}")
 
 def on_info(server, info):
-    if info.source == 1:
+    if info.source == 0:
         death_player = haveplayer(server, info.content)
         if death_player and daethCount:
             server.logger.info("玩家：{death_player} 死亡")
 
 def on_user_info(server, info):
-    server.logger.info(f"这算用户信息：{info.content}")
+    pass
 
 def on_player_joined(server, player, info):
-    pass
+    result = server.rcon_query(f"scoreboard players get {player} death")
+    server.logger.info(f"死亡计数 --> {result}")
 
 def build_command():
     return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
