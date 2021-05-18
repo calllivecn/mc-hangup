@@ -114,10 +114,10 @@ def on_info(server, info):
 
 def on_player_joined(server, player, info):
     result = server.rcon_query(f"scoreboard players get {player} death")
-    server.logger.info(f"输出玩家字典 --> {players_deathcount}")
+    # server.logger.info(f"输出玩家字典 --> {players_deathcount}")
 
     deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
-    server.logger.info(f"玩家：{player} 死亡计数 --> {deathcount.group(1)}")
+    # server.logger.info(f"玩家：{player} 死亡计数 --> {deathcount.group(1)}")
 
     if deathcount:
         players_deathcount[player] = int(deathcount.group(1))
