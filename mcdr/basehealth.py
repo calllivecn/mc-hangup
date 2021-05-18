@@ -98,9 +98,11 @@ def on_info(server, info):
     # pass
 
 def on_player_joined(server, player, info):
-    #result = server.rcon_query(f"scoreboard players get {player} death")
-    result = server.rcon_query(f"scoreboard players get ddvu death")
-    server.logger.info(f"死亡计数 --> {result}")
+    result = server.rcon_query(f"scoreboard players get {player} death")
+    # result = server.rcon_query(f"scoreboard players get ddvu death")
+    deathcount = int(re.match(f"{player} has ([0-9]+) [死亡记数]", result))
+
+    server.logger.info(f"玩家：{player} 死亡次数 --> {deathcount}")
 
 # def build_command():
     # return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
