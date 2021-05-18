@@ -59,7 +59,7 @@ def __get(src):
 """
 
 
-def haveplayer(content):
+def haveplayer(server, content):
     result = server.rcon_query("list")
     # server.logger.info(f"players() server.rcon_query() --> {result}")
     match = re.match("There are [0-9]+ of a max of ([0-9]+) players online: (.*)", result)
@@ -82,7 +82,7 @@ def on_death_message(server, death_message):
 
 def on_info(server, info):
     if info.source == 1:
-        death_player = haveplayer(info.content)
+        death_player = haveplayer(server, info.content)
         if death_player and daethCount:
             server.logger.info("玩家：{death_player} 死亡")
 
