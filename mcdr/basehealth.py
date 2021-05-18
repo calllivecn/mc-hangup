@@ -87,7 +87,7 @@ def on_info(server, info):
             server.logger.info("玩家：{death_player} 死亡")
 
 def on_user_info(server, info):
-    server.logger.info(f"这算用户信息：{info}")
+    server.logger.info(f"这算用户信息：{info.content}")
 
 def on_player_joined(server, player, info):
     pass
