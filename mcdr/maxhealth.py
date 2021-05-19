@@ -80,6 +80,9 @@ def init_player(server):
 """
 
 def haveplayer(server, content):
+    # 排除玩家在线时，关服的情况。排除玩家退出的情况。
+    if re.search("(.*) lost connection", content) or re.match(f"(.*) left the game", content):
+        return None
 
     for player in players_deathcount.keys():
         result = re.search(player, content)
@@ -111,16 +114,17 @@ def life(server, player):
 def on_info(server, info):
     if info.source == 0:
         death_player = haveplayer(server, info.content)
-        result = server.rcon_query(f"scoreboard players get {death_player} death")
-        count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
+        if death_player:
+            result = server.rcon_query(f"scoreboard players get {death_player} death")
+            count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
 
-        if death_player and count:
-            c = int(count.group(1))
+            if death_player and count:
+                c = int(count.group(1))
 
-            if players_deathcount[death_player] != c:
-                players_deathcount[death_player] = c
-                server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
-                life(server, death_player)
+                if players_deathcount[death_player] != c:
+                    players_deathcount[death_player] = c
+                    server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
+                    life(server, death_player)
 
 
 
