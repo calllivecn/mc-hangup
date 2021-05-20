@@ -33,7 +33,6 @@ PLUGIN_METADATA = {
 cmdprefix = "." + PLUGIN_METADATA["id"]
 
 # 
-global TEAM
 TEAM = None
 
 def get_pos(server, name):
@@ -60,6 +59,9 @@ def waitrcon(server):
 
 
 def init_player(server):
+    """
+    这个好像，只有在重载插件是才会执行。
+    """
     if not server.is_rcon_running():
         return
 
@@ -100,24 +102,20 @@ def haveplayer(server, content):
     return None
 
 
-
 class Team:
-    teamname = "tmp"
+    teamname = "SpeedRun"
 
     def __init__(self, server):
         self.server = server
-
-        self.server.rcon_query("""scoreboard objectives add death deathCount ["死亡记数"]""")
-        self.server.rcon_query("""scoreboard objectives setdisplay sidebar death""")
-
-        self.server.rcon_query(f"""team add {self.teamname}""")
-        # 关闭团队PVP
-        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
 
         # team 已建好
         self.team = True
 
         self.player_running = None
+        self.game_started = False
+
+        # 倒计时，中止flag
+        self.countdown = False
 
         # 玩家列表
         self.players = set()
@@ -125,50 +123,96 @@ class Team:
         self.readys = set()
         self.unreadys = set()
 
+        # 记录世界出生点
+        self.x = None
+        self.z = None
+
         # 设置记分板
         self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡记数"]""")
         self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
 
-        self.game_started = False
+        self.server.rcon_query(f"""team add {self.teamname}""")
+        # 关闭团队PVP
+        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
 
     def join(self, player):
         self.players.add(player)
+
+        # 开局中有新玩家进入服务器把他改在旁观者 ?
+
+        self.unreadys.add(player)
+
         self.server.rcon_query(f"team join {self.teamname} {player}")
         # 死记记数设置为0
         self.server.rcon_query(f"scoreboard players set {player} death 0")
 
-        # 设置第一个玩家的位置为第一局世界生出点
-        self.x, y, self.z = get_pos(self.server, player)
-        self.server.rcon_query(f"setworldspawn {self.x} {self.z}")
+        # 记录第一局的世界生出点
+        if self.x == None or self.z == None:
+            self.x, y, self.z = get_pos(self.server, player)
 
         welcome_title = f"{player} 欢迎来来大逃杀~！"
         self.server.rcon_query(f"""title {player} title {{"text":"{welcome_title}","bold":false,"italic":false,"underlined":false,"strikethrough":false,"obfuscated":false}}""")
         self.server.rcon_query(f"gamemode adventure {player}")
-
-        self.unreadys.add(player)
     
 
     def leave(self, player):
         self.players.discard(player)
         self.unreadys.discard(player)
         self.readys.discard(player)
+
+        # 如果剩下的玩家都已准备，就开局
+        if self.players == self.readys:
+            self.game_start()
     
 
     def ready(self, player):
-        self.readys.add(player)
-        self.unreadys.discard(player)
+        # 如果已经开始游戏，跳过
+        if not self.game_started:
+            self.readys.add(player)
 
-        if len(self.unreadys) == 0 and len(self.readys) > 1:
-            if not self.game_started:
-                self.gameid = time.monotonic()
-                self.game_start(self.gameid)
-        else:
-            # check 玩家人数，够不够开局
-            self.server.say(f"还有人没有准备好，或人数不够。")
+            if len(self.unreadys) == 0 and len(self.readys) > 1:
+                if not self.game_started:
+                    self.gameid = time.monotonic()
+                    self.game_start(self.gameid)
+            else:
+                # check 玩家人数，够不够开局
+                self.server.say(f"还有人没有准备，或人数不够(至少需要2名玩家)。")
     
     def unready(self, player):
-        self.unreadys.add(player)
-        self.readys.discard(player)
+        if player in self.readys:
+            self.unreadys.add(player)
+            self.readys.discard(player)
+
+            if self.countdown:
+                self.countdown = False
+
+    
+    def game_start_init(self):
+        # 做一些，开局前的准备;
+        # 在每次开局前做？
+
+        # 清除玩家成就
+        self.server.rcon_query(f"advancement revoke @a everything")
+
+        # 调换世界生出点
+        self.x += 5000
+        self.server.rcon_query(f"setworldspawn {self.x} {self.z}")
+
+        # 清空玩家物品
+        self.server.rcon_query(f"clear @a")
+
+        # 清除玩家使用床等物品，的记录点
+        self.server.rcon_query(f"clearspawnpoint @a")
+
+        # 玩家死亡后立刻重生到新的地点
+        self.server.rcon_query(f"gamerule doImmediateRespawn true")
+        self.server.rcon_query(f"kill @a")
+        self.server.rcon_query(f"gamerule doImmediateRespawn false")
+
+        # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
+        # self.server.rcon_query(f"spreadplayers {self.x} {self.z} 10 10 false @a")
+        # 玩家生命恢复
+        # self.server.rcon_query(f"effect give @a minecraft:instant_health 1 20")
 
     @new_thread("Speed run thread")
     def game_start(self, gameid):
@@ -179,8 +223,17 @@ class Team:
 
         # 10秒后游戏开始
         for i in range(10, 0, -1):
+
+            # 如果有玩家 unready 取消开局
+            if not self.countdown:
+                self.server.say(RText("取消开局，有玩家unready。", RColor.yellow))
+                return
+
             self.server.say(RTextList(RText(f"{i}", RColor.green), " 秒钟后游戏开始, 请不要中途退出。"))
             time.sleep(1)
+
+        # 开局前准备
+        self.game_start_init()
         
         self.server.rcon_query(f"team empty {self.teamname}")
         for player in self.players:
@@ -191,7 +244,7 @@ class Team:
         self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
         self.server.rcon_query("""title @a subtitle {"text":"游戏开始！", "bold": true, "color":"red"}""")
         self.server.rcon_query(f"""title @a title {{"text":"逃亡者是：{self.player_running}","bold":true, "color": "yellow"}}""")
-        self.server.say(f"say 逃亡者是：{self.player_running}")
+        self.server.say(f"逃亡者是：{self.player_running}")
 
         # 如果 逃亡者存活过30分钟，逃亡者胜利。
         for i in range(1):
@@ -237,26 +290,17 @@ class Team:
     def game_end(self):
         self.game_started = False
         # 新一局，把玩家从 self.readys 移到 self.unreadys
-        self.unreadys = self.readys
+        self.unreadys = self.players
         self.readys = set()
 
         self.server.rcon_query(f"team join {self.teamname} @a")
         self.server.rcon_query(f"gamemode adventure @a")
 
-        # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
-        self.x += 5000
-        self.server.rcon_query(f"spreadplayers {self.x} {self.z} 10 10 false @a")
-        # 调换世界生出点
-        self.server.rcon_query(f"setworldspawn {self.x} {self.z}")
-        # 清除玩家成就
-        self.server.rcon_query(f"advancement revoke @a everything")
-        # 玩家生命恢复
-        self.server.rcon_query(f"effect give @a minecraft:instant_health 1 20")
-
 
 def on_server_startup(server):
     server.logger.info("Speed Run Server running")
     # waitrcon(server)
+
 
 def on_player_joined(server, player, info):
     global TEAM
