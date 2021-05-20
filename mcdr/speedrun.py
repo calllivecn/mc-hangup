@@ -63,51 +63,16 @@ class Team:
 
 
     def __init__(self, server):
-        if not server.is_rcon_running():
-            return
-
         self.server = server
-    
-        # 设置记分板
-        self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡记数"]""")
-        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
-
-        self.server.rcon_query(f"""team add {self.teamname}""")
-        # 关闭团队PVP
-        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
-
-        # 在重载时，初始化在线玩家死亡计数
-        self.players_deathcount = {}
-
-        result = server.rcon_query("list")
-        # server.logger.info(f"players() server.rcon_query() --> {result}")
-        match = re.match("There are [0-9]+ of a max of [0-9]+ players online: (.*)", result)
-        players_raw = match.group(1).split(",")
-        for p in players_raw:
-            if p == "":
-                continue
-            self.players_deathcount[p.strip()] = 0
-
-        server.logger.info(f"players_deathcount{{}} --> {self.players_deathcount}")
-
-        for p in self.players_deathcount.keys():
-            result = server.rcon_query(f"scoreboard players get {p} death")
-            if result:
-                death = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
-                deathcount = int(death.group(1))
-                self.players_deathcount[p] = deathcount
-            else:
-                self.players_deathcount[p] = 0
-
-
-        # team 已建好
-        self.team = True
 
         self.player_running = None
         self.game_started = False
 
         # 倒计时，中止flag
         self.countdowning = False
+
+        # 在重载时，初始化在线玩家死亡计数
+        self.players_deathcount = {}
 
         # 玩家列表
         self.players = set()
@@ -118,8 +83,46 @@ class Team:
         self.y = None
         self.z = None
 
+        if not server.is_rcon_running():
+            return
 
-    # 控制台有玩家名字相关的消息
+        # 设置记分板
+        self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡记数"]""")
+        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
+
+        self.server.rcon_query(f"""team add {self.teamname}""")
+        # 关闭团队PVP
+        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
+
+        result = server.rcon_query("list")
+        # server.logger.info(f"players() server.rcon_query() --> {result}")
+        match = re.match("There are [0-9]+ of a max of [0-9]+ players online: (.*)", result)
+        players_raw = match.group(1).split(",")
+        for p in players_raw:
+            if p == "":
+                continue
+            player = p.strip()
+            self.players_deathcount[player] = 0
+            self.players.add(player)
+        
+        # 插件重载时，随机拿个玩家的，设置为世界出生点。
+        if len(self.players) >= 1:
+            self.setworldspawn()
+
+        for player in self.players_deathcount.keys():
+            result = self.server.rcon_query(f"scoreboard players get {player} death")
+
+            if re.match(f"Can't get value of death for {player}; none is set", result):
+                server.rcon_query(f"scoreboard players set {player} death 0")
+                self.players_deathcount[player] = 0
+            else:
+                deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
+                self.players_deathcount[player] = int(deathcount.group(1))
+
+        self.server.logger.info(f"players_deathcount{{}} --> {self.players_deathcount}")
+
+
+    # 控制台有玩家名字相关的消息, 就说明可能是有玩家死亡，在对比玩家死亡记数。
     def haveplayer(self, content):
 
         # 排除玩家在线时，关服的情况。排除玩家退出的情况。
@@ -186,7 +189,24 @@ class Team:
             if self.countdowning:
                 self.countdowning = False
 
+    def setworldspawn(self):
+        # 为第个玩家重新设置出生点
+
+        # 这样一条指令就能设置所有玩家的出生点了～～～
+        self.server.rcon_query("execute at @a run spawnpoint @a")
+
+        # for player in self.players:
+            # 这条会出现，玩家的床被阻挡。。。,然后用到世界出生点信息，效果也可以。
+            # self.server.rcon_query(f"execute as @a run pawnpoint {player}")
+            
+            # 这样可以
+            # self.server.rcon_query(f"execute at @a run pawnpoint {player}")
     
+        p = random.choice(list(self.players))
+        self.x, self.y, self.z = get_pos(self.server, p)
+        self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
+        self.server.logger.info(f"开局重设世界生出点：x:{self.x} {self.y} z:{self.z}")
+
     def game_start_init(self):
         # 做一些，开局前的准备;
         # 在每次开局前做？
@@ -194,30 +214,43 @@ class Team:
         # 清除玩家成就
         self.server.rcon_query(f"advancement revoke @a everything")
 
-        # 调换世界生出点
-        self.x += 5000
-        # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
-        self.server.rcon_query(f"spreadplayers {self.x} {self.z} 10 500 false @a")
-
-        # 随机拿一名玩家的位置
-        p = random.choice(list(self.players))
-        self.x, self.y, self.z = get_pos(self.server, p)
-        self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
-        self.server.logger.info(f"开局重设世界生出点：x:{self.x} {self.y} z:{self.z}")
-
         # 清空玩家物品
         self.server.rcon_query(f"clear @a")
 
-        # 清除玩家使用床等物品，的记录点
-        self.server.rcon_query(f"clearspawnpoint @a")
+        # 清除玩家使用床等物品，的记录点, java 版并不行。
+        # self.server.rcon_query(f"clearspawnpoint @a")
 
-        # 玩家死亡后立刻重生到新的地点
-        self.server.rcon_query(f"gamerule doImmediateRespawn true")
-        self.server.rcon_query(f"kill @a")
-        self.server.rcon_query(f"gamerule doImmediateRespawn false")
+        # 清空玩家效果
+        self.server.rcon_query(f"effect clear @a")
+
+        # 清空玩家等级
+        self.server.rcon_query(f"experience set @a 0 levels")
+        self.server.rcon_query(f"experience set @a 0 points")
 
         # 玩家生命恢复
-        # self.server.rcon_query(f"effect give @a minecraft:instant_health 1 20")
+        self.server.rcon_query(f"effect give @a minecraft:instant_health 1 20 true")
+
+        # 恢复饱食度
+        self.server.rcon_query(f"effect give @a minecraft:saturation 1 20 true")
+
+        # 调换世界生出点
+        self.x += 5000
+        # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
+        while True:
+            result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 10 10 false @a")
+            if re.match("Could not spread ([0-9]+) entities around (.*) \(too many entities for space - try using spread of at most ([0-9\.]+)\)", result):
+                self.z += 500
+            else:
+                break
+            time.sleep(0.1)
+
+        # 随机拿一名玩家的位置, 设置新的世界出生点。
+        self.setworldspawn()
+
+        # 玩家死亡后立刻重生到新的地点
+        # self.server.rcon_query(f"gamerule doImmediateRespawn true")
+        # self.server.rcon_query(f"kill @a")
+        # self.server.rcon_query(f"gamerule doImmediateRespawn false")
 
     @new_thread("Speed run thread")
     def game_start(self, gameid):
@@ -252,16 +285,17 @@ class Team:
         self.server.say(f"逃亡者是：{self.player_running}")
 
         # 如果 逃亡者存活过30分钟，逃亡者胜利。
-        for i in range(1):
-            time.sleep(1*60)
-
+        for i in range(2):
             if self.gameid != gameid:
+                self.server.logger.info(f"Speed Run thread: {self.gameid} exit.")
                 break
 
             # 广播逃亡者位置，并高亮1分钟。
             x, y, z = get_pos(self.server, self.player_running)
             self.server.say(RTextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green)))
             self.server.rcon_query(f"effect give {self.player_running} minecraft:glowing 60")
+
+            time.sleep(1*30)
 
         # 怎么结束？不好检测，玩家死亡。
         # 1. 使用 scoresbaord 记录玩家死亡数。
@@ -321,14 +355,14 @@ def on_player_joined(server, player, info):
     result = server.rcon_query(f"scoreboard players get {player} death")
     # server.logger.info(f"输出玩家字典 --> {TEAM.players_deathcount}")
 
-    deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
-    server.logger.info(f"玩家：{player} 死亡记数 --> {deathcount.group(1)}")
-
-    if deathcount:
-        TEAM.players_deathcount[player] = int(deathcount.group(1))
-    else:
+    if re.match(f"Can't get value of death for {player}; none is set", result):
+        server.rcon_query(f"scoreboard players set {player} death 0")
         TEAM.players_deathcount[player] = 0
-    
+    else:
+        deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
+        server.logger.info(f"玩家：{player} 死亡记数 --> {deathcount.group(1)}")
+        TEAM.players_deathcount[player] = int(deathcount.group(1))
+
     # server.logger.info(f"输出玩家字典 --> {TEMA.players_deathcount}")
 
 
@@ -349,21 +383,20 @@ def on_info(server, info):
         TEAM.unready(info.player)
         return
 
-    death_player = TEAM.haveplayer(info.content)
-    if death_player:
-        result = server.rcon_query(f"scoreboard players get {death_player} death")
-        count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
+    if len(TEAM.players) >= 1 and TEAM.haveplayer(info.content):
+        for death_player in TEAM.players_deathcount.keys():
+            result = server.rcon_query(f"scoreboard players get {death_player} death")
+            count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
 
-        server.logger.info(f"TEAM.players_deathcount{{}} --> {TEAM.players_deathcount}, count:{count}")
+            # server.logger.info(f"TEAM.players_deathcount{{}} --> {TEAM.players_deathcount}, count:{count}")
 
-        if death_player and count:
-            c = int(count.group(1))
-
-            if TEAM.players_deathcount[death_player] != c:
-                TEAM.players_deathcount[death_player] = c
-                server.logger.info(f"检测到玩家死亡, 次数为：{count.group(1)}")
-                # 检测有到玩家死亡
-                TEAM.player_death(death_player)
+            if death_player and count:
+                c = int(count.group(1))
+                if TEAM.players_deathcount[death_player] != c:
+                    TEAM.players_deathcount[death_player] = c
+                    server.logger.info(f"检测到玩家 {death_player} 死亡, 次数为：{count.group(1)}")
+                    # 检测有到玩家死亡
+                    TEAM.player_death(death_player)
 
 
 def on_load(server, old_plugin):
