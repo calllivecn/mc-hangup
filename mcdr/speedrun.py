@@ -259,6 +259,11 @@ class Team:
         rand = random.randint(0, len(ps) - 1)
         self.player_running = ps[rand]
 
+        # 点我unready
+        unready = RText("秒钟后游戏开始, 请不要中途退出。", RColor.yellow)
+        unready.set_hover_text(RText("点我unready", RColor.green))
+        unready.set_click_event(RAction.run_command, f"unready")
+
         # 10秒后游戏开始
         self.countdowning = True
         for i in range(10, 0, -1):
@@ -268,7 +273,7 @@ class Team:
                 self.server.say(RText("取消开局，有玩家unready。", RColor.yellow))
                 return
 
-            self.server.say(RTextList(RText(f"{i}", RColor.green), " 秒钟后游戏开始, 请不要中途退出。"))
+            self.server.say(RTextList(RText(f"{i} ", RColor.green), unready))
             time.sleep(1)
 
         # 开局前准备
@@ -285,7 +290,7 @@ class Team:
         self.server.say(f"逃亡者是：{self.player_running}")
 
         # 如果 逃亡者存活过30分钟，逃亡者胜利。
-        for i in range(2):
+        for i in range(6):
             if self.gameid != gameid:
                 self.server.logger.info(f"Speed Run thread: {self.gameid} exit.")
                 break
@@ -295,7 +300,7 @@ class Team:
             self.server.say(RTextList("逃亡者:", RText(self.player_running, RColor.yellow), "现在的位置是:", RText(f"x:{x} y:{y} z:{z}", RColor.green)))
             self.server.rcon_query(f"effect give {self.player_running} minecraft:glowing 60")
 
-            time.sleep(1*30)
+            time.sleep(60)
 
         # 怎么结束？不好检测，玩家死亡。
         # 1. 使用 scoresbaord 记录玩家死亡数。
