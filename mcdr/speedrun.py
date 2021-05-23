@@ -99,13 +99,15 @@ class Team:
 
         # 设置记分板
         self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡记数"]""")
-        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar death""")
+
+        # 设置得分板
+        self.server.rcon_query(f"""scoreboard objectives add score dummy ["得分"]""")
 
         self.server.rcon_query(f"""team add {self.teamname}""")
         # 关闭团队PVP
         self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
 
-        result = server.rcon_query("list")
+        result = self.server.rcon_query("list")
         # server.logger.info(f"players() server.rcon_query() --> {result}")
         match = re.match("There are [0-9]+ of a max of [0-9]+ players online: (.*)", result)
         players_raw = match.group(1).split(",")
@@ -119,18 +121,53 @@ class Team:
         # 插件重载时，随机拿个玩家的，设置为世界出生点。
         if len(self.players) >= 1:
             self.setworldspawn()
+        
+        self.init_scoreboard()
 
-        for player in self.players_deathcount.keys():
-            result = self.server.rcon_query(f"scoreboard players get {player} death")
+    # 初始化玩家的计分板
+    def init_scoreboard(self, p=None):
 
-            if re.match(f"Can't get value of death for {player}; none is set", result):
-                server.rcon_query(f"scoreboard players set {player} death 0")
-                self.players_deathcount[player] = 0
+        if p == None:
+            for player in self.players_deathcount.keys():
+                result = self.server.rcon_query(f"scoreboard players get {player} death")
+
+                if re.match(f"Can't get value of death for {player}; none is set", result):
+                    self.server.rcon_query(f"scoreboard players set {player} death 0")
+                    self.players_deathcount[player] = 0
+                else:
+                    deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
+                    self.players_deathcount[player] = int(deathcount.group(1))
+        
+            self.server.logger.info(f"players_deathcount{{}} --> {self.players_deathcount}")
+
+            # 设置初始得分为 0
+            for player in self.players_deathcount.keys():
+                result = self.server.rcon_query(f"scoreboard players get {player} score")
+
+                if re.match(f"Can't get value of score for {player}; none is set", result):
+                    self.server.rcon_query(f"scoreboard players set {player} score 0")
+
+            # self.server.logger.info(f"输出玩家字典 --> {TEMA.players_deathcount}")
+        else:
+
+            result = self.server.rcon_query(f"scoreboard players get {p} death")
+
+            if re.match(f"Can't get value of death for {p}; none is set", result):
+                self.server.rcon_query(f"scoreboard players set {p} death 0")
+                self.players_deathcount[p] = 0
             else:
-                deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
-                self.players_deathcount[player] = int(deathcount.group(1))
+                deathcount = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
+                self.players_deathcount[p] = int(deathcount.group(1))
 
-        self.server.logger.info(f"players_deathcount{{}} --> {self.players_deathcount}")
+            # 设置初始得分为 0
+            result = self.server.rcon_query(f"scoreboard players get {p} score")
+
+            if re.match(f"Can't get value of score for {p}; none is set", result):
+                self.server.rcon_query(f"scoreboard players set {p} score 0")
+
+        # 至少要有玩家和，至少有一个玩家有对应记分板的值，才能显示出来。。。
+        self.server.rcon_query(f"""scoreboard objectives setdisplay list death""")
+        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar score""")
 
 
     # 控制台有玩家名字相关的消息, 就说明可能是有玩家死亡，在对比玩家死亡记数。
@@ -235,9 +272,7 @@ class Team:
         # 做一些，开局前的准备; # 在每次开局前做？
 
         # 选出一个逃亡者
-        ps = list(self.players)
-        rand = random.randint(0, len(ps) - 1)
-        self.player_running = ps[rand]
+        self.player_running = random.choice(list(self.players))
 
         # 给逃亡者上tag, 结束时要取消掉
         self.server.rcon_query(f"tag {self.player_running} add running")
@@ -335,15 +370,15 @@ class Team:
         # 每局开始时，第一次提示.
         first_show = True
         # testing
-        # sleep = 30
         sleep = 5*60
+        # sleep = 30
 
         # 如果 逃亡者存活过30分钟，逃亡者胜利。
         for i in range(6):
 
             if self.gameid != gameid:
                 self.server.logger.info(f"之前的游戏线程退出 gameid: {self.gameid}.")
-                break
+                return
 
             now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -368,17 +403,10 @@ class Team:
 
 
         # 时间到，逃亡者胜利。
-        if self.gameid == gameid and self.game_started:
-            self.server.rcon_query("title @a times 0 100 0")
-            self.server.rcon_query(f"""title @a subtitle {{"text":"逃亡者 {self.player_running} 胜利！", "bold": true, "color":"red"}}""")
-            self.server.rcon_query("""title @a title {"text":"游戏时间到！","bold":true, "color": "yellow"}""")
-            self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
-            self.server.say(RText(f"逃亡者：{self.player_running} 胜利！", RColor.red))
-
-            self.game_end()
+        self.game_end("running")
 
 
-    def game_end(self):
+    def game_end(self, who="running"):
         self.game_started = False
         self.gameid = time.monotonic()
         # 新一局，把玩家 self.readys 清空
@@ -387,29 +415,40 @@ class Team:
         self.server.rcon_query(f"team join {self.teamname} @a")
         self.server.rcon_query(f"gamemode adventure @a")
 
+        self.server.rcon_query("title @a times 1 100 1")
+        # self.server.rcon_query("""title @a subtitle {"text":"游戏时间到！","bold":true, "color": "yellow"}""")
+
+        # 结束提示, running: 逃亡者胜。
+        if who == "running":
+            # self.server.rcon_query(f"""title @a[tag=running] subtitle {{"text":"胜利！", "bold": true, "color":"red"}}""")
+            self.server.rcon_query("""title @a[tag=running] title {"text":"胜利！","bold":true, "color": "yellow"}""")
+            self.server.rcon_query("""title @a[tag=!running] title {"text":"失败！","bold":true, "color": "yellow"}""")
+            # self.server.say(RText(f"逃亡者：{self.player_running} 胜利！", RColor.red))
+
+            # 计算得分
+            self.server.rcon_query(f"scoreboard players add @a[tag=running] score 1")
+
+        else:
+            self.server.rcon_query("""title @a[tag=!running] title {"text":"胜利！","bold":true, "color": "yellow"}""")
+            self.server.rcon_query("""title @a[tag=running] title {"text":"失败！","bold":true, "color": "yellow"}""")
+            # self.server.say(RText(f"逃亡者：{self.player_running} 胜利！", RColor.red))
+
+            # 计算得分
+            self.server.rcon_query(f"scoreboard players add @a[tag=!running] score 1")
+
         # 给逃亡者上tag, 结束时，取消掉
         self.server.rcon_query(f"tag {self.player_running} remove running")
+
+        self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
 
 
     def player_death(self, player):
         if self.game_started and player == self.player_running:
-            self.server.rcon_query("title @a times 0 100 0")
-            self.server.rcon_query(f"""title @a subtitle {{"text":"{self.player_running} 死亡！", "bold": true, "color":"red"}}""")
-            self.server.rcon_query("""title @a title {"text":"追杀者胜利！","bold":true, "color": "yellow"}""")
-            self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
-            self.server.say(RText(f"追杀者胜利！", RColor.red))
-
-            self.game_end()
+            self.game_end("killer")
 
     def player_left(self, player):
         if self.game_started and player == self.player_running:
-            self.server.rcon_query("title @a times 0 100 0")
-            self.server.rcon_query(f"""title @a subtitle {{"text":"{self.player_running} 离线！", "bold": true, "color":"red"}}""")
-            self.server.rcon_query("""title @a title {"text":"追杀者胜利！","bold":true, "color": "yellow"}""")
-            self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
-            self.server.say(RText(f"追杀者胜利！", RColor.red))
-
-            self.game_end()
+            self.game_end("killer")
 
 
 def on_server_startup(server):
@@ -424,19 +463,7 @@ def on_player_joined(server, player, info):
         TEAM = Team(server)
 
     TEAM.join(player)
-
-    result = server.rcon_query(f"scoreboard players get {player} death")
-    # server.logger.info(f"输出玩家字典 --> {TEAM.players_deathcount}")
-
-    if re.match(f"Can't get value of death for {player}; none is set", result):
-        server.rcon_query(f"scoreboard players set {player} death 0")
-        TEAM.players_deathcount[player] = 0
-    else:
-        deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
-        server.logger.info(f"玩家：{player} 死亡记数 --> {deathcount.group(1)}")
-        TEAM.players_deathcount[player] = int(deathcount.group(1))
-
-    # server.logger.info(f"输出玩家字典 --> {TEMA.players_deathcount}")
+    TEAM.init_scoreboard(player)
 
 
 def on_player_left(server, player):
@@ -483,7 +510,8 @@ def on_load(server, old_plugin):
         pass
     else:
         # 修改重载前的，gameid.
-        old_plugin.TEAM.gameid = time.monotonic()
+        if hasattr(old_plugin.TEAM, "gameid"):
+            old_plugin.TEAM.gameid = time.monotonic()
         # print("这玩意儿，才是执行了！")
         server.logger.info("这玩意儿，才是执行了！")
 
