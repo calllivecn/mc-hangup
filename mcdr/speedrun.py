@@ -306,12 +306,12 @@ class Team:
         self.server.rcon_query(f"worldborder set 60000000")
 
         # 调换世界生出点
-        self.x += 5000
+        self.x += 2000
         # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
         while True:
             result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 15 30 false @a")
             if re.match("Could not spread ([0-9]+) entities around (.*) \(too many entities for space - try using spread of at most ([0-9\.]+)\)", result):
-                self.z += 500
+                self.z += 100
             else:
                 break
             time.sleep(0.1)
@@ -394,8 +394,8 @@ class Team:
                 self.show_running_location()
                 time.sleep(sleep - 5)
             else:
-                time.sleep(sleep)
                 self.show_running_location()
+                time.sleep(sleep)
 
         # 怎么结束？不好检测，玩家死亡。
         # 1. 使用 scoresbaord 记录玩家死亡数。
