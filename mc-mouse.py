@@ -84,7 +84,7 @@ def fishing(kbm, args):
         while True:
             for _ in range(40*60): # 40 分钟吃一次食物。
                 kbm.mouseclick("right")
-                time.sleep(1)
+                time.sleep(args.interval)
 
             eatfood(kbm, food)
             kbm.key(fishingrod)
@@ -258,6 +258,9 @@ def main():
                                         "默认：1号物品栏为钓鱼竿, 2号物品栏为食物。\n",
                                         formatter_class=argparse.RawTextHelpFormatter)
 
+
+    # 添加右键间隔时间
+    parse_fishing.add_argument("--interval", type=float, default=1.0, help="钓鱼时，两次右键的间隔时间。(default: 1.0 秒)")
 
     parse_fishing.add_argument("number", nargs=2, choices=[str(x) for x in range(10)], metavar="number", help="物品栏编号，0~9。")
 

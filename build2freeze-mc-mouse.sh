@@ -13,6 +13,8 @@ safe_exit(){
 
 mkdir "$TMP"
 
+TMP="$(pwd)/$TMP"
+
 set -e
 
 trap "safe_exit" SIGTERM SIGINT EXIT
@@ -20,20 +22,29 @@ trap "safe_exit" SIGTERM SIGINT EXIT
 
 cp mc-mouse.py "$TMP/mcmouse.py"
 
-#if [ -n "$1" ];then
-#	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@"${1}"
-#else
-#	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@master
-#fi
-SUBMODULE="keyboardmouse"
-pushd "$SUBMODULE"
 if [ -n "$1" ];then
-	git checkout origin/${1}
-	python3 "setup.py" install --no-compile --target "$TMP" 
+	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@"${1}"
 else
-	python3 "setup.py" install --no-compile --target "$TMP" 
+	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@master
 fi
-popd
+
+
+# 这种有问题...
+#SUBMODULE="keyboardmouse"
+#
+#cp "$SUBMODULE/logs.py" "$TMP/"
+#
+#pushd "$SUBMODULE"
+#if [ -n "$1" ];then
+#	git checkout origin/${1}
+#	python3 setup.py install --no-compile --prefix "$TMP" 
+#else
+#	python3 setup.py install --no-compile --prefix "$TMP" 
+#
+#	# py3.7 py3.8
+#	#python3 setup.py install --no-compile --target "$TMP" 
+#fi
+#popd
 
 python3 -m zipapp "$TMP" -c -o mc-mouse.pyz -p "/usr/bin/env python3" -m "mcmouse:main"
 
