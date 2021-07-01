@@ -64,7 +64,7 @@ def init_player(server):
     for p in players_raw:
         players_deathcount.append(p.strip())
     
-    for p in Players_deathcount.keys():
+    for p in players_deathcount.keys():
         result = server.rcon_query(f"scoreboard players get {p} death")
         if result:
             death = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
