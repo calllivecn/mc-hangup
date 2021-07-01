@@ -6,3 +6,4 @@ libkbm.py
 *.pyc
 
 __pycache__/
+.vscode/
