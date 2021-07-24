@@ -5,15 +5,21 @@
 
 import re
 import os
-# import sys
 import time
 import json
-from pathlib import Path
 
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 from mcdreforged.permission.permission_level import PermissionLevel
+
+from funcs import (
+    CMDPREFIX,
+    CONFIG_DIR,
+    __get,
+    timestamp,
+    permission
+)
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
@@ -31,10 +37,9 @@ PLUGIN_METADATA = {
 
 
 
-cmdprefix = "." + PLUGIN_METADATA["id"]
+CMD = CMDPREFIX + PLUGIN_METADATA["id"]
 
-cur_dir = os.path.dirname(os.path.dirname(__file__))
-SOUL_DIR = Path(cur_dir) / "config" / PLUGIN_METADATA["id"]
+SOUL_DIR = CONFIG_DIR / PLUGIN_METADATA["id"]
 
 SOUL_SPELL = [
     "मम्मी मम्मी सह",
@@ -42,24 +47,9 @@ SOUL_SPELL = [
     "इस व्यक्ति की आत्मा को बुलाओ ~",
 ]
 
-def permission(func):
-
-    def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
-        server, info = __get(args[0])
-        perm = server.get_permission_level(info)
-
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
-        if perm >= PermissionLevel.USER:
-            func(*args, **kwargs)
- 
-    return warp
 
 if not SOUL_DIR.exists():
     os.makedirs(SOUL_DIR)
-
-def timestamp():
-    return int(time.time())
 
 def get_soul_info(player):
     soul_player = SOUL_DIR / (player + ".json")
@@ -73,9 +63,6 @@ def set_soul_info(player, soul_info):
     soul_player = SOUL_DIR / (player + ".json")
     with open(soul_player, "w+") as f:
         return json.dump(soul_info, f, ensure_ascii=False, indent=4)
-
-def __get(src):
-    return src.get_server(), src.get_info()
 
 def condition(server, info):
     soul_player = SOUL_DIR / (info.player + ".json")
@@ -150,7 +137,7 @@ def soul(src, ctx):
     if rcon_result is None:
         prompt = "rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。"
         server.logger.warning(prompt)
-        server.reply(info, RText(f"{cmdprefix} 插件没有配置成功，请联系服主。", RColor.red))
+        server.reply(info, RText(f"{cmdprefix} 插件没有配置成功，请联系服主。CMDolor.red))
 
         return
     
@@ -208,9 +195,7 @@ def soul(src, ctx):
 
     
     else:
-        server.reply(info, RText(f"哦~天哪，你不在五行中，我帮不了你...", RColor.green))
         return
-
 
 # def on_user_info(server, info):
     # pass
@@ -235,8 +220,8 @@ def on_player_joined(server, player, info):
             #server.reply(f"你在灵魂状态太久，已回到身体。")
 
 def build_command():
-    return Literal(f"{cmdprefix}").runs(lambda src, ctx: soul(src, ctx))
+    return LiteralCMDprefix}").runs(lambda src, ctx: soul(src, ctx))
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, RText("招唤出你的灵魂", RColor.yellow), PermissionLevel.USER)
+    server.register_help_message(cmdprefiCMD.yellow), PermissionLevel.USER)
     server.register_command(build_command())

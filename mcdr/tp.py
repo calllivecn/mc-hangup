@@ -13,7 +13,18 @@ from pathlib import Path
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
-from mcdreforged.permission.permission_level import PermissionLevel
+
+from funcs import (
+    CMDPREFIX,
+    CONFIG_DIR,
+    __get,
+    permission,
+    PermissionLevel,
+    get_players,
+    player_online,
+    playsound,
+    click_text,
+)
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
@@ -32,8 +43,8 @@ PLUGIN_METADATA = {
 PLAYER_MAX_POINT = 20
 
 plugin_id = PLUGIN_METADATA["id"]
-cmdprefix = "." + plugin_id
-config_dir = Path(os.path.dirname(os.path.dirname(__file__)), "config", plugin_id)
+CMD = CMDPREFIX + plugin_id
+TP_CONFIG_DIR = CONFIG_DIR / plugin_id
 
 
 USERTP = {}
@@ -42,47 +53,6 @@ INVITE = {}
 # 如果插件重载，则退出。线程
 PLUGIN_RELOAD = False
 
-def permission(func):
-
-    def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
-        server, info = __get(args[0])
-        perm = server.get_permission_level(info)
-
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
-        if perm >= PermissionLevel.USER:
-            func(*args, **kwargs)
- 
-    return warp
-
-def get_players(server):
-    # 获取在线玩家
-    result = server.rcon_query("list")
-    server.logger.debug(f"result = server.rcon_query('list') -->\n{result}")
-    match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-
-    if match.group(1) == "0":
-        return []
-
-    ls = match.group(3) 
-
-    players = []
-    for s in ls.split(","):
-        players.append(s.strip())
-    
-    return players
-
-def player_online(server, player):
-
-    #result = server.rcon_query(f"data get entity {player} Name")
-    result = server.rcon_query(f"experience query {player} points")
-
-
-    #if re.search("No entity was found", result).group():
-    if re.search(f"{player} has ([0-9]+) experience points", result):
-        return True
-    else:
-        return False
 
 def user_tp_store_init(server):
 
@@ -92,11 +62,11 @@ def user_tp_store_init(server):
         server.logger("当前没有玩家在线")
         return
 
-    if not config_dir.exists():
-        os.makedirs(config_dir)
+    if not TP_CONFIG_DIR.exists():
+        os.makedirs(TP_CONFIG_DIR)
 
     for p in get_players(server):
-        player_json = config_dir / (p + ".json")
+        player_json = TP_CONFIG_DIR / (p + ".json")
         if player_json.exists():
             server.logger.debug(f"加载 {p} 的收藏点")
             with open(player_json) as f:
@@ -107,43 +77,29 @@ def user_tp_store_init(server):
     server.logger.debug(f".tp 插件初始化 USERTP: ------>\n{USERTP}")
 
 def player_save(player, data):
-    fullpathname = config_dir / (player + ".json")
+    fullpathname = TP_CONFIG_DIR / (player + ".json")
     with open(fullpathname, "w+") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
-def playsound(server, player):
-    server.rcon_query(f"execute at {player} run playsound minecraft:entity.player.levelup player {player}")
-
-def click_text(player, label_name, world, x, y, z):
-    #r = RText(label_name, RColor.blue)
-    r = RText(label_name, RColor.yellow)
-    r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
-    # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
-    r.set_click_event(RAction.run_command, f"{cmdprefix} {label_name}")
-    return r
 
 def click_invite(player1, player2):
     r = RText(f"{player1} 邀请你tp TA.", RColor.green)
     r.set_hover_text(RText(f"点击向玩家 {player1} 传送", RColor.green))
-    r.set_click_event(RAction.run_command, f"{cmdprefix} accept {player1}")
+    r.set_click_event(RAction.run_command, f"{CMD} accept {player1}")
     return r
-
-def __get(src):
-    return src.get_server(), src.get_info()
 
 @permission
 def help(src):
     server, info = __get(src)
 
     msg=[f"{'='*10} 使用方法 {'='*10}",
-    f"{cmdprefix}                               查看使用方法",
-    f"{cmdprefix} <收藏点>                       tp 到收藏点",
-    f"{cmdprefix} list                          列出所有收藏点",
-    f"{cmdprefix} add <收藏点名字>                添加或修改当前位置为收藏点",
-    f"{cmdprefix} remove <收藏点名字>             删除收藏点",
-    f"{cmdprefix} rename <收藏点名字> <新名字>     修改收藏点名字",
-    f"{cmdprefix} invite <玩家>                  邀请玩家到你当前的位置",
-    f"{cmdprefix} accept <玩家>                  接收一个玩家对你的邀请(时效3分钟)",
+    f"{CMD}                               查看使用方法",
+    f"{CMD} <收藏点>                       tp 到收藏点",
+    f"{CMD} list                          列出所有收藏点",
+    f"{CMD} add <收藏点名字>                添加或修改当前位置为收藏点",
+    f"{CMD} remove <收藏点名字>             删除收藏点",
+    f"{CMD} rename <收藏点名字> <新名字>     修改收藏点名字",
+    f"{CMD} invite <玩家>                  邀请玩家到你当前的位置",
+    f"{CMD} accept <玩家>                  接收一个玩家对你的邀请(时效3分钟)",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -198,7 +154,7 @@ def ls(src, ctx):
 
     msg = [
     f"{'='*10} 当前没有收藏点, 快使用下面命令收藏一个吧。 {'='*10}",
-    f"{cmdprefix} add <收藏点名>",
+    f"{CMD} add <收藏点名>",
     ]
 
     if u is None:
@@ -220,7 +176,7 @@ def teleport(src, ctx):
     server, info = __get(src)
     msg = [
     f"{'='*10} 当前没有收藏点, 快使用下面命令收藏一个吧。 {'='*10}",
-    f"{cmdprefix} add <收藏点名>",
+    f"{CMD} add <收藏点名>",
     ]
 
     server.logger.debug(f"tp() 执行了。src --------->\n{src} ctx ------------>\n{ctx}")
@@ -256,7 +212,7 @@ def add(src, ctx):
     if rcon_result is None:
         prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
         server.logger.warning(prompt)
-        server.tell(info.player, RText(f"{cmdprefix} 插件没有配置成功，请联系服主。", RColor.red))
+        server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
     world = re.match('{} has the following entity data: "(.*)"'.format(info.player), rcon_result).group(1)
 
@@ -344,7 +300,7 @@ def pop_invite(k):
     except KeyError:
         pass
 
-@new_thread(f"{cmdprefix} 清理过期的邀请")
+@new_thread(f"{CMD} 清理过期的邀请")
 def clear_expire_invite(server):
     while True:
 
@@ -415,7 +371,7 @@ def accept(src, ctx):
 
 
 def build_command():
-    c = Literal(cmdprefix).runs(lambda src: help(src))
+    c = Literal(CMD).runs(lambda src: help(src))
     c = c.then(QuotableText("label_name").runs(lambda src, ctx: teleport(src, ctx)))
     c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
     c.then(Literal("add").then(QuotableText("label_name").runs(lambda src, ctx: add(src, ctx))))
@@ -431,7 +387,7 @@ def on_unload(server):
 
 
 def on_load(server, old_plugin):
-    server.logger.info(f"{plugin_id} 的配置目录： {config_dir}")
+    server.logger.info("{TP_CONFIG_DIR}")
 
     #while not server.is_server_startup():
     #    server.logger.debug("等待server启动完成")
@@ -461,7 +417,7 @@ def on_load(server, old_plugin):
         USERTP = copy.deepcopy(old_plugin.USERTP)
         old_plugin.PLUGIN_RELOAD = True
         
-    server.register_help_message(cmdprefix, '玩家收藏点，和传玩家到收藏点.', PermissionLevel.USER)
+    server.register_help_message(CMD, '玩家收藏点，和传玩家到收藏点.', PermissionLevel.USER)
     server.register_command(build_command())
 
 
@@ -471,7 +427,7 @@ def on_load(server, old_plugin):
 
 def on_player_joined(server, player, info):
 
-    player_json = config_dir / (player + ".json")
+    player_json = TP_CONFIG_DIR / (player + ".json")
 
     if player_json.exists():
         server.logger.info(f"加载玩家 {player} 收藏点")
