@@ -4,20 +4,25 @@
 # author calllivecn <c-all@qq.com>
 
 import re
-import os
-import sys
-import json
 
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 from mcdreforged.permission.permission_level import PermissionLevel
 
+from funcs import (
+    CMDPREFIX,
+    CONFIG_DIR,
+    __get,
+    permission,
+    PermissionLevel,
+)
+
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
     'id': 'xps', 
     'version': '1.0.0',
-    'name': '把经验存在附魔瓶',
+    'name': '存储和共享经验(附魔瓶)',
     'author': [
         'calllivecn'
    ],
@@ -28,11 +33,8 @@ PLUGIN_METADATA = {
 }
 
 plugin_id = PLUGIN_METADATA["id"]
-cmdprefix = "." + plugin_id
+cmdprefix = CMDPREFIX + plugin_id
 
-
-def __get(src):
-    return src.get_server(), src.get_info()
 
 LEVEL30TOTAL = 2.5* 30**2 - 40.5*30 + 360
 EXPERIENCE_BOTTLE = 7
@@ -71,19 +73,6 @@ def __store_space(xp):
         storespace += 1 
 
     return int(number), int(storespace)
-
-def permission(func):
-
-    def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
-        server, info = __get(args[0])
-        perm = server.get_permission_level(info)
-
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
-        if perm >= PermissionLevel.USER:
-            func(*args, **kwargs)
-
-    return warp
 
 
 @permission
