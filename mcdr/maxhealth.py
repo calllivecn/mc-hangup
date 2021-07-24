@@ -5,16 +5,13 @@
 
 
 import re
-import os
-# import sys
 import time
 
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
-from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 
 
-from .funcs import (
+from funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     permission,
@@ -90,8 +87,7 @@ def life(server, player):
         time.sleep(0.2)
         result = server.rcon_query(f"data get entity {player} DeathTime")
         deathtime = re.match(f"{player} has the following entity data: ([0-9]+)s", result)
-        # 说明玩家以选择重(
-        # 生
+        # 说明玩家以选择重生
         if int(deathtime.group(1)) == 0:
             server.rcon_query(f"attribute {player} minecraft:generic.max_health base set 40")
             server.rcon_query(f"effect give {player} minecraft:instant_health 1 40")
@@ -113,7 +109,7 @@ def on_info(server, info):
                     players_deathcount[death_player] = c
                     server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
 
-        players_deathcount[info.player] = int(deathcount.group(1))
+        players_deathcount[info.player] = int(count.group(1))
     else:
         players_deathcount[info.player] = 0
     
