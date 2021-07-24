@@ -23,7 +23,6 @@ from funcs import (
     get_players,
     player_online,
     playsound,
-    click_text,
 )
 
 PLUGIN_METADATA = {
@@ -85,6 +84,14 @@ def click_invite(player1, player2):
     r = RText(f"{player1} 邀请你tp TA.", RColor.green)
     r.set_hover_text(RText(f"点击向玩家 {player1} 传送", RColor.green))
     r.set_click_event(RAction.run_command, f"{CMD} accept {player1}")
+    return r
+
+def click_text(player, label_name, world, x, y, z):
+    #r = RText(label_name, RColor.blue)
+    r = RText(label_name, RColor.yellow)
+    r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
+    # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
+    r.set_click_event(RAction.run_command, f"{CMD} {label_name}")
     return r
 
 @permission

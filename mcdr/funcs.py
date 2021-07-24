@@ -3,9 +3,7 @@
 # date 2021-07-24 15:42:24
 # author calllivecn <c-all@qq.com>
 
-import os
 import re
-import sys
 import time
 from pathlib import Path
 
@@ -16,7 +14,7 @@ from mcdreforged.permission.permission_level import PermissionLevel
 
 CMDPREFIX="."
 
-CONFIG_DIR = Path(__file__).parent / "config"
+CONFIG_DIR = Path(__file__).parent.parent / "config"
 
 def __get(src):
     return src.get_server(), src.get_info()
@@ -77,11 +75,3 @@ def player_online(server, player):
         return True
     else:
         return False
-
-def click_text(player, label_name, world, x, y, z):
-    #r = RText(label_name, RColor.blue)
-    r = RText(label_name, RColor.yellow)
-    r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
-    # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
-    r.set_click_event(RAction.run_command, f"{CMD} {label_name}")
-    return r

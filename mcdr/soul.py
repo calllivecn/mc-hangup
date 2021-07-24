@@ -137,7 +137,7 @@ def soul(src, ctx):
     if rcon_result is None:
         prompt = "rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。"
         server.logger.warning(prompt)
-        server.reply(info, RText(f"{cmdprefix} 插件没有配置成功，请联系服主。CMDolor.red))
+        server.reply(info, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
         return
     
@@ -220,8 +220,8 @@ def on_player_joined(server, player, info):
             #server.reply(f"你在灵魂状态太久，已回到身体。")
 
 def build_command():
-    return LiteralCMDprefix}").runs(lambda src, ctx: soul(src, ctx))
+    return Literal(CMD).runs(lambda src, ctx: soul(src, ctx))
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefiCMD.yellow), PermissionLevel.USER)
+    server.register_help_message(CMD, RColor.yellow, PermissionLevel.USER)
     server.register_command(build_command())
