@@ -394,7 +394,7 @@ def on_unload(server):
 
 
 def on_load(server, old_plugin):
-    server.logger.info("{TP_CONFIG_DIR}")
+    server.logger.info(f"{CMD} 的配置目录: {TP_CONFIG_DIR}")
 
     #while not server.is_server_startup():
     #    server.logger.debug("等待server启动完成")
