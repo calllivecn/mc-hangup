@@ -3,7 +3,6 @@
 # date 2021-02-08 14:29:15
 # author calllivecn <c-all@qq.com>
 
-from mcdr.maxhealth import CMD
 import os
 import re
 import sys
