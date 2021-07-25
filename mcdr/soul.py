@@ -229,5 +229,5 @@ def build_command():
     return Literal(CMD).runs(lambda src, ctx: soul(src, ctx))
 
 def on_load(server, old_plugin):
-    server.register_help_message(CMD, RColor.yellow, PermissionLevel.USER)
+    server.register_help_message(CMD, RText(PLUGIN_METADATA["name"], RColor.yellow), PermissionLevel.USER)
     server.register_command(build_command())

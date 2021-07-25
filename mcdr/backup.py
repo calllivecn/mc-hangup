@@ -3,6 +3,7 @@
 # date 2021-02-08 14:29:15
 # author calllivecn <c-all@qq.com>
 
+from mcdr.maxhealth import CMD
 import os
 import re
 import sys
@@ -19,7 +20,14 @@ from mcdreforged import config
 from mcdreforged.api.decorator import new_thread
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
-from mcdreforged.permission.permission_level import PermissionLevel
+
+from funcs import (
+    CMDPREFIX,
+    CONFIG_DIR,
+    __get,
+    permission,
+    PermissionLevel,
+)
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
@@ -35,11 +43,9 @@ PLUGIN_METADATA = {
     }
 }
 
-cmdprefix = "." + "bak"
+CMD = CMDPREFIX + "bak"
 
-cur_dir = Path(os.path.dirname(os.path.dirname(__file__)))
-
-config_file = cur_dir / "config" / "backup.json"
+config_file = CONFIG_DIR / "backup.json"
 
 # 默认目录 和 备份路径(相对mcdr的路径)
 BACKUP_DIR = Path("backup")
@@ -115,23 +121,6 @@ SAVED_THE_GAME = Lock()
 PLUGIN_RELOAD = False
 B = BackupInternal()
 backing = Lock()
-
-def permission(func):
-
-    def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
-        server, info = __get(args[0])
-        perm = server.get_permission_level(info)
-
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
-        if perm >= PermissionLevel.ADMIN:
-            func(*args, **kwargs)
- 
-    return warp
-
-
-def __get(src):
-    return src.get_server(), src.get_info()
 
 
 ### 定义 
@@ -468,11 +457,11 @@ def help(src):
     msg=[f"{'='*10} 使用说明 {'='*10}",
     f"",
     f"{'='*10} 使用方法 {'='*10}",
-    f"{cmdprefix}                    查看使用方法",
-    f"{cmdprefix} list               列出所有备份",
-    f"{cmdprefix} backup             手动触发创建备份",
-    f"{cmdprefix} backupmsg <备注>    手动触发创建备份, 添加注释",
-    f"{cmdprefix} rollback <序号>     恢复到指定备份",
+    f"{CMD}                    查看使用方法",
+    f"{CMD} list               列出所有备份",
+    f"{CMD} backup             手动触发创建备份",
+    f"{CMD} backupmsg <备注>    手动触发创建备份, 添加注释",
+    f"{CMD} rollback <序号>     恢复到指定备份",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -496,7 +485,7 @@ def ls(src, ctx):
     if rollback:
         msg.append(f"上次回滚前的存档： {rollback[0]} 注释： {rollback[1]}")
 
-    msg.append(f"使用： {cmdprefix} rollback <序号> 回滚")
+    msg.append(f"使用： {CMD} rollback <序号> 回滚")
 
     server.reply(info, "\n".join(msg))
 
@@ -536,7 +525,7 @@ def rollback(src, ctx):
 
 
 def build_command():
-    c = Literal(cmdprefix).runs(lambda src: help(src))
+    c = Literal(CMD).runs(lambda src: help(src))
     c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
     c.then(Literal("backup").runs(lambda src, ctx: backup(src, ctx)))
     c.then(Literal("backupmsg").then(QuotableText("msg").runs(lambda src, ctx: backup_msg(src, ctx))))
@@ -549,7 +538,7 @@ def on_info(server, info):
     pass
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.ADMIN)
+    server.register_help_message(CMD, PLUGIN_METADATA["name"], PermissionLevel.ADMIN)
     server.register_command(build_command())
 
     # init
