@@ -47,6 +47,8 @@ SOUL_SPELL = [
     "इस व्यक्ति की आत्मा को बुलाओ ~",
 ]
 
+# 一次灵魂出窍时间
+SOUL_TIME=180
 
 if not SOUL_DIR.exists():
     os.makedirs(SOUL_DIR)
@@ -86,7 +88,9 @@ def condition(server, info):
 def timing(server, player):
 
     # time.sleep(10) # 测试
-    time.sleep(170)
+
+    # 留出10秒，给倒计时。
+    time.sleep(SOUL_TIME - 10)
 
     rcon_result = server.rcon_query(f"data get entity {player} playerGameType")
     result = re.match(f"{player} has the following entity data: ([0-9]+)", rcon_result)
@@ -173,6 +177,7 @@ def soul(src, ctx):
         server.rcon_query(f"experience add {info.player} -1 levels")
 
         server.rcon_query(f"execute at {info.player} run gamemode spectator {info.player}")
+        server.rcon_query(f"execute at {info.player} run effect give {info.player} minecraft:night_vision {SOUL_TIME} 0 true")
         server.rcon_query(f"execute at {info.player} run playsound minecraft:entity.player.levelup player {info.player}")
 
         server.reply(info, RText("注意！3分钟后会回到你的身体！(输入指令可提前返回)", RColor.yellow))
@@ -187,6 +192,7 @@ def soul(src, ctx):
             z = player_soul["z"]
 
             server.rcon_query(f"execute at {info.player} in {world} run teleport {info.player} {x} {y} {z}")
+            server.rcon_query(f"execute at {info.player} run effect clear {info.player} minecraft:night_vision")
             server.rcon_query(f"execute at {info.player} run gamemode survival {info.player}")
 
         else:
