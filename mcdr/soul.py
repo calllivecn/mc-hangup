@@ -169,7 +169,10 @@ def soul(src, ctx):
         rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
         position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
         x, y, z = position.group(1), position.group(2), position.group(3)
-        x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
+
+        #x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
+        # 向上加0.5格，修复返回原地时，可能从不完整方块下落。
+        x, y, z = round(float(x), 1), round(float(y), 1) + 0.3, round(float(z), 1)
 
         set_soul_info(info.player, {"timestamp": timestamp(), "world": world, "x": x, "y": y, "z": z})
 
