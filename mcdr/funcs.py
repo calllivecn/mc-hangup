@@ -9,8 +9,13 @@ from pathlib import Path
 
 
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
+from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 from mcdreforged.permission.permission_level import PermissionLevel
 
+
+__all__ = (
+    "Literal",
+)
 
 CMDPREFIX="."
 
@@ -23,7 +28,6 @@ def timestamp():
     return int(time.time())
 
 def permission(func):
-
     def warp(*args, **kwargs):
         # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
         server, info = __get(args[0])
@@ -35,6 +39,19 @@ def permission(func):
  
     return warp
 
+def permission_admin(func):
+    def warp(*args, **kwargs):
+        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        server, info = __get(args[0])
+        perm = server.get_permission_level(info)
+
+        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        if perm >= PermissionLevel.ADMIN:
+            func(*args, **kwargs)
+ 
+    return warp
+
+
 def match(re_str, s_str, group=0):
 
     result = re.match(re_str, s_str)
@@ -42,6 +59,16 @@ def match(re_str, s_str, group=0):
         return result.group(group)
     else:
         return None
+
+
+def check_rcon(server):
+
+    rcon_result = server.rcon_query(f"list")
+    if rcon_result is None:
+        prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
+        server.logger.warning(prompt)
+        server.say(RText(f"RCON 没有配置成功，请联系服主。", RColor.red))
+        return False
 
 
 def playsound(server, player):
@@ -75,3 +102,47 @@ def player_online(server, player):
         return True
     else:
         return False
+
+
+def check_level(server, info):
+    # 查看玩家的等级够不够
+    level = server.rcon_query(f"experience query {info.player} levels")
+
+    l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
+
+    server.logger.debug(f"玩家 {info.player} 等级： {l}")
+
+    if int(l) < 1:
+        server.reply(info, RText("经验不足，至少需要1级", RColor.red))
+        return False
+    else:
+        # 扣掉1级
+        server.rcon_query(f"experience add {info.player} -1 levels")
+        return True
+
+
+def fmt(ls, delimite=10):
+    ls_len = len(ls)
+
+    c, i = divmod(ls_len, delimite)
+    if i > 0:
+        c+=1
+
+    output_list = []
+    for j in range(delimite):
+        line = ""
+        for i in range(c):
+            l = j + delimite * i
+
+            if l >= ls_len:
+                break
+
+            #print(ls[l], end=", ")
+            line += ls[l] + RText(", ")
+
+        #print()
+        line = line + RText("\n")
+        output_list.append(line)
+    #print("\n".join(output_list))
+    #return "\n".join(output_list)
+    return output_list[:-1]
