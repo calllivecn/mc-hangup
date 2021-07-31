@@ -25,7 +25,6 @@ from funcs import (
     permission,
     permission_admin,
     PermissionLevel,
-    playsound,
     check_level,
     fmt,
 )
@@ -239,7 +238,6 @@ def rename(src, ctx):
                 v = u.pop(label_name)
                 u[ctx["label_name2"]] = v
                 player_save(info.player, u)
-                playsound(server, info.player)
                 server.reply(info, RText("修改名称成功", RColor.green))
 
     server.logger.debug(f"rename ctx -------------->\n{ctx}")
