@@ -164,6 +164,7 @@ def add(src, ctx):
 
     if load is None:
         check = re.match("No chunks were marked for force loading", rcon_result)
+        server.logger.error(f"{rcon_result=}")
 
         if check is None:
             server.reply(info, RText(f"未知错误，请报告服主。", RColor.red))
@@ -174,7 +175,7 @@ def add(src, ctx):
     else:
 
         #
-        world = load.group(2)
+        world = load.group(3)
 
         label_name = ctx["label_name"]
 
@@ -210,11 +211,21 @@ def remove(src, ctx):
             server.reply(info, RTextList(RText("没有 "), RText(label_name, RColor.yellow), RText("强制加载区块")))
             return
 
-        u.pop(label_name)
+        position = u.pop(label_name)
+        world = position["world"]
+        x, z = position["x"], position["z"]
 
-        player_save(info.player, u)
+        #
+        rcon_result = server.rcon_query(f"execute in {world} run forceload remove {x} {z}")
+        unload = re.match(f"Unmarked chunk \[(-?[0-9]+), (-?[0-9]+)\] in (.*) for force loading", rcon_result)
 
-        server.reply(info, RTextList("强制加载区块: ", RText(label_name, RColor.yellow, RStyle.strikethrough), " 删除成功"))
+        if unload is None:
+            server.reply(info, RText(f"未知错误，请报告服主。", RColor.red))
+            server.logger.error(f"{rcon_result=}")
+        
+        else:
+            player_save(info.player, u)
+            server.reply(info, RTextList("强制加载区块: ", RText(label_name, RColor.yellow, RStyle.strikethrough), " 删除成功"))
 
     server.logger.debug(f"remove ctx -------------->\n{ctx}")
 
