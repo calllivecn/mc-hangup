@@ -127,9 +127,14 @@ def fmt(ls, delimite=10):
     c, i = divmod(ls_len, delimite)
     if i > 0:
         c+=1
+    
+    if ls_len < delimite:
+        range_delimite = ls_len
+    else:
+        range_delimite = delimite
 
     output_list = []
-    for j in range(delimite):
+    for j in range(range_delimite):
         line = ""
         for i in range(c):
             l = j + delimite * i
@@ -137,12 +142,10 @@ def fmt(ls, delimite=10):
             if l >= ls_len:
                 break
 
-            #print(ls[l], end=", ")
-            line += ls[l] + RText(", ")
+            line += ls[l] + RText(",  ")
 
-        #print()
-        line = line + RText("\n")
+        if j < (range_delimite - 1):
+            line = line + RText("\n")
+
         output_list.append(line)
-    #print("\n".join(output_list))
-    #return "\n".join(output_list)
-    return output_list[:-1]
+    return output_list
