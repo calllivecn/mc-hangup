@@ -20,6 +20,7 @@ from funcs import (
     __get,
     permission,
     PermissionLevel,
+    fmt,
     get_players,
     player_online,
     playsound,
@@ -127,31 +128,6 @@ def check_level(server, info):
         server.rcon_query(f"experience add {info.player} -1 levels")
         return True
 
-def fmt(ls, delimite=10):
-    ls_len = len(ls)
-
-    c, i = divmod(ls_len, delimite)
-    if i > 0:
-        c+=1
-
-    output_list = []
-    for j in range(delimite):
-        line = ""
-        for i in range(c):
-            l = j + delimite * i
-
-            if l >= ls_len:
-                break
-
-            #print(ls[l], end=", ")
-            line += ls[l] + RText(", ")
-
-        #print()
-        line = line + RText("\n")
-        output_list.append(line)
-    #print("\n".join(output_list))
-    #return "\n".join(output_list)
-    return output_list[:-1]
 
 @permission
 def ls(src, ctx):
