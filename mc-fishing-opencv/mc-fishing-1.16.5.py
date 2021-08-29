@@ -8,10 +8,9 @@ import sys
 import time
 import tkinter as tk
 from pathlib import Path
-from threading import Thread
+from threading import Thread, Lock
 
 import cv2
-from mss.models import Monitors
 import numpy as np
 import pyscreenshot
 import matplotlib.pyplot as plt
@@ -28,7 +27,7 @@ except ModuleNotFoundError:
 
 class BaitFish:
 
-    def __init__(self, position, img_template='mc-fishing.png', threshold=0.7):
+    def __init__(self, position, img_template='mc-fishing.png', threshold=0.75):
 
         self.threshold = threshold
 
@@ -42,59 +41,74 @@ class BaitFish:
 
         # position: (200, 200, 400, 500) 
         self.position = position
+        # print("self.target size: ", position[2] - position[0])
 
         # 拿到模板图片大小
-        template_size = template.shape[:2]
-        # print("template_size 1 :", template_size)
+        template_size = template.shape
+        h,w,c = template_size
+
+        print("template_size 1 :", template_size)
 
         # 比较 宽， 生产 缩放比例。
-        self.scale = template_size[1] / position[0]
+        self.scale = (position[2] - position[0]) / w
+        print("scale: ", self.scale)
 
-        template = cv2.resize(template, (0, 0), fx=self.scale, fy=self.scale)
+        self.template = cv2.resize(template, (0, 0), fx=self.scale, fy=self.scale)
 
-        self.template_size = template.shape[:2]
+        self.template_size = self.template.shape[:2]
 
-        # print("template_size resize 2:", self.template_size)
+        self.temp = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
-        self.temp = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        print("template_size resize 2:", self.template_size)
+
+        # cv2.imwrite(f"{time.time_ns()}-temp.PNG", self.temp) #, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
 
 
     # 获取屏幕指定位置的截图
     def screenshot(self):
-        # self.target_img = pyscreenshot.grab(bbox=(200, 200, 400, 700))
         img = pyscreenshot.grab(bbox=self.position)
-        self.target_img = np.asanyarray(img)
-        # print("target_img shape:", self.target_img.shape)
 
-        return img
+        # RGBA 2 RGB
+        img = img.convert("RGB")
+
+        # img.save("screenshot-RGB.png")
+        # self.target_img = np.asanyarray(img)
+
+        # RGB 2 BGR
+        # self.target_img = self.target_img[..., ::-1]
+        self.target_img = cv2.cvtColor(np.asanyarray(img), cv2.COLOR_RGB2BGR)
 
         # plt.figure()
-        # plt.imshow(img, animated=True)
+        # plt.imshow(self.target_img, animated=True)
         # plt.show()
+
+        return self.target_img
 
 
     # 找图 返回最近似的点
     def search_picture(self):
 
-        # img = cv2.imread('2021-08-29_04.32.47.png')#要找的大图
+        # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
         # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
 
         img_gray = cv2.cvtColor(self.target_img, cv2.COLOR_BGR2GRAY)
+
         self.result = cv2.matchTemplate(img_gray, self.temp, cv2.TM_CCOEFF_NORMED)
+
+        # cv2.imwrite(f"{time.time_ns()}-img.PNG", img_gray)
 
         loc = np.where(self.result >= self.threshold)
 
         # 使用灰度图像中的坐标对原始RGB图像进行标记
         point = ()
         for pt in zip(*loc[::-1]):
-            cv2.rectangle(img_gray, pt, (pt[0] + self.template_size[1], pt[1] + + self.template_size[0]), (7, 249, 151), 2)
+            cv2.rectangle(img_gray, pt, (pt[0] + self.template_size[1], pt[1] + self.template_size[0]), (7, 249, 151), 2)
             point = pt
 
         if point==():
             return None,None,None
-
+        
         return img_gray, point[0]+ self.template_size[1]/2, point[1]
-
 
 # 创建顶级组件容器
 class Monitor:
@@ -103,7 +117,7 @@ class Monitor:
     def __init__(self):
 
         self.root = tk.Tk()
-        self.root.title("主窗口")
+        self.root.title("自动钓鱼AI")
 
         # 指定主窗口位置与大小
         self.root.geometry("200x80+200+200")
@@ -139,6 +153,8 @@ class Monitor:
         label2.bind("<B1-Motion>", self.moveWin)
 
         self.show = True
+
+        self.run_lock = Lock()
 
 
     def addButton(self, text, func):
@@ -176,23 +192,29 @@ class Monitor:
             self.top.deiconify()
     
     def start(self, run):
+        if self.run_lock.locked():
+            print("running...")
+            return
+
         geometry = self.top.winfo_geometry()
         print("geometry:", geometry)
         w, tmp = geometry.split("x")
         h, x, y = tmp.split("+")
 
         self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
-        print(self.position)
+        # print(self.position)
 
         bf = BaitFish(self.position)
 
         self.hideen()
-
-        self.th = Thread(target=run, args=(bf,), daemon=True)
+        self.run_lock.acquire()
+        self.th = Thread(target=run, args=(bf, self.run_lock), daemon=True)
         self.th.start()
         print("autofish running.")
     
-    def end(self, event):
+    def stop(self):
+        if not self.run_lock.locked():
+            self.run_lock.release()
         self.hideen()
 
 
@@ -203,11 +225,10 @@ class AutoFish:
         self.mon = mon
         # self.kbm = libkbm.VirtualKeyboardMouse()
 
-    def run(self, bf):
-        plt.figure()
-        while True:
+    def run(self, bf, run_lock):
+        while run_lock.locked():
             start = time.time()
-            img = bf.screenshot()
+            p = bf.screenshot()
             end = time.time()
             # print("screentshot time:", end - start)
             start = end
@@ -216,21 +237,22 @@ class AutoFish:
             end = time.time()
             # print("search picture time:", end - start)
             start = end
-            if img:
+
+            if img is None:
+                # cv2.imwrite(f"{time.time_ns()}.PNG", p)
+                time.sleep(0.1)
+            else:
                 # 收鱼竿
                 # self.kbm.mouseclick("right")
                 print(f"{time.localtime()}: 收鱼竿")
-
-                plt.imshow(img, animated=True)
-                plt.show()
-            else:
-                plt.savefig(f"{time.time_ns()}.png") 
-
+                cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                time.sleep(1)
 
             end = time.time()
-            print("time:", end - start)
+            # print("time:", end - start)
 
-            time.sleep(0.1)
+        print("stop ")
+        # cv2.destroyAllWindows()
 
 
 # main
@@ -241,7 +263,7 @@ def main():
 
     mon.addButton("开始", lambda e: mon.start(fish.run))
 
-    mon.addButton("停止", mon.end)
+    mon.addButton("停止", lambda e: mon.stop())
 
     mon.mainloop()
 
