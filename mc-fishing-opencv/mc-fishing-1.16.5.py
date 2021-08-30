@@ -7,6 +7,7 @@
 import sys
 import time
 import tkinter as tk
+import subprocess
 from pathlib import Path
 from threading import Thread, Lock
 
@@ -37,14 +38,14 @@ class BaitFish:
             sys.exit(2)
 
         #图中的小图
-        template = cv2.imread(img_template)
+        self.template = cv2.imread(img_template)
 
         # position: (200, 200, 400, 500) 
         self.position = position
         # print("self.target size: ", position[2] - position[0])
 
         # 拿到模板图片大小
-        template_size = template.shape
+        template_size = self.template.shape
         h,w,c = template_size
 
         print("template_size 1 :", template_size)
@@ -53,9 +54,11 @@ class BaitFish:
         self.scale = (position[2] - position[0]) / w
         print("scale: ", self.scale)
 
-        self.template = cv2.resize(template, (0, 0), fx=self.scale, fy=self.scale)
+        # self.template = cv2.resize(template, (0, 0), fx=self.scale, fy=self.scale)
 
-        self.template_size = self.template.shape[:2]
+        #self.template_size = self.template.shape[:2]
+
+        self.template_size = self.template.shape
 
         self.temp = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
@@ -78,6 +81,9 @@ class BaitFish:
         # self.target_img = self.target_img[..., ::-1]
         self.target_img = cv2.cvtColor(np.asanyarray(img), cv2.COLOR_RGB2BGR)
 
+        # RGBA 2 BGR
+        # self.target_img = cv2.cvtColor(np.asanyarray(img), cv2.COLOR_RGBA2BGR)
+
         # plt.figure()
         # plt.imshow(self.target_img, animated=True)
         # plt.show()
@@ -90,6 +96,7 @@ class BaitFish:
 
         # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
         # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
+
 
         img_gray = cv2.cvtColor(self.target_img, cv2.COLOR_BGR2GRAY)
 
@@ -147,7 +154,8 @@ class Monitor:
         label.pack(fill=tk.BOTH, expand="yes")
         label.bind("<B1-Motion>", self.Resize)
 
-        label2 = tk.Label(label, bg="#ff2233", borderwidth=5)
+        # label2 = tk.Label(label, bg="#ff2233", borderwidth=5)
+        label2 = tk.Label(label, borderwidth=5)
         label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
         label2.bind("<B1-Motion>", self.moveWin)
@@ -204,7 +212,7 @@ class Monitor:
         self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
         # print(self.position)
 
-        bf = BaitFish(self.position)
+        bf = BaitFish(self.position, "mc-fishing_1920x1080.png")
 
         self.hideen()
         self.run_lock.acquire()
@@ -244,9 +252,12 @@ class AutoFish:
             else:
                 # 收鱼竿
                 # self.kbm.mouseclick("right")
-                print(f"{time.localtime()}: 收鱼竿")
+                subprocess.run("xdotool click 3".split())
+                print(f"{time.ctime()}: 收鱼竿")
                 cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 time.sleep(1)
+                subprocess.run("xdotool click 3".split())
+                time.sleep(2)
 
             end = time.time()
             # print("time:", end - start)
