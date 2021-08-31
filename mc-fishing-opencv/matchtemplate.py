@@ -19,6 +19,7 @@ def cv2plt_gray(img):
 
 def imgshow(imgs, gray_imgs=[]):
     s = len(imgs) + len(gray_imgs)
+    print(f"共{s}张图片")
     n = math.sqrt(s)
     if n > int(n):
         m = int(n) + 1
@@ -44,7 +45,7 @@ def imgshow(imgs, gray_imgs=[]):
 
     for j, gray in enumerate(gray_imgs):
         img = cv2plt_gray(gray)
-        plt.subplot(n, m, j+i+1)
+        plt.subplot(n, m, j+i+2)
         plt.imshow(img)
         plt.axis("off")
 
@@ -55,9 +56,11 @@ def search_picture(target, temp, threshold=0.7):
     # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
     # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
 
-    temp_size = temp.shape[::2]
+    #temp_size = temp.shape[::2]
+    temp_size = temp.shape
 
-    img_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
+    img_gray = target
+    #img_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
 
     result = cv2.matchTemplate(img_gray, temp, cv2.TM_CCOEFF_NORMED)
 
@@ -81,21 +84,41 @@ def search_picture(target, temp, threshold=0.7):
 #target = cv2.imread("target.png", cv2.IMREAD_UNCHANGED)
 
 """
-使用二值化后 在缩放
+使用二值化后 在缩放（还没完整测试）
+
+
+使用 缩放 后的 灰度图 进行 边缘检测 在 匹配，(testing）
+1. to 灰度图
+2. 缩放
+3. 边缘检测
+4. match
+
+5. 把 2步 3步交换下顺序
 """
 
-temp = cv2.imread("template.png")
-target = cv2.imread("target.png")
+temp = cv2.imread("temp-big.png")
+target = cv2.imread("target-small.png")
+
+temp_w = 320
+target_w = 96
+
+scale = target_w / temp_w 
+
+temp = cv2.resize(temp, (0, 0), fx=scale, fy=scale)
 
 temp_gray = cv2.cvtColor(temp, cv2.COLOR_BGR2GRAY)
 target_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
 
-retval_temp, dst_temp = cv2.threshold(temp_gray, 125, 255, cv2.THRESH_BINARY)
-retval_target, dst_target = cv2.threshold(target_gray, 125, 255, cv2.THRESH_BINARY)
+#retval_temp, dst_temp = cv2.threshold(temp_gray, 125, 255, cv2.THRESH_BINARY)
+#retval_target, dst_target = cv2.threshold(target_gray, 125, 255, cv2.THRESH_BINARY)
 
-grays=[temp_gray, target_gray, dst_temp, dst_target]
+# 边缘
+temp_canny = cv2.Canny(temp_gray, 50, 200)
+target_canny = cv2.Canny(target_gray, 50, 200)
 
-img, x, y = search_picture(dst_temp, dst_target)
+grays=[temp_gray, target_gray, temp_canny, target_canny]
+
+img, x, y = search_picture(temp_canny, target_canny, 0.5)
 
 if img is None:
     print("没有匹配到")

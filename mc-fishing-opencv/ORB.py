@@ -2,7 +2,6 @@
 import time
 
 import cv2
-#from matplotlib import 
 import matplotlib.pyplot as plt
 
 from funcs import (
@@ -11,8 +10,8 @@ from funcs import (
     cv2plt_gray,
 )
 
-img_temp = cv2.imread('template.png')#读取原图片
-img_target = cv2.imread('target.png')#读取旋转图片
+img_temp = cv2.imread('template-orb.png')#读取原图片
+img_target = cv2.imread('target-orb.png')#读取旋转图片
 img_match1 = cv2.imread('match1.png')#读取缩放图片
 img_match2 = cv2.imread('match2.png')
 
@@ -54,7 +53,7 @@ imgshow(prints)
 
 
 # 特征匹配展示
-#原图与仿射图的匹配连线效果图展示
+# 原图与仿射图的匹配连线效果图展示
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True) # orb的normType应该使用NORM_HAMMING
 
 orb_matchs = []
