@@ -42,13 +42,13 @@ def imgshow(imgs, gray_imgs=[]):
         print(i, "shape:", img.shape) 
         plt.subplot(n, m, i+1)
         plt.imshow(img)
-        plt.axis("off")
+        #plt.axis("off")
 
     for j, gray in enumerate(gray_imgs):
         img = cv2plt_gray(gray)
         plt.subplot(n, m, j+i+1)
         plt.imshow(img)
-        plt.axis("off")
+        #plt.axis("off")
 
     plt.show()
 

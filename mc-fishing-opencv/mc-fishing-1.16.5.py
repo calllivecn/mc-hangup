@@ -7,7 +7,7 @@
 import sys
 import time
 import tkinter as tk
-import subprocess
+#import subprocess
 from pathlib import Path
 from threading import Thread, Lock
 
@@ -16,15 +16,34 @@ import numpy as np
 import pyscreenshot
 import matplotlib.pyplot as plt
 
-
 try:
-    pass
-    # import libkbm
-    # import libhotkey
+    import pyautogui
 except ModuleNotFoundError:
-    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse", file=sys.stderr)
+    print(f"当前是win 系统 需要安装 pip install pyautogui 包")
     sys.exit(1)
 
+class Mouse:
+
+    def __init__(self):
+        # default usage
+        self.autotool = labmda : pyautogui.click(button="right")
+
+        if sys.platfrom == "linux":
+            if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
+                print("你的桌面环境是 wayland 的~")
+                print("还没有实现~~哈哈, 请换成，X11 桌面环境~")
+                sys.exit(1)
+
+                try:
+                    import libkbm
+                except ModuleNotFoundError:
+                    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
+                    sys.exit(1)
+            else:
+                print("你的桌面环境是 X11 的~")
+
+    def click_right(self):
+        self.autotool()
 
 class BaitFish:
 
@@ -165,6 +184,7 @@ class Monitor:
         self.run_lock = Lock()
 
 
+
     def addButton(self, text, func):
         # 上个按钮
         btn1 = tk.Button(self.root, text=text)
@@ -233,33 +253,36 @@ class AutoFish:
         self.mon = mon
         # self.kbm = libkbm.VirtualKeyboardMouse()
 
+        # mouse click <right>
+        # click_right is function()
+        self.mouse = Mouse()
+
     def run(self, bf, run_lock):
         while run_lock.locked():
             start = time.time()
+
             p = bf.screenshot()
-            end = time.time()
-            # print("screentshot time:", end - start)
-            start = end
-
             img, x, y = bf.search_picture()
-            end = time.time()
-            # print("search picture time:", end - start)
-            start = end
 
+            end = time.time()
             if img is None:
                 # cv2.imwrite(f"{time.time_ns()}.PNG", p)
-                time.sleep(0.1)
+                interval = 0.1 -  round(end - start, 3)
+                if interval >= 0:
+                    time.sleep(interval)
+                else:
+                    print(f"{time.ctime()}: 当前机器性能不足，可能错过收竽时机。")
             else:
                 # 收鱼竿
-                # self.kbm.mouseclick("right")
-                subprocess.run("xdotool click 3".split())
+                #subprocess.run("xdotool click 3".split())
+                self.mouse.click_right()
                 print(f"{time.ctime()}: 收鱼竿")
                 cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 time.sleep(1)
-                subprocess.run("xdotool click 3".split())
+                self.mouse.click_right()
                 time.sleep(2)
 
-            end = time.time()
+            start = end
             # print("time:", end - start)
 
         print("stop ")
