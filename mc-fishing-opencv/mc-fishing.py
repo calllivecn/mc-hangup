@@ -3,11 +3,11 @@
 # date 2021-08-29 04:30:13
 # author calllivecn <c-all@qq.com>
 
-
+import os
 import sys
 import time
 import tkinter as tk
-#import subprocess
+import subprocess
 from pathlib import Path
 from threading import Thread, Lock
 
@@ -16,29 +16,55 @@ import numpy as np
 import pyscreenshot
 import matplotlib.pyplot as plt
 
+"""
 try:
+    # 这玩意儿，会移动鼠标～why？？？
     import pyautogui
 except ModuleNotFoundError:
     print(f"当前是win 系统 需要安装 pip install pyautogui 包")
     sys.exit(1)
+"""
+
+
+TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
 
 class Mouse:
 
     def __init__(self):
         # default usage
-        self.autotool = labmda : pyautogui.click(button="right")
+        self.autotool = lambda : subprocess.run(["mouse.py"])
 
-        if sys.platfrom == "linux":
+        try:
+            result = subprocess.run("type -p xdotool".split())
+            result.check_returncode()
+            self.autotool = lambda : subprocess.run("xdotool click 3".split())
+        except Exception:
+            pass
+            # print("使用pyautogui...")
+            # self.autotool = lambda : pyautogui.rightClick()
+
+
+        if sys.platform == "linux":
             if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
                 print("你的桌面环境是 wayland 的~")
-                print("还没有实现~~哈哈, 请换成，X11 桌面环境~")
-                sys.exit(1)
+                print("还没有实现~~哈哈, 请换成，X11 桌面环境~, 可以测试使用了")
 
+                try:
+                    result = subprocess.run("type -p mouse.py".split())
+                    result.check_returncode()
+                    self.autotool = lambda : subprocess.run(["mouse.py"])
+                except Exception:
+                    pass
+                    # print("使用pyautogui...")
+                    # self.autotool = lambda : pyautogui.rightClick()
+
+                """
                 try:
                     import libkbm
                 except ModuleNotFoundError:
                     print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
                     sys.exit(1)
+                """
             else:
                 print("你的桌面环境是 X11 的~")
 
@@ -47,7 +73,7 @@ class Mouse:
 
 class BaitFish:
 
-    def __init__(self, position, img_template='mc-fishing.png', threshold=0.75):
+    def __init__(self, position, img_template, threshold=0.75):
 
         self.threshold = threshold
 
@@ -232,7 +258,7 @@ class Monitor:
         self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
         # print(self.position)
 
-        bf = BaitFish(self.position, "mc-fishing_1920x1080.png")
+        bf = BaitFish(self.position, str(TEMPLATE_PATH))
 
         self.hideen()
         self.run_lock.acquire()
@@ -259,25 +285,28 @@ class AutoFish:
 
     def run(self, bf, run_lock):
         while run_lock.locked():
+
             start = time.time()
 
             p = bf.screenshot()
             img, x, y = bf.search_picture()
 
             end = time.time()
+
             if img is None:
                 # cv2.imwrite(f"{time.time_ns()}.PNG", p)
-                interval = 0.1 -  round(end - start, 3)
+                t = round(end - start, 3)
+                interval = 0.1 -  t
                 if interval >= 0:
                     time.sleep(interval)
                 else:
-                    print(f"{time.ctime()}: 当前机器性能不足，可能错过收竽时机。")
+                    print(f"{time.ctime()}: {t}/s 当前机器性能不足，可能错过收竽时机。")
             else:
                 # 收鱼竿
                 #subprocess.run("xdotool click 3".split())
                 self.mouse.click_right()
                 print(f"{time.ctime()}: 收鱼竿")
-                cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                # cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 time.sleep(1)
                 self.mouse.click_right()
                 time.sleep(2)
@@ -286,11 +315,14 @@ class AutoFish:
             # print("time:", end - start)
 
         print("stop ")
+        if run_lock.locked():
+            run_lock.release()
         # cv2.destroyAllWindows()
 
 
 # main
 def main():
+
     mon = Monitor()
 
     fish = AutoFish(mon)
