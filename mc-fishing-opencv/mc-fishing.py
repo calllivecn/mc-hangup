@@ -8,6 +8,7 @@ import sys
 import time
 import tkinter as tk
 import subprocess
+import threading
 from pathlib import Path
 from threading import Thread, Lock
 
@@ -26,18 +27,19 @@ except ModuleNotFoundError:
 """
 
 
-TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
+# TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
+TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
 
 class Mouse:
 
     def __init__(self):
         # default usage
-        self.autotool = lambda : subprocess.run(["mouse.py"])
+        self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
 
         try:
-            result = subprocess.run("type -p xdotool".split())
+            result = subprocess.run("type -p xdotool".split(), stdout=subprocess.PIPE)
             result.check_returncode()
-            self.autotool = lambda : subprocess.run("xdotool click 3".split())
+            self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
         except Exception:
             pass
             # print("使用pyautogui...")
@@ -52,7 +54,7 @@ class Mouse:
                 try:
                     result = subprocess.run("type -p mouse.py".split())
                     result.check_returncode()
-                    self.autotool = lambda : subprocess.run(["mouse.py"])
+                    self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
                 except Exception:
                     pass
                     # print("使用pyautogui...")
@@ -110,7 +112,7 @@ class BaitFish:
         print("template_size resize 2:", self.template_size)
 
         # cv2.imwrite(f"{time.time_ns()}-temp.PNG", self.temp) #, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-
+    
 
     # 获取屏幕指定位置的截图
     def screenshot(self):
@@ -163,16 +165,25 @@ class BaitFish:
         return img_gray, point[0]+ self.template_size[1]/2, point[1]
 
 # 创建顶级组件容器
-class Monitor:
+class AutoFishing:
 
     # 创建tkinter主窗口
     def __init__(self):
+
+
+        # 初始化窗口，配置相关
+        # self.kbm = libkbm.VirtualKeyboardMouse()
+
+        # mouse click <right>
+        # click_right is function()
+        self.mouse = Mouse()
+
 
         self.root = tk.Tk()
         self.root.title("自动钓鱼AI")
 
         # 指定主窗口位置与大小
-        self.root.geometry("200x80+200+200")
+        # self.root.geometry("200x80+200+200")
 
         # 不允许改变窗口大小
         # root.resizable(False, False)
@@ -209,6 +220,27 @@ class Monitor:
 
         self.run_lock = Lock()
 
+        self.addButton("开始", lambda e: self.start())
+        self.addButton("停止", lambda e: self.stop())
+
+        self.fishcount = 0
+        self.fishingspeed = 0
+        self.speed = []
+        self.fishingspeed_timestamp = time.time()
+        self.fishcount_var = tk.StringVar()
+        self.fishcount_string = "当前钓鱼速度为：{} s/条，已经钓到 {} 条鱼"
+        self.fishcount_var.set(self.fishcount_string.format(self.fishingspeed, self.fishcount))
+        fishcount_label = tk.Label(self.root, textvariable=self.fishcount_var)
+        fishcount_label.pack()
+
+        # start stop
+        # self.start_stop_var = tk.StringVar()
+        # self.start_stop_var.set("开始")
+        # self.start_stop_btn = tk.Button(self.top, textvariable=self.start_stop_var)
+        # self.start_stop_btn.bind("<Button-1>", self.start)
+        # self.start_stop_btn.pack()
+
+        # self.frame_start_stop.pack()
 
 
     def addButton(self, text, func):
@@ -237,6 +269,22 @@ class Monitor:
     def Resize(self, event):
         self.top.geometry(f"{event.x}x{event.y}")
     
+
+    def fishshow(self, cur):
+        self.fishcount += 1
+        self.fishingspeed = round(cur - self.fishingspeed_timestamp)
+
+        if len(self.speed) > 100:
+            self.speed = []
+
+        self.speed.append(self.fishingspeed)
+
+        speed  = round(sum(self.speed) / len(self.speed))
+
+        self.fishcount_var.set(self.fishcount_string.format(speed, self.fishcount))
+
+        self.fishingspeed_timestamp = cur
+    
     def hideen(self):
         if self.show:
             self.show = False
@@ -245,51 +293,45 @@ class Monitor:
             self.show = True
             self.top.deiconify()
     
-    def start(self, run):
+    def start(self):
         if self.run_lock.locked():
-            print("running...")
-            return
+            print(self.th.name, ": autofish running...")
+        else:
+            print("start ...")        
+            self.run_lock.acquire()
 
-        geometry = self.top.winfo_geometry()
-        print("geometry:", geometry)
-        w, tmp = geometry.split("x")
-        h, x, y = tmp.split("+")
+            # 拿到目标图像在屏幕中的位置
+            geometry = self.top.winfo_geometry()
+            print("geometry:", geometry)
+            w, tmp = geometry.split("x")
+            h, x, y = tmp.split("+")
 
-        self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
-        # print(self.position)
+            self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
+            # print(self.position)
 
-        bf = BaitFish(self.position, str(TEMPLATE_PATH))
+            self.BF = BaitFish(self.position, str(TEMPLATE_PATH))
 
-        self.hideen()
-        self.run_lock.acquire()
-        self.th = Thread(target=run, args=(bf, self.run_lock), daemon=True)
-        self.th.start()
-        print("autofish running.")
+            self.hideen()
+            self.th = Thread(target=self.run, daemon=True)
+            self.th.start()
+            print(self.th.name, "autofish running.")
     
     def stop(self):
-        if not self.run_lock.locked():
+        if self.run_lock.locked():
             self.run_lock.release()
-        self.hideen()
+            self.hideen()
+            print("stoping...", self.th.name)
+        else:
+            print(self.th.name, ": autofish running...")
 
-
-# init start
-class AutoFish:
-
-    def __init__(self, mon):
-        self.mon = mon
-        # self.kbm = libkbm.VirtualKeyboardMouse()
-
-        # mouse click <right>
-        # click_right is function()
-        self.mouse = Mouse()
-
-    def run(self, bf, run_lock):
-        while run_lock.locked():
+    
+    def run(self):
+        while self.run_lock.locked():
 
             start = time.time()
 
-            p = bf.screenshot()
-            img, x, y = bf.search_picture()
+            p = self.BF.screenshot()
+            img, x, y = self.BF.search_picture()
 
             end = time.time()
 
@@ -304,8 +346,9 @@ class AutoFish:
             else:
                 # 收鱼竿
                 #subprocess.run("xdotool click 3".split())
+                self.fishshow(end)
                 self.mouse.click_right()
-                print(f"{time.ctime()}: 收鱼竿")
+                print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: 收鱼竿""")
                 # cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 time.sleep(1)
                 self.mouse.click_right()
@@ -314,24 +357,18 @@ class AutoFish:
             start = end
             # print("time:", end - start)
 
-        print("stop ")
-        if run_lock.locked():
-            run_lock.release()
+        th = threading.current_thread()
+        
+        print(th.name, "退出...")
+        if self.run_lock.locked():
+            self.run_lock.release()
         # cv2.destroyAllWindows()
 
 
 # main
 def main():
-
-    mon = Monitor()
-
-    fish = AutoFish(mon)
-
-    mon.addButton("开始", lambda e: mon.start(fish.run))
-
-    mon.addButton("停止", lambda e: mon.stop())
-
-    mon.mainloop()
+    fishing = AutoFishing()
+    fishing.mainloop()
 
 
 if __name__ == "__main__":
