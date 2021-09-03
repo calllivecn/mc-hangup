@@ -6,9 +6,13 @@
 import os
 import sys
 import time
-import tkinter as tk
 import subprocess
 import threading
+import tkinter as tk
+from tkinter import (
+    ttk,
+    messagebox,
+)
 from pathlib import Path
 from threading import Thread, Lock
 
@@ -29,9 +33,12 @@ except ModuleNotFoundError:
 
 # TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
 TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
+TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png-new"
 temp_850x480_w = 200
 temp_850x480_h = 140
-temp_850x480_position = ":"
+temp_850x480_position = ""
+
+ICON = Path("images") / "icon.png"
 
 class Mouse:
 
@@ -173,7 +180,6 @@ class AutoFishing:
     # 创建tkinter主窗口
     def __init__(self):
 
-
         # 初始化窗口，配置相关
         # self.kbm = libkbm.VirtualKeyboardMouse()
 
@@ -181,9 +187,12 @@ class AutoFishing:
         # click_right is function()
         self.mouse = Mouse()
 
-
         self.root = tk.Tk()
         self.root.title("自动钓鱼AI")
+
+        # 设置应用图标
+        # self.root.iconbitmap(tk.PhotoImage(ICON))
+        self.root.iconphoto(False, tk.PhotoImage(file=ICON))
 
         # 指定主窗口位置与大小
         # self.root.geometry("200x80+200+200")
@@ -192,6 +201,7 @@ class AutoFishing:
         # root.resizable(False, False)
 
         self.top = tk.Toplevel(self.root)
+        self.game_resolution = tk.Toplevel(self.root)
 
         self.top.minsize(100, 50)
 
@@ -199,27 +209,52 @@ class AutoFishing:
         self.screen_h = self.root.winfo_screenheight()
         # print("screen:", self.screen_w, self.screen_h)
 
-        self.top.geometry("200x200+400+300")
+        self.game_resolution.geometry("850x480")
+        self.game_resolution.resizable(False, False)
 
         self.top.overrideredirect(True)
+        # self.game_resolution.overrideredirect(True)
 
         self.top.attributes('-alpha', 0.2)
-        self.top.attributes("-topmost", True) 
+        self.game_resolution.attributes('-alpha', 0.2)
+
+        # self.top.attributes("-topmost", True) 
+        print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
+
+        self.frame = tk.Frame(self.root)
+        self.frame.pack()
+
+        l1 = tk.Label(self.frame, text="选择模式：")
+        l1.grid(row=0, column=0)
+
+        # select 框
+        self.selected = ttk.Combobox(self.frame, values=["850x480", "其他模式"], state="readonly")
+        self.selected.bind("<<ComboboxSelected>>", self.selectmode)
+        self.selected.current(0)
+        self.selected.grid(row=0, column=1)
 
         # label = tkinter.Label(top, bg="#f21312")
         # label.pack(fill=tkinter.BOTH, expand="y")
 
+        # top
         label = tk.Label(self.top, bg="#1122cc", borderwidth=5)
         label.pack(fill=tk.BOTH, expand="yes")
-        label.bind("<B1-Motion>", self.Resize)
+        label.bind("<B1-Motion>", lambda e : self.Resize(e, self.top))
 
-        # label2 = tk.Label(label, bg="#ff2233", borderwidth=5)
         label2 = tk.Label(label, borderwidth=5)
         label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
-        label2.bind("<B1-Motion>", self.moveWin)
+        label2.bind("<B1-Motion>", lambda e : self.moveWin(e, self.top))
 
-        self.show = True
+        # game_resoultion
+        label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
+        label.pack(fill=tk.BOTH, expand="yes")
+        label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
+
+        label2 = tk.Label(label, borderwidth=5)
+        label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
+        label2.bind("<Button-1>", self.mouseDown)
+        label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
 
         self.run_lock = Lock()
 
@@ -229,11 +264,10 @@ class AutoFishing:
         # start stop
         self.start_stop_var = tk.StringVar()
         self.start_stop_var.set("开始")
-        self.start_stop_btn = tk.Button(self.root, textvariable=self.start_stop_var)
+        self.start_stop_btn = tk.Button(self.frame, textvariable=self.start_stop_var)
         self.start_stop_btn.bind("<Button-1>", lambda e: self.start())
-        self.start_stop_btn.pack()
+        self.start_stop_btn.grid(row=0, column=2)
         # self.frame_start_stop.pack()
-
 
         self.fishcount = 0
         self.fishingspeed = 0
@@ -253,84 +287,92 @@ class AutoFishing:
 
     def mainloop(self):
         self.root.mainloop()
+    
+    def selectmode(self, event):
+        value = self.selected.get()
+        print("select mode event:", event, "value:", value)
+        if value != "850x480":
+            messagebox.showinfo(title="提示", message="还没实现，请期待～")
+            self.selected.current(0)
+
 
     def mouseDown(self, event):
         self.w_x = event.x
         self.w_y = event.y
         # print("mouseDown:", event, "w_x, w_y:", self.top.win, self.w_y)
     
-    def moveWin(self, event):
+    def moveWin(self, event, who):
         # print("move:", event)
-        x = self.top.winfo_x() + (event.x - self.w_x)
-        y = self.top.winfo_y() + (event.y - self.w_y)
+        x = who.winfo_x() + (event.x - self.w_x)
+        y = who.winfo_y() + (event.y - self.w_y)
 
         # print("x y:", f"+{x}+{y}")
-        self.top.geometry(f"+{x}+{y}")
+        who.geometry(f"+{x}+{y}")
         # self.top.update()
     
-    def Resize(self, event):
-        self.top.geometry(f"{event.x}x{event.y}")
+    def Resize(self, event, who):
+        who.geometry(f"{event.x}x{event.y}")
     
 
     def fishshow(self, cur):
         self.fishcount += 1
         self.fishingspeed = round(cur - self.fishingspeed_timestamp)
 
-        if len(self.speed) > 100:
-            self.speed = []
-
+        # 如果是正常钓鱼，不是暂停，钓鱼时间应该会小于45s
         if self.fishingspeed <= 45:
-            self.speed.append(self.fishingspeed)
 
-        speed  = round(sum(self.speed) / len(self.speed))
+            # 计数100次后，重新开始计算钓鱼速度。
+            if len(self.speed) > 100:
+                self.speed = [self.fishingspeed]
+            else:
+                self.speed.append(self.fishingspeed)
 
-        self.fishcount_var.set(self.fishcount_string.format(speed, self.fishcount))
+            speed  = round(sum(self.speed) / len(self.speed))
+
+            self.fishcount_var.set(self.fishcount_string.format(speed, self.fishcount))
 
         self.fishingspeed_timestamp = cur
     
-    def hideen(self):
-        if self.show:
-            self.show = False
-            self.top.withdraw()
-        else:
-            self.show = True
-            self.top.deiconify()
     
     def start(self):
         if self.run_lock.locked():
             self.start_stop_var.set("开始")
             self.run_lock.release()
-            self.hideen()
+
+            # 显示窗口
+            self.top.withdraw()
+            self.game_resolution.withdraw()
+
             print("stoping...", self.th.name)
         else:
+            # 隐藏窗口
+            self.top.withdraw()
+            self.game_resolution.withdraw()
+
             print("start ...")        
             self.start_stop_var.set("暂停")
             self.run_lock.acquire()
 
-            # 拿到目标图像在屏幕中的位置
-            geometry = self.top.winfo_geometry()
-            print("geometry:", geometry)
-            w, tmp = geometry.split("x")
+            # 拿到 游戏屏幕位置
+            game_geometry = self.game_resolution.winfo_geometry()
+            print("game_resolution geometry:", game_geometry)
+
+            w, tmp = game_geometry.split("x")
             h, x, y = tmp.split("+")
 
-            self.position = (int(x), int(y), int(x) + int(w), int(y) + int(h))
-            # print(self.position)
+            self.game_position = (int(x), int(y))
 
-            self.BF = BaitFish(self.position, str(TEMPLATE_PATH))
+            # 根据 game_position 位置，算出 目标图像在屏幕中的位置
+            temp_x1, temp_y1 = self.game_position[0] + 700, self.game_position[1] + 300
+            temp_x2, temp_y2 = temp_x1 + 150, temp_y1 + 160
 
-            self.hideen()
+            screentshot_pos = (temp_x1, temp_y1, temp_x2, temp_y2)
+            print("tempalte posistion: ", screentshot_pos)
+
+            self.BF = BaitFish(screentshot_pos, str(TEMPLATE_PATH))
             self.th = Thread(target=self.run, daemon=True)
             self.th.start()
             print(self.th.name, "autofish running.")
-    
-    def stop(self):
-        if self.run_lock.locked():
-            self.run_lock.release()
-            self.hideen()
-            print("stoping...", self.th.name)
-        else:
-            print(self.th.name, ": autofish running...")
-
     
     def run(self):
         while self.run_lock.locked():
@@ -342,15 +384,16 @@ class AutoFishing:
 
             end = time.time()
 
+            t = round(end - start, 3)
             if img is None:
                 # cv2.imwrite(f"{time.time_ns()}.PNG", p)
-                t = round(end - start, 3)
                 interval = 0.1 -  t
                 if interval >= 0:
                     time.sleep(interval)
                 else:
-                    print(f"{time.ctime()}: {t}/s 当前机器性能不足，可能错过收竽时机。")
+                    print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: {t}/s 当前机器性能不足，可能错过收竽时机。""")
             else:
+                t = round(end - start, 3)
                 # 收鱼竿
                 #subprocess.run("xdotool click 3".split())
                 self.fishshow(end)
@@ -361,8 +404,8 @@ class AutoFishing:
                 self.mouse.click_right()
                 time.sleep(2)
 
-            start = end
-            # print("time:", end - start)
+            # start = end
+            # print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: {t}/s 当前性能。""")
 
         th = threading.current_thread()
         
