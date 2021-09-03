@@ -6,6 +6,7 @@
 import os
 import sys
 import time
+import json
 import subprocess
 import threading
 import tkinter as tk
@@ -33,12 +34,60 @@ except ModuleNotFoundError:
 
 # TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
 TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
-TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png-new"
-temp_850x480_w = 200
-temp_850x480_h = 140
-temp_850x480_position = ""
 
 ICON = Path("images") / "icon.png"
+
+class Conf:
+
+    def __init__(self, savefile="data.json"):
+        self.savefile = Path(savefile)
+        
+        # 如果没有，则初始化。
+        if not self.savefile.exists():
+
+            self.__d["850x480(推荐)"] = {
+                "template": "mc-fishing_850x480.png",
+                "win_pos": self.game_resolution.winfo_geometry(),
+                "temp_post": (700, 300, 150, 160)
+            }
+    
+    def query(self, selectmode):
+
+        with open(self.savefile, "r") as f:
+            self.__d = json.load(f)
+        
+        conf = self.__d.get(selectmode)
+
+        if conf is None:
+            return conf
+        else: 
+            self.template = Path(conf["template"])
+
+            # 例：win_pos = 850x480+700+300
+            self.win_pos = conf["win_pos"]
+
+            # 是相对于 win_pos 的位置，和  模板本身的长宽 例：(700, 300, 150, 160)
+            self.temp_pos = conf["temp_pos"]
+
+            return True
+
+
+    def save(self, selectname, template, win_pos, temp_pos):
+        
+        with open(self.savefile, "r") as f:
+            self.__d = json.load(f)
+        
+        self.__d[selectname] = {
+            "template": str(template),
+            "win_post": win_pos,
+            "temp_post": temp_pos,
+        }
+        
+        with open(self.savefile, "w") as f:
+            json.dump(self.__d, f)
+        
+        return True
+
 
 class Mouse:
 
@@ -194,32 +243,33 @@ class AutoFishing:
         # self.root.iconbitmap(tk.PhotoImage(ICON))
         self.root.iconphoto(False, tk.PhotoImage(file=ICON))
 
-        # 指定主窗口位置与大小
-        # self.root.geometry("200x80+200+200")
-
         # 不允许改变窗口大小
         # root.resizable(False, False)
 
-        self.top = tk.Toplevel(self.root)
+        # self.top = tk.Toplevel(self.root)
         self.game_resolution = tk.Toplevel(self.root)
 
-        self.top.minsize(100, 50)
+        # self.top.minsize(100, 50)
 
         self.screen_w = self.root.winfo_screenwidth()
         self.screen_h = self.root.winfo_screenheight()
         # print("screen:", self.screen_w, self.screen_h)
 
+        # 指定主窗口位置与大小
+        self.root.geometry(f"+{round(self.screen_w/5)}+{round(self.screen_h/5)}")
+
         self.game_resolution.geometry("850x480")
         self.game_resolution.resizable(False, False)
+        self.winCenter(self.game_resolution, 850, 480)
 
-        self.top.overrideredirect(True)
+        # self.top.overrideredirect(True)
         # self.game_resolution.overrideredirect(True)
 
-        self.top.attributes('-alpha', 0.2)
+        # self.top.attributes('-alpha', 0.2)
         self.game_resolution.attributes('-alpha', 0.2)
 
         # self.top.attributes("-topmost", True) 
-        print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
+        # print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
 
         self.frame = tk.Frame(self.root)
         self.frame.pack()
@@ -228,7 +278,7 @@ class AutoFishing:
         l1.grid(row=0, column=0)
 
         # select 框
-        self.selected = ttk.Combobox(self.frame, values=["850x480", "其他模式"], state="readonly")
+        self.selected = ttk.Combobox(self.frame, values=["850x480(推荐)", "其他模式"], state="readonly")
         self.selected.bind("<<ComboboxSelected>>", self.selectmode)
         self.selected.current(0)
         self.selected.grid(row=0, column=1)
@@ -237,19 +287,19 @@ class AutoFishing:
         # label.pack(fill=tkinter.BOTH, expand="y")
 
         # top
-        label = tk.Label(self.top, bg="#1122cc", borderwidth=5)
-        label.pack(fill=tk.BOTH, expand="yes")
-        label.bind("<B1-Motion>", lambda e : self.Resize(e, self.top))
+        # label = tk.Label(self.top, bg="#1122cc", borderwidth=5)
+        # label.pack(fill=tk.BOTH, expand="yes")
+        # label.bind("<B1-Motion>", lambda e : self.Resize(e, self.top))
 
-        label2 = tk.Label(label, borderwidth=5)
-        label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
-        label2.bind("<Button-1>", self.mouseDown)
-        label2.bind("<B1-Motion>", lambda e : self.moveWin(e, self.top))
+        # label2 = tk.Label(label, borderwidth=5)
+        # label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
+        # label2.bind("<Button-1>", self.mouseDown)
+        # label2.bind("<B1-Motion>", lambda e : self.moveWin(e, self.top))
 
         # game_resoultion
         label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
         label.pack(fill=tk.BOTH, expand="yes")
-        label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
+        # label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
 
         label2 = tk.Label(label, borderwidth=5)
         label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
@@ -291,9 +341,32 @@ class AutoFishing:
     def selectmode(self, event):
         value = self.selected.get()
         print("select mode event:", event, "value:", value)
-        if value != "850x480":
+
+        if value == "850x480(推荐)":
+            self.conf = Conf(Path("images") / "mc-fishing_850x480.png",
+                                win_pos=self.game_resolution.winfo_geometry(),
+                                temp_post=(700, 300, 150, 160)
+                            )
+        elif value == "1920x1080":
+            self.conf = Conf(Path("images") / "mc-fishing_1920x1080.png",
+                                win_pos=self.game_resolution.winfo_geometry(),
+                                temp_post=(700, 300, 150, 160)
+                            )
+        elif value == "其他模式":
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
             self.selected.current(0)
+        else:
+            messagebox.showinfo(title="提示", message="还没实现，请期待～")
+            self.selected.current(0)
+    
+    def winCenter(self, win, w, h):
+        # w = win.winfo_width()
+        # h = win.winfo_height()
+
+        x = round((self.screen_w - w) / 2)
+        y = round((self.screen_h - h) / 2)
+        # print("win Center", w, h, x, y, self.screen_w, self.screen_h)
+        win.geometry(f"+{x}+{y}")
 
 
     def mouseDown(self, event):
@@ -340,13 +413,13 @@ class AutoFishing:
             self.run_lock.release()
 
             # 显示窗口
-            self.top.withdraw()
-            self.game_resolution.withdraw()
+            # self.top.deiconify()
+            self.game_resolution.deiconify()
 
             print("stoping...", self.th.name)
         else:
             # 隐藏窗口
-            self.top.withdraw()
+            # self.top.withdraw()
             self.game_resolution.withdraw()
 
             print("start ...")        
