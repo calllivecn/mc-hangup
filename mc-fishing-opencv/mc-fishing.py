@@ -29,6 +29,9 @@ except ModuleNotFoundError:
 
 # TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
 TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
+temp_850x480_w = 200
+temp_850x480_h = 140
+temp_850x480_position = ":"
 
 class Mouse:
 
@@ -37,12 +40,11 @@ class Mouse:
         self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
 
         try:
-            result = subprocess.run("type -p xdotool".split(), stdout=subprocess.PIPE)
+            result = subprocess.run("type -p xdotool".split(), shell=True, stdout=subprocess.PIPE)
             result.check_returncode()
             self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
-        except Exception:
-            pass
-            # print("使用pyautogui...")
+        except Exception as e:
+            print("没有找到 xdotool, 尝试其他工具。")
             # self.autotool = lambda : pyautogui.rightClick()
 
 
@@ -52,11 +54,11 @@ class Mouse:
                 print("还没有实现~~哈哈, 请换成，X11 桌面环境~, 可以测试使用了")
 
                 try:
-                    result = subprocess.run("type -p mouse.py".split())
+                    result = subprocess.run("type -p mouse.py".split(), shell=True)
                     result.check_returncode()
                     self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
-                except Exception:
-                    pass
+                except Exception as e:
+                    raise e
                     # print("使用pyautogui...")
                     # self.autotool = lambda : pyautogui.rightClick()
 
@@ -72,6 +74,7 @@ class Mouse:
 
     def click_right(self):
         self.autotool()
+
 
 class BaitFish:
 
@@ -220,8 +223,17 @@ class AutoFishing:
 
         self.run_lock = Lock()
 
-        self.addButton("开始", lambda e: self.start())
-        self.addButton("停止", lambda e: self.stop())
+        # self.addButton("开始", lambda e: self.start())
+        # self.addButton("停止", lambda e: self.stop())
+
+        # start stop
+        self.start_stop_var = tk.StringVar()
+        self.start_stop_var.set("开始")
+        self.start_stop_btn = tk.Button(self.root, textvariable=self.start_stop_var)
+        self.start_stop_btn.bind("<Button-1>", lambda e: self.start())
+        self.start_stop_btn.pack()
+        # self.frame_start_stop.pack()
+
 
         self.fishcount = 0
         self.fishingspeed = 0
@@ -232,16 +244,6 @@ class AutoFishing:
         self.fishcount_var.set(self.fishcount_string.format(self.fishingspeed, self.fishcount))
         fishcount_label = tk.Label(self.root, textvariable=self.fishcount_var)
         fishcount_label.pack()
-
-        # start stop
-        # self.start_stop_var = tk.StringVar()
-        # self.start_stop_var.set("开始")
-        # self.start_stop_btn = tk.Button(self.top, textvariable=self.start_stop_var)
-        # self.start_stop_btn.bind("<Button-1>", self.start)
-        # self.start_stop_btn.pack()
-
-        # self.frame_start_stop.pack()
-
 
     def addButton(self, text, func):
         # 上个按钮
@@ -277,7 +279,8 @@ class AutoFishing:
         if len(self.speed) > 100:
             self.speed = []
 
-        self.speed.append(self.fishingspeed)
+        if self.fishingspeed <= 45:
+            self.speed.append(self.fishingspeed)
 
         speed  = round(sum(self.speed) / len(self.speed))
 
@@ -295,9 +298,13 @@ class AutoFishing:
     
     def start(self):
         if self.run_lock.locked():
-            print(self.th.name, ": autofish running...")
+            self.start_stop_var.set("开始")
+            self.run_lock.release()
+            self.hideen()
+            print("stoping...", self.th.name)
         else:
             print("start ...")        
+            self.start_stop_var.set("暂停")
             self.run_lock.acquire()
 
             # 拿到目标图像在屏幕中的位置
