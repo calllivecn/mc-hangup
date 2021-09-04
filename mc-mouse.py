@@ -323,6 +323,7 @@ def main():
         print(f"{args.time}分钟后退出程序。")
 
     kbm = libkbm.VirtualKeyboardMouse()
+    kbm.create_device()
 
     if args.disable:
         disableMouse()
