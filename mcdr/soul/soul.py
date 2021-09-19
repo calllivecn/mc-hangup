@@ -8,24 +8,26 @@ import os
 import time
 import json
 
-from mcdreforged.api.decorator import new_thread
-from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
-from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
-from mcdreforged.permission.permission_level import PermissionLevel
 
 from funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,
+    RText,
+    RColor,
+    Literal,
+    QuotableText,
+    new_thread,
     timestamp,
-    permission
+    permission,
+    PermissionLevel,
+
 )
 
 PLUGIN_METADATA = {
     # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
     'id': 'soul', 
     'version': '0.1.0',
-    'name': '灵魂出窍',
     'author': [
         'calllivecn'
    ],
@@ -35,11 +37,12 @@ PLUGIN_METADATA = {
     }
 }
 
+ID_NAME = "soul"
+PLUGIN_NAME = '灵魂出窍',
 
+CMD = CMDPREFIX + ID_NAME
 
-CMD = CMDPREFIX + PLUGIN_METADATA["id"]
-
-SOUL_DIR = CONFIG_DIR / PLUGIN_METADATA["id"]
+SOUL_DIR = CONFIG_DIR / ID_NAME
 
 SOUL_SPELL = [
     "मम्मी मम्मी सह",
@@ -232,5 +235,5 @@ def build_command():
     return Literal(CMD).runs(lambda src, ctx: soul(src, ctx))
 
 def on_load(server, old_plugin):
-    server.register_help_message(CMD, RText(PLUGIN_METADATA["name"], RColor.yellow), PermissionLevel.USER)
+    server.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
     server.register_command(build_command())

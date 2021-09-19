@@ -1,0 +1,12 @@
+{
+    "id": "tp", 
+    "version": "1.0.0",
+    "name": "玩家位置点记录和传送",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}

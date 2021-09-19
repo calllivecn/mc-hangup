@@ -1,0 +1,13 @@
+{
+    "id": "backup", 
+    "version": "0.1.0",
+    "name": "服务端自动备份工具(rsync)",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
+

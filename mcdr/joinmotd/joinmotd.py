@@ -14,21 +14,7 @@ from funcs import (
     __get,
 )
 
-PLUGIN_METADATA = {
-    'id': 'joinmotd',
-    'version': '0.1',
-    'name': 'JoinMOTD',
-    'description': '',
-    'author': [
-        'calllivecn'
-    ],
-    'link': 'https://github.com/github/mc-hangup/mcdr/joinMOTD.py',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0'
-    }
-}
-
-CMD = CMDPREFIX + PLUGIN_METADATA["id"]
+CMD = CMDPREFIX + 'joinmotd'
 
 
 def welcome(server, player):
