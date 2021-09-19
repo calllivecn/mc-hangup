@@ -15,27 +15,13 @@ from threading import Lock
 from pathlib import Path
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 
-from mcdreforged.api.decorator import new_thread
-# from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
-from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
-from mcdreforged.permission.permission_level import PermissionLevel
+from funcs import (
+    CMDPREFIX,
+    new_thread,
+    PermissionLevel,
+)
 
-PLUGIN_METADATA = {
-    # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
-    'id': 'mcsleep', 
-    'version': '0.1.0',
-    'name': '没有玩家时，休眠服务器。',
-    'description': '可以的',
-    'author': [
-        'calllivecn'
-   ],
-    'link': 'https://github.com/calllivecn/mc-hangup/mcdr',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0',
-    }
-}
-
-cmdprefix = "." + PLUGIN_METADATA["id"]
+cmdprefix = CMDPREFIX + "mcsleep"
 
 PORT = 35565
 SECRET = b""
@@ -362,7 +348,7 @@ def on_info(server, info):
 
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.ADMIN)
+    server.register_help_message(cmdprefix, '没有玩家时，休眠服务器。', PermissionLevel.ADMIN)
 
     # 读配置
     get_set_secret()
@@ -384,6 +370,9 @@ def on_load(server, old_plugin):
     if server.is_server_startup():
         server.logger.info(f"server is up")
         STATE.state = STATE.NOTPLAYERS
+
+def on_unload(server):
+    pass
 
 
 #def on_server_startup(server):
