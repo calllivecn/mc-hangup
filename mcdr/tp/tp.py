@@ -113,8 +113,8 @@ def check_level(server, info):
 
     server.logger.debug(f"玩家 {info.player} 等级： {l}")
 
-    if int(l) < 1:
-        server.reply(info, RText("经验不足，至少需要1级", RColor.red))
+    if int(l) < 10:
+        server.reply(info, RText("经验不足，至少需要10级", RColor.red))
         return False
     else:
         # 扣掉1级
