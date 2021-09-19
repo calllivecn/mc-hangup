@@ -9,17 +9,25 @@ from pathlib import Path
 
 
 from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
-from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
+from mcdreforged.api.decorator import new_thread
+
+# mcdr_v2.x 还不能拿到 插件元数据
+# from mcdreforged.plugin.meta.metadata import Metadata
+
+# mcdr_v1.x
+# from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
+# mcdr_v2.x
+from mcdreforged.command.builder.nodes.basic import Literal
+from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer
+
 from mcdreforged.permission.permission_level import PermissionLevel
 
 
-__all__ = (
-    "Literal",
-)
-
 CMDPREFIX="."
-
-CONFIG_DIR = Path(__file__).parent.parent / "config"
+# mcdr_v1.x 
+# CONFIG_DIR = Path(__file__).parent.parent / "config"
+# mcdr_v2.x
+CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
 def __get(src):
     return src.get_server(), src.get_info()
