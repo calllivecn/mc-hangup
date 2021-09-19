@@ -5,35 +5,24 @@
 
 import re
 
-from mcdreforged.api.decorator import new_thread
-from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
-from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
-from mcdreforged.permission.permission_level import PermissionLevel
-
 from funcs import (
     CMDPREFIX,
-    CONFIG_DIR,
     __get,
+    RText,
+    RColor,
+    RAction,
+    RTextList,
+    Literal,
+    Integer,
     permission,
     PermissionLevel,
 )
 
-PLUGIN_METADATA = {
-    # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
-    'id': 'xps', 
-    'version': '1.0.0',
-    'name': '存储和共享经验(附魔瓶)',
-    'author': [
-        'calllivecn'
-   ],
-    'link': 'https://github.com/calllivecn/mc-hangup',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0',
-    }
-}
 
-plugin_id = PLUGIN_METADATA["id"]
-cmdprefix = CMDPREFIX + plugin_id
+ID_NAME = "xps"
+PLUGIN_NAME = "存储和共享经验(附魔瓶)"
+
+cmdprefix = CMDPREFIX + ID_NAME
 
 
 LEVEL30TOTAL = 2.5* 30**2 - 40.5*30 + 360
@@ -154,7 +143,7 @@ def on_unload(server):
     pass
 
 def on_load(server, old_plugin):
-    server.register_help_message(cmdprefix, PLUGIN_METADATA["name"], PermissionLevel.USER)
+    server.register_help_message(cmdprefix, PLUGIN_NAME, PermissionLevel.USER)
     server.register_command(build_command())
 
 def on_player_joined(server, player, info):

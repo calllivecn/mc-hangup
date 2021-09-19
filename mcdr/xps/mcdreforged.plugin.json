@@ -1,0 +1,12 @@
+{
+    "id": "xps", 
+    "version": "1.0.0",
+    "name": "存储和共享经验(附魔瓶)" ,
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}

@@ -29,25 +29,13 @@ from funcs import (
     fmt,
 )
 
-PLUGIN_METADATA = {
-    # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
-    'id': 'blockload', 
-    'version': '0.1.0',
-    'name': '使用forceload命令加载区块',
-    'author': [
-        'calllivecn'
-   ],
-    'link': 'https://github.com/calllivecn/mc-hangup/',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0',
-    }
-}
-
 PLAYER_MAX_BLOCK = 10
 
-plugin_id = PLUGIN_METADATA["id"]
-CMD = CMDPREFIX + plugin_id
-BL_CONFIG_DIR = CONFIG_DIR / plugin_id
+ID_NAME = "blockload"
+PLUGIN_NAME = "使用forceload命令加载区块"
+
+CMD = CMDPREFIX + ID_NAME
+BL_CONFIG_DIR = CONFIG_DIR / ID_NAME
 
 if not BL_CONFIG_DIR.exists():
     BL_CONFIG_DIR.mkdir()
@@ -265,7 +253,7 @@ def build_command():
 
 
 def on_unload(server):
-    server.logger.info(f"{plugin_id} 卸载.")
+    server.logger.info(f"{ID_NAME} 卸载.")
 
 
 def on_load(server, old_plugin):
@@ -275,5 +263,5 @@ def on_load(server, old_plugin):
     #    server.logger.debug("等待server启动完成")
     #    time.sleep(1)
 
-    server.register_help_message(CMD, PLUGIN_METADATA["name"], PermissionLevel.USER)
+    server.register_help_message(CMD, PLUGIN_NAME, PermissionLevel.USER)
     server.register_command(build_command())
