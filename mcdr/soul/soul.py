@@ -24,21 +24,8 @@ from funcs import (
 
 )
 
-PLUGIN_METADATA = {
-    # ID（即插件ID）是您插件的身份字符串。它应该由小写字母，数字和下划线组成，长度为1到64
-    'id': 'soul', 
-    'version': '0.1.0',
-    'author': [
-        'calllivecn'
-   ],
-    'link': 'https://github.com/calllivecn/mc-hangup',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0',
-    }
-}
-
 ID_NAME = "soul"
-PLUGIN_NAME = '灵魂出窍',
+PLUGIN_NAME = '灵魂出窍'
 
 CMD = CMDPREFIX + ID_NAME
 
