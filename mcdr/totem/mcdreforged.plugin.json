@@ -1,0 +1,14 @@
+{
+    "id": "totem", 
+    "version": "0.1.0",
+    "name": "可使用用绿宝石，购买不死图腾。",
+    "description": "可以的",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/mcdr",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+	}
+}
+
