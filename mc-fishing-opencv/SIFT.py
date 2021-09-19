@@ -14,13 +14,13 @@ from funcs import (
 images_path = Path("images")
 
 img_temp = cv2.imread(str(images_path / 'mc-fishing_1920x1080.png'))#读取原图片
-img_target = cv2.imread(str(images_path / 'mc-fishing.png'))#读取旋转图片
-img_match1 = cv2.imread(str(images_path / 'target_img.png'))#读取缩放图片
-img_match2 = cv2.imread(str(images_path / 'target.png'))
+img_target = cv2.imread(str(images_path / 'target_1920x1080.png'))#读取旋转图片
+img_match1 = cv2.imread(str(images_path / 'target_850x480.png'))#读取缩放图片
+img_match2 = cv2.imread(str(images_path / 'target_img.png'))
 
 imgs = [img_temp, img_target, img_match1, img_match2 ]
 
-imgshow(imgs)
+# imgshow(imgs)
 
 rgb_imgs = []
 gray_imgs = []
@@ -44,7 +44,7 @@ for img in gray_imgs:
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, element)
     con.append(binary)
 
-imgshow(img_temp, con)
+# imgshow(img_temp, con)
 
 
 #ORB 特征提取
@@ -57,8 +57,11 @@ sifts = []
 #for img in gray_imgs:
 
 # 使用原RGB图
-for img in imgs:
+for i, img in enumerate(imgs):
+    a = time.time()
     kp1, des1 = sift.detectAndCompute(img, None)
+    b = time.time()
+    print(f"第{i} 特征提取耗时：{b-a}")
     print(f"pk 计数: {len(kp1)}, des 计数：{len(des1)}")
     sifts.append((kp1, des1))
     # print(f"pk: {kp1} des: {des1}")
@@ -99,7 +102,7 @@ for i, sift_ in enumerate(sifts):
         if(m.distance < n.distance*0.75):
             good.append([m])
 
-    print(f"特征匹配：{len(good)}")
+    print(f"特征匹配：{len(good)} 个， {round(len(good)/ len(matches), 3) * 100}%")
 
     # 接连匹配的特征点，并展示。
     # img = cv2.drawMatches(img1, pk1, img4, kp4, matches[:50], img4, flags=2)
