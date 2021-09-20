@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import json
+import socket
 import subprocess
 import threading
 import tkinter as tk
@@ -93,43 +94,75 @@ class Mouse:
 
     def __init__(self):
         # default usage
-        self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
-
-        try:
-            result = subprocess.run("type -p xdotool".split(), shell=True, stdout=subprocess.PIPE)
-            result.check_returncode()
-            self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
-        except Exception as e:
-            print("没有找到 xdotool, 尝试其他工具。")
-            # self.autotool = lambda : pyautogui.rightClick()
-
 
         if sys.platform == "linux":
+
             if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
+                try:
+                    import mouse
+                except ModuleNotFoundError:
+                    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse", sys.stderr)
+                    sys.exit(1)
+
                 print("你的桌面环境是 wayland 的~")
                 print("还没有实现~~哈哈, 请换成，X11 桌面环境~, 可以测试使用了")
 
+                """
                 try:
                     result = subprocess.run("type -p mouse.py".split(), shell=True)
                     result.check_returncode()
-                    self.autotool = lambda : subprocess.run(["mouse.py"], stdout=subprocess.PIPE)
+                    self.autotool = lambda : subprocess.run("mouse.py --mouseclick right".split(), stdout=subprocess.PIPE)
                 except Exception as e:
+                    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse", sys.stderr)
                     raise e
                     # print("使用pyautogui...")
                     # self.autotool = lambda : pyautogui.rightClick()
+                """
 
-                """
-                try:
-                    import libkbm
-                except ModuleNotFoundError:
-                    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
-                    sys.exit(1)
-                """
+                # 使用 mouse.py 
+                self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                self.sock.settimeout(3)
+
+                cmd = mouse.Cmd(mouse.SECRET)
+
+                self.data = cmd.tobyte("right", mouse.KeySeq.MouseClick)
+
+                def click(data):
+
+                    self.sock.sendto(data, mouse.ADDR)
+                    try:
+                        data, addr = self.sock.recvfrom(64)
+                    except socket.timeout:
+                        print("收到确认超时")
+                        sys.exit(2)
+
+                    if data == b"ok":
+                        return True, "ok"
+                    else:
+                        return "error: ", data
+
+                self.autotool = lambda : click(self.data)
+
             else:
                 print("你的桌面环境是 X11 的~")
 
+                try:
+                    result = subprocess.run("type -p xdotool".split(), shell=True, stdout=subprocess.PIPE)
+                    result.check_returncode()
+                    self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
+                except Exception as e:
+                    print("没有找到 xdotool, 尝试其他工具。")
+                    raise e
+                    # self.autotool = lambda : pyautogui.rightClick()
+
+        else:
+            print("你的系统还没支持哦～", sys.stderr)
+
     def click_right(self):
         self.autotool()
+    
+    def close(self):
+        self.sock.close()
 
 
 class BaitFish:
