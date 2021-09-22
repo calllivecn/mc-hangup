@@ -1,0 +1,3 @@
+tag @a[type=player] add Im_dealth
+tag @e[type=player] remove Im_dealth
+say @e[tag=Im_dealth] @s 死了

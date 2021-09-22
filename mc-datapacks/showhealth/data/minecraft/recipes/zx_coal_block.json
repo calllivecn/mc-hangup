@@ -1,0 +1,18 @@
+{
+	"type":"crafting_shaped",
+	"pattern":[
+		"111",
+		"111",
+		"111"
+	],
+	"key":{
+		"1":[
+			{"item":"minecraft:charcoal"},
+			{"item":"minecraft:coal"}
+		]
+	},
+	"result":{
+		"item":"minecraft:coal_block",
+		"count": 1
+	}
+}
