@@ -1,0 +1,23 @@
+{
+	"type":"crafting_shaped",
+	"pattern":[
+		"121",
+		"1 1",
+		"3 3"
+	],
+	"key":{
+		"1":{
+			"item":"minecraft:phantom_membrane"
+		},
+		"2":{
+			"item":"minecraft:string"
+		},
+		"3":{
+			"item":"minecraft:feather"
+		}
+	},
+	"result":{
+		"item":"minecraft:elytra",
+		"count": 1
+	}
+}
