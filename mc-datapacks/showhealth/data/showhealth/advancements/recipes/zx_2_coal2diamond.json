@@ -1,11 +1,11 @@
 {
   "criteria": {
-    "diamond": {
+    "coal_block": {
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
           {
-            "items": ["minecraft:diamond"],
+            "items": ["minecraft:coal_block"],
             "count": {
                 "min": 1
             }
@@ -16,18 +16,18 @@
   "has_the_recipe": {
       "trigger": "minecraft:recipe_unlocked",
       "conditions": {
-        "recipe":"showhealth:zx_diamond_horse_armor"
+        "recipe":"minecraft:diamond"
       }
     }
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_diamond_horse_armorgold_ingotgold_ingot"
+        "minecraft:diamond"
     ]
   },
   "requirements": [
     [
-      "diamond",
+      "coal_block",
       "has_the_recipe"
     ]
   ]
