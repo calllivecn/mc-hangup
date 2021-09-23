@@ -1,0 +1,55 @@
+{
+  "criteria": {
+    "emerald": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:emerald"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    },
+    "diamond": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:diamond"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    },
+    "gold_ingot": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:gold_ingot"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_netherite_ingot"
+    ]
+  },
+  "requirements": [
+    [
+      "emerald",
+      "diamond",
+      "gold_ingot"
+    ]
+  ]
+}

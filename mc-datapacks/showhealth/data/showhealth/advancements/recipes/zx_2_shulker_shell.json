@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "shulker_shell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:popped_chorus_fruit"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_shulker_shell"
+    ]
+  },
+  "requirements": [
+    [
+      "shulker_shell"
+    ]
+  ]
+}

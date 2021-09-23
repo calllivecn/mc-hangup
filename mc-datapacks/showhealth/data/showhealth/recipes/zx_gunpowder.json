@@ -1,0 +1,24 @@
+{
+	"type":"crafting_shaped",
+	"pattern":[
+		"1",
+		"2",
+		"3"
+	],
+	"key":{
+		"1":{
+			"item":"minecraft:paper"
+		},
+		"2":{
+			"item":"minecraft:sugar"
+		},
+		"3":[
+			{"item":"minecraft:charcoal"},
+			{"item":"minecraft:coal"}
+		]
+	},
+	"result":{
+		"item":"minecraft:gunpowder",
+		"count": 2
+	}
+}
