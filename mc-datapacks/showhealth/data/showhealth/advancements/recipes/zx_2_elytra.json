@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "phantom_membrane": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:phantom_membrane"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_elytra"
+    ]
+  },
+  "requirements": [
+    [
+      "phantom_membrane"
+    ]
+  ]
+}

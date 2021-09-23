@@ -1,0 +1,30 @@
+{
+  "criteria": {
+    "gold_ingot": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:gold_ingot"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_golden_horse_armor",
+      "showhealth:zx_totem",
+      "showhealth:zx_enchanted_gold_apple",
+      "showhealth:zx_totem"
+    ]
+  },
+  "requirements": [
+    [
+      "gold_ingot"
+    ]
+  ]
+}

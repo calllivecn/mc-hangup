@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "gunpowder": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:charcoal"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_gunpowder"
+    ]
+  },
+  "requirements": [
+    [
+      "gunpowder"
+    ]
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "iron_sword": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:iron_sword"],
+            "count": {
+                "min": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "rewards":{
+    "recipes": [
+      "showhealth:zx_trident"
+    ]
+  },
+  "requirements": [
+    [
+      "iron_sword"
+    ]
+  ]
+}
