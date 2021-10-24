@@ -8,9 +8,10 @@ import ssl
 import sys
 import time
 import json
-import ipaddress
-import binascii
 import socket
+import binascii
+import ipaddress
+import traceback
 from threading import Lock
 from pathlib import Path
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
@@ -154,6 +155,7 @@ def recv_handler(conn, selector):
             return
         except Exception as e:
             print("有异常:", e)
+            traceback.print_exc()
             return_ip(conn)
             conn_exit(conn, selector)
             return
@@ -187,26 +189,14 @@ def handler_accept(conn, selector):
 @new_thread(cmdprefix)
 def httpmcsleep(server):
 
-    #sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-
-    #sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
     sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-
-    #sock4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
     sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
-
-    #sock4.bind(("0.0.0.0", PORT))
     sock6.bind(("::", PORT))
-    
-    #sock4.listen(128)
     sock6.listen(128)
-
-    #sock4.setblocking(False)
     sock6.setblocking(False)
 
     selector = DefaultSelector()
-    #selector.register(sock4, EVENT_READ, handler_accept)
     selector.register(sock6, EVENT_READ, handler_accept)
 
     try:
