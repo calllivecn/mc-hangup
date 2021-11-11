@@ -9,6 +9,7 @@ import sys
 import time
 import json
 import socket
+import asyncio
 import binascii
 import ipaddress
 import traceback
@@ -108,37 +109,24 @@ def httpResponse(msg):
     return data
 
 
-def return_ip(conn):
-    ip46, port, _, _ = conn.getpeername()
+async def return_ip(writer, ip):
+    writer.write(httpResponse(ip))
+    await writer.drain()
 
-    ip46 = ipaddress.IPv6Address(ip46)
-    if ip46.ipv4_mapped:
-        ip = ip46.ipv4_mapped
-    else:
-        ip = ip46.compressed
-
-    conn.send(httpResponse(str(ip)))
-    conn.close()
+    writer.close()
+    await writer.wait_closed()
 
 
-def send_handler(conn, selector):
-    ip = conn.getpeername()[0]
-    conn.send(httpResponse(ip))
+async def handler(reader, writer):
 
-def conn_exit(conn, selector):
-    conn.close()
-    selector.unregister(conn)
-
-
-def recv_handler(conn, selector):
-
-    addr = conn.getpeername()
-    print("client:", addr, file=sys.stderr)
+    addr = writer.transport.get_extra_info("peername")
+    print("client: ", addr)
 
     try:
-        data = conn.recv(1024)
-    except socket.timeout:
-        return_ip(conn)
+        data = await asyncio.wait_for(reader.read(1024), timeout=5)
+    except asyncio.exceptions.TimeoutError:
+        await return_ip(writer, addr[0])
+        return
 
 
     if data:
@@ -151,73 +139,87 @@ def recv_handler(conn, selector):
             method, path, protocol = oneline.split(" ")
         except UnicodeDecodeError as e:
             print(e, addr)
-            conn_exit(conn, selector)
+            await return_ip(writer, addr[0])
             return
+
         except Exception as e:
             print("有异常:", e)
-            traceback.print_exc()
-            return_ip(conn)
-            conn_exit(conn, selector)
+            # traceback.print_exc()
+            await return_ip(writer, addr[0])
             return
 
         if path == "/" + SECRET:
             # check_mc_server_is_running
             if STATE.state == STATE.NOTPLAYERS:
-                conn.send(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
+                writer.write(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
+                await writer.drain()
             elif STATE.state == STATE.PLAYERS:
-                conn.send(httpResponse("服务器在运行，且有玩家。"))
+                writer.write(httpResponse("服务器在运行，且有玩家。"))
+                await writer.drain()
             elif STATE.state == STATE.SERVER_DOWN:
-                conn.send(httpResponse("正在开启服务器..."))
+                writer.write(httpResponse("正在开启服务器..."))
+                await writer.drain()
                 STATE.state = STATE.SERVER_UP
             else:
-                conn.send(httpResponse("未知状态..."))
+                writer.write(httpResponse("未知状态..."))
+                await writer.drain()
 
+            writer.close()
+            await writer.wait_closed()
         else:
-            return_ip(conn)
-    
-    conn_exit(conn, selector)
-    # selector.modify(conn, EVENT_WRITE, send_handler)
+            await return_ip(writer, addr[0])
+
+async def recv_handler(r, w):
+    try:
+        await handler(r,w)
+    except asyncio.exceptions.CancelledError:
+        pass
+
+async def asyncio_check_exit(server):
+    """
+    检查插件是否重载, 是：退出些loop
+    """
+
+    while True:
+        if PLUGIN_RELOAD:
+            # server.logger.info("olg_plugin 执行器退出...")
+            print("old_plugin 执行器退出...")
+
+            # close server
+            server.close()
+            await server.wait_closed()
+
+            # 清理还未执行完成的 task
+            tasks = asyncio.Task.all_tasks()
+            tasks_len = len(tasks)
+            if tasks_len:
+                print("asyncio.Task.all_tasks() --> ", tasks_len)
+                for task in tasks: 
+                    task.cancel()
+            break
+        else:
+            await asyncio.sleep(1)
 
 
-def handler_accept(conn, selector):
-    sock , addr = conn.accept()
-    sock.settimeout(16)
-    sock.setblocking(False)
-    selector.register(sock, EVENT_READ, recv_handler)
+async def httpmcsleep():
+    server = await asyncio.start_server(recv_handler, "*", 35565, reuse_address=True, reuse_port=True)
+
+    # addr, port = server.sockets[0].getsockname()
+    # print("client:", addr, file=sys.stderr)
+
+    await asyncio_check_exit(server)
+
+    async with server:
+        await server.serve_forever()
 
 
 @new_thread(cmdprefix)
-def httpmcsleep(server):
-
-    sock6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-    sock6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, True)
-    sock6.bind(("::", PORT))
-    sock6.listen(128)
-    sock6.setblocking(False)
-
-    selector = DefaultSelector()
-    selector.register(sock6, EVENT_READ, handler_accept)
-
+def start_httpmcsleep():
     try:
-        while True:
-            for key, event in selector.select(0.1):
-                conn = key.fileobj
-                func = key.data
-                func(conn, selector)
-
-            # selector.select(0.1) 超时处理。
-            if PLUGIN_RELOAD == True:
-                return
-
-    except Exception as e:
-        server.logger.warning(f"httpmcsleep() 异常： {e}")
-
-    finally:
-        selector.close()
-        #sock4.close()
-        sock6.close()
-
+        asyncio.run(httpmcsleep())
+    except asyncio.exceptions.CancelledError:
+        pass
+    print("asyncio.run() --> 安全退出")
 
 #################
 #
@@ -345,7 +347,8 @@ def on_load(server, old_plugin):
 
     # 启动http开关
     if old_plugin is None:
-        httpmcsleep(server)
+        # start_httpmcsleep(server)
+        start_httpmcsleep()
         players(server)
         execute(server)
     else:
@@ -353,7 +356,8 @@ def on_load(server, old_plugin):
         STATE.state = old_plugin.STATE.state
         time.sleep(3)
 
-        httpmcsleep(server)
+        # start_httpmcsleep(server)
+        start_httpmcsleep()
         players(server)
         execute(server)
 
