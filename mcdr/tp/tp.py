@@ -297,7 +297,7 @@ def invite(src, ctx):
     invite_player = ctx["player"]
 
     if invite_player == info.player:
-        server.reply(info, RText("不能向你自发送邀请", RColor.red))
+        server.reply(info, RText("不能向你自已发送邀请", RColor.red))
         return
     
     # 邀请的玩家是否在线
@@ -326,21 +326,19 @@ def accept(src, ctx):
     # 对方是否在线
     if player_online(server, accept_player):
 
-        if check_level(server, info):
+        # 查看邀请信息
+        k = accept_player + "_" + info.player
 
-            # 查看邀请信息
-            k = accept_player + "_" + info.player
+        t = int(time.time()) - INVITE.get(k, 0)
 
-            t = int(time.time()) - INVITE.get(k, 0)
+        if t < 180:
+            server.rcon_query(f"execute at {info.player} run teleport {info.player} {accept_player}")
+            server.rcon_query(f"execute at {info.player} run playsound minecraft:item.chorus_fruit.teleport player {info.player}")
+        else:
+            server.reply(info, RText("玩家没有邀请你或邀请已超过3分钟", RColor.yellow))
+            #playsound(server, info.player)
 
-            if t < 180:
-                server.rcon_query(f"execute at {info.player} run teleport {info.player} {accept_player}")
-                server.rcon_query(f"execute at {info.player} run playsound minecraft:item.chorus_fruit.teleport player {info.player}")
-            else:
-                server.reply(info, RText("玩家没有邀请你或邀请已超过3分钟", RColor.yellow))
-                #playsound(server, info.player)
-
-            pop_invite(k)
+        pop_invite(k)
 
     else:
         server.reply(info, RTextList("玩家 ", RText(f"{accept_player}", RColor.red), " 不在线"))
