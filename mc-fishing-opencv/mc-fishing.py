@@ -21,7 +21,10 @@ from threading import Thread, Lock
 import cv2
 import numpy as np
 import pyscreenshot
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError:
+    print(f"matpotlib 没有安装，不影响使用。")
 
 """
 try:
