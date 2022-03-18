@@ -8,6 +8,7 @@ import sys
 import time
 import json
 import socket
+import logging
 import subprocess
 import threading
 import tkinter as tk
@@ -21,6 +22,7 @@ from threading import Thread, Lock
 import cv2
 import numpy as np
 import pyscreenshot
+
 try:
     import matplotlib.pyplot as plt
 except ModuleNotFoundError:
@@ -35,9 +37,27 @@ except ModuleNotFoundError:
     sys.exit(1)
 """
 
+def getlogger(level=logging.INFO):
+    logger = logging.getLogger("logger")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(filename)s:%(funcName)s:%(lineno)d %(message)s", datefmt="%Y-%m-%d-%H:%M:%S")
+    consoleHandler = logging.StreamHandler(stream=sys.stdout)
+    #logger.setLevel(logging.DEBUG)
+
+    consoleHandler.setFormatter(formatter)
+
+    # consoleHandler.setLevel(logging.DEBUG)
+    logger.addHandler(consoleHandler)
+    logger.setLevel(level)
+    return logger
+
+logger = getlogger()
+
+
+
 
 # TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
-TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
+# TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
+TEMPLATE_PATH = Path("images") / "mc-fishing_850x480_1.18.png"
 
 ICON = Path("images") / "icon.png"
 
@@ -104,11 +124,11 @@ class Mouse:
                 try:
                     import mouse
                 except ModuleNotFoundError:
-                    print("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse", sys.stderr)
+                    logger.error(f"需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
                     sys.exit(1)
 
-                print("你的桌面环境是 wayland 的~")
-                print("还没有实现~~哈哈, 请换成，X11 桌面环境~, 可以测试使用了")
+                logger.info("你的桌面环境是 wayland 的~")
+                logger.info("使用 mouse.py 鼠标方案")
 
                 """
                 try:
@@ -136,7 +156,7 @@ class Mouse:
                     try:
                         data, addr = self.sock.recvfrom(64)
                     except socket.timeout:
-                        print("收到确认超时")
+                        logger.warning("收到 mouse.py server 确认超时")
                         sys.exit(2)
 
                     if data == b"ok":
@@ -147,19 +167,21 @@ class Mouse:
                 self.autotool = lambda : click(self.data)
 
             else:
-                print("你的桌面环境是 X11 的~")
+                logger.info("你的桌面环境是 X11 的~")
+                logger.info("使用 xdotool 方案")
 
                 try:
                     result = subprocess.run("type -p xdotool".split(), shell=True, stdout=subprocess.PIPE)
                     result.check_returncode()
                     self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
                 except Exception as e:
-                    print("没有找到 xdotool, 尝试其他工具。")
+                    logger.error("没有找到 xdotool, 尝试其他工具。")
                     raise e
                     # self.autotool = lambda : pyautogui.rightClick()
 
         else:
-            print("你的系统还没支持哦～", sys.stderr)
+            logger.error("你的系统还没支持哦～")
+            sys.exit(1)
 
     def click_right(self):
         self.autotool()
@@ -176,7 +198,7 @@ class BaitFish:
 
         p_img_template = Path(img_template)
         if not p_img_template.exists():
-            print("模板图片不存在。。。。", file=sys.stderr)
+            logger.error("模板图片不存在。。。。")
             sys.exit(2)
 
         #图中的小图
@@ -184,27 +206,26 @@ class BaitFish:
 
         # position: (200, 200, 400, 500) 
         self.position = position
-        # print("self.target size: ", position[2] - position[0])
+        logger.debug(f"self.target size: {position[2] - position[0]}")
 
         # 拿到模板图片大小
         template_size = self.template.shape
         h,w,c = template_size
 
-        print("template_size 1 :", template_size)
+        logger.debug(f"template_size 1 : {template_size}")
 
-        # 比较 宽， 生产 缩放比例。
-        self.scale = (position[2] - position[0]) / w
-        print("scale: ", self.scale)
+        # 比较 宽， 生产 缩放比例。(缩放之后就匹配不上了。。。。)
+        # self.scale = (position[2] - position[0]) / w
+        # logger.debug(f"scale: {self.scale}")
 
         # self.template = cv2.resize(template, (0, 0), fx=self.scale, fy=self.scale)
 
         #self.template_size = self.template.shape[:2]
 
         self.template_size = self.template.shape
-
         self.temp = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
-        print("template_size resize 2:", self.template_size)
+        # logger.debug(f"template_size resize 2: {self.template_size}")
 
         # cv2.imwrite(f"{time.time_ns()}-temp.PNG", self.temp) #, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
     
@@ -215,8 +236,8 @@ class BaitFish:
 
         # RGBA 2 RGB
         img = img.convert("RGB")
-
-        # img.save("screenshot-RGB.png")
+        # t=time.time_ns()
+        # img.save(f"img-debug/{t}-RGB.png")
         # self.target_img = np.asanyarray(img)
 
         # RGB 2 BGR
@@ -238,7 +259,6 @@ class BaitFish:
 
         # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
         # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
-
 
         img_gray = cv2.cvtColor(self.target_img, cv2.COLOR_BGR2GRAY)
 
@@ -275,6 +295,9 @@ class AutoFishing:
         self.root = tk.Tk()
         self.root.title("自动钓鱼AI")
 
+        # 运行状态
+        self._pregess = "-"
+
         # 设置应用图标
         # self.root.iconbitmap(tk.PhotoImage(ICON))
         self.root.iconphoto(False, tk.PhotoImage(file=ICON))
@@ -289,7 +312,7 @@ class AutoFishing:
 
         self.screen_w = self.root.winfo_screenwidth()
         self.screen_h = self.root.winfo_screenheight()
-        # print("screen:", self.screen_w, self.screen_h)
+        logger.debug(f"检测到屏幕大小: {self.screen_w} {self.screen_h}")
 
         # 指定主窗口位置与大小
         self.root.geometry(f"+{round(self.screen_w/5)}+{round(self.screen_h/5)}")
@@ -314,7 +337,7 @@ class AutoFishing:
         l1.grid(row=0, column=0)
 
         # select 框
-        self.selected = ttk.Combobox(self.frame, values=["850x480(推荐)", "其他模式"], state="readonly")
+        self.selected = ttk.Combobox(self.frame, values=["850x480(推荐)", "1920x1080", "其他模式"], state="readonly")
         self.selected.bind("<<ComboboxSelected>>", self.selectmode)
         self.selected.current(0)
         self.selected.grid(row=0, column=1)
@@ -376,7 +399,7 @@ class AutoFishing:
     
     def selectmode(self, event):
         value = self.selected.get()
-        print("select mode event:", event, "value:", value)
+        logger.info("select mode event:", event, "value:", value)
 
         if value == "850x480(推荐)":
             self.conf = Conf(Path("images") / "mc-fishing_850x480.png",
@@ -431,7 +454,7 @@ class AutoFishing:
         if self.fishingspeed <= 45:
 
             # 计数100次后，重新开始计算钓鱼速度。
-            if len(self.speed) > 100:
+            if len(self.speed) > 20:
                 self.speed = [self.fishingspeed]
             else:
                 self.speed.append(self.fishingspeed)
@@ -452,19 +475,19 @@ class AutoFishing:
             # self.top.deiconify()
             self.game_resolution.deiconify()
 
-            print("stoping...", self.th.name)
+            logger.info(f"stoping... {self.th.name}")
         else:
             # 隐藏窗口
             # self.top.withdraw()
             self.game_resolution.withdraw()
 
-            print("start ...")        
+            logger.info("start ...")
             self.start_stop_var.set("暂停")
             self.run_lock.acquire()
 
             # 拿到 游戏屏幕位置
             game_geometry = self.game_resolution.winfo_geometry()
-            print("game_resolution geometry:", game_geometry)
+            logger.info(f"game_resolution geometry: {game_geometry}")
 
             w, tmp = game_geometry.split("x")
             h, x, y = tmp.split("+")
@@ -476,12 +499,25 @@ class AutoFishing:
             temp_x2, temp_y2 = temp_x1 + 150, temp_y1 + 160
 
             screentshot_pos = (temp_x1, temp_y1, temp_x2, temp_y2)
-            print("tempalte posistion: ", screentshot_pos)
+            logger.debug(f"tempalte posistion: {screentshot_pos}")
 
             self.BF = BaitFish(screentshot_pos, str(TEMPLATE_PATH))
             self.th = Thread(target=self.run, daemon=True)
             self.th.start()
-            print(self.th.name, "autofish running.")
+            logger.info(f"{self.th.name} autofish running.")
+    
+    def pregess(self):
+        print(self._pregess + "\r", end="", flush=True)
+        if self._pregess == "-":
+            self._pregess = "\\"
+        elif self._pregess == "\\":
+            self._pregess = "|"
+        elif self._pregess == "|":
+            self._pregess = "/"
+        elif self._pregess == "/":
+            self._pregess = "-"
+        else:
+            self._pregess = "-"
     
     def run(self):
         while self.run_lock.locked():
@@ -495,20 +531,20 @@ class AutoFishing:
 
             t = round(end - start, 3)
             if img is None:
-                # cv2.imwrite(f"{time.time_ns()}.PNG", p)
+                self.pregess()
                 interval = 0.1 -  t
                 if interval >= 0:
                     time.sleep(interval)
                 else:
-                    print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: {t}/s 当前机器性能不足，可能错过收竽时机。""")
+                    logger.warning(f"{t}/s 当前机器性能不足，可能错过收竽时机。")
             else:
                 t = round(end - start, 3)
                 # 收鱼竿
-                #subprocess.run("xdotool click 3".split())
+                # subprocess.run("xdotool click 3".split())
                 self.fishshow(end)
                 self.mouse.click_right()
-                print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: 收鱼竿""")
-                # cv2.imwrite(f"{time.time_ns()}-ok.PNG", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                logger.info("收鱼竿")
+                # cv2.imwrite(f"""{time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())}.PNG""", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 time.sleep(1)
                 self.mouse.click_right()
                 time.sleep(2)
@@ -526,6 +562,11 @@ class AutoFishing:
 
 # main
 def main():
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "--debug":
+        logger.setLevel(logging.DEBUG)
+        logger.debug("deubg 模式")
+
     fishing = AutoFishing()
     fishing.mainloop()
 
