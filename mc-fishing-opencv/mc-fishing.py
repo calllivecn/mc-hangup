@@ -226,7 +226,7 @@ class BaitFish:
 
         # RGBA 2 RGB
         img = img.convert("RGB")
-        if len(sys.argv) >= 2 and sys.argvv[1] == "--debug":
+        if len(sys.argv) >= 2 and sys.argv[1] == "--debug":
             t=time.time_ns()
             img.save(f"img-debug/{t}-RGB.png")
         # self.target_img = np.asanyarray(img)
@@ -346,15 +346,19 @@ class AutoFishing:
 
         self.selected.grid(row=0, column=1)
 
-        # 设置游戏对齐窗口
+        # 设置游戏对齐窗口, 
         self.game_resolution = tk.Toplevel(self.root)
+
+        # 查看之前的配置里有保存位置没有。
         self.game_resolution.geometry(self.win_pos)
         self.game_resolution.resizable(False, False)
         self.game_resolution.attributes('-alpha', 0.2)
-        tmp = self.win_pos.split("+")[0]
-        x, y = tmp.split("x")
-        logger.debug(f"x, y: {x}, {y}")
-        self.winCenter(self.game_resolution, int(x), int(y))
+
+        # 如果没有配置说明是初始化，需要把窗口移到中间。
+        if not self.conf.chekc_conf:
+            x, y = self.win_pos.split("x")
+            logger.debug(f"x, y: {x}, {y}")
+            self.winCenter(self.game_resolution, int(x), int(y))
 
 
         # label = tkinter.Label(top, bg="#f21312")
@@ -433,7 +437,7 @@ class AutoFishing:
             self.winCenter(self.game_resolution, int(x), int(y))
 
             self.conf = Conf()
-            self.conf.save(self.index, self.template, self.win_pos, self.screen_pos)
+            self.conf.save(self.index, self.template, self.game_resolution.winfo_geometry(), self.screen_pos)
 
         elif value == "1920x1080":
             self.index = 1
@@ -452,7 +456,7 @@ class AutoFishing:
             self.winCenter(self.game_resolution, int(x), int(y))
 
             self.conf = Conf()
-            self.conf.save(self.index, self.template, self.win_pos, self.screen_pos)
+            self.conf.save(self.index, self.template, self.game_resolution.winfo_geometry(), self.screen_pos)
 
         elif value == "其他模式":
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
@@ -531,6 +535,10 @@ class AutoFishing:
             # 拿到游戏屏幕位置
             game_geometry = self.game_resolution.winfo_geometry()
             logger.info(f"拿到游戏屏幕位置: {game_geometry}")
+
+            # 查看窗口位置变化。
+            if self.win_pos != game_geometry:
+                self.conf.save(self.index, self.template, game_geometry, self.screen_pos)
 
             w, tmp = game_geometry.split("x")
             h, x, y = tmp.split("+")
