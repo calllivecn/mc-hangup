@@ -4,6 +4,7 @@ libkbm.py
 *.swp
 *.pyz
 *.pyc
+*.json
 
 __pycache__/
 .vscode/

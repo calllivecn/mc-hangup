@@ -64,51 +64,41 @@ ICON = Path("images") / "icon.png"
 class Conf:
 
     def __init__(self, savefile="data.json"):
-        self.savefile = Path(savefile)
+        if savefile != Path:
+            self.savefile = Path(savefile)
+        else:
+            self.savefile = savefile
         
         # 如果没有，则初始化。
-        if not self.savefile.exists():
-
-            self.__d["850x480(推荐)"] = {
-                "template": "mc-fishing_850x480.png",
-                "win_pos": self.game_resolution.winfo_geometry(),
-                "temp_post": (700, 300, 150, 160)
-            }
+        self.chekc_conf = self.savefile.exists()
     
-    def query(self, selectmode):
+    def load(self):
 
         with open(self.savefile, "r") as f:
-            self.__d = json.load(f)
+            self._d = json.load(f)
         
-        conf = self.__d.get(selectmode)
 
-        if conf is None:
-            return conf
-        else: 
-            self.template = Path(conf["template"])
+        self.index = self._d["index"]
+        self.template = self._d["template"]
+        # 例：win_pos = 850x480+700+300
+        self.win_pos = self._d["win_pos"]
+        # 是相对于 win_pos 的位置，和 模板本身的长宽 例：(700, 300, 150, 160)
+        self.screen_pos = self._d["screen_pos"]
 
-            # 例：win_pos = 850x480+700+300
-            self.win_pos = conf["win_pos"]
-
-            # 是相对于 win_pos 的位置，和  模板本身的长宽 例：(700, 300, 150, 160)
-            self.temp_pos = conf["temp_pos"]
-
-            return True
+        return True
 
 
-    def save(self, selectname, template, win_pos, temp_pos):
+    def save(self, index, template, win_pos, temp_pos):
         
-        with open(self.savefile, "r") as f:
-            self.__d = json.load(f)
-        
-        self.__d[selectname] = {
+        self._d = {
+            "index": index,
             "template": str(template),
-            "win_post": win_pos,
-            "temp_post": temp_pos,
+            "win_pos": win_pos,
+            "screen_pos": temp_pos, # 截图相对游戏窗口的位置
         }
         
         with open(self.savefile, "w") as f:
-            json.dump(self.__d, f)
+            json.dump(self._d, f)
         
         return True
 
@@ -236,8 +226,9 @@ class BaitFish:
 
         # RGBA 2 RGB
         img = img.convert("RGB")
-        # t=time.time_ns()
-        # img.save(f"img-debug/{t}-RGB.png")
+        if len(sys.argv) >= 2 and sys.argvv[1] == "--debug":
+            t=time.time_ns()
+            img.save(f"img-debug/{t}-RGB.png")
         # self.target_img = np.asanyarray(img)
 
         # RGB 2 BGR
@@ -305,9 +296,6 @@ class AutoFishing:
         # 不允许改变窗口大小
         # root.resizable(False, False)
 
-        # self.top = tk.Toplevel(self.root)
-        self.game_resolution = tk.Toplevel(self.root)
-
         # self.top.minsize(100, 50)
 
         self.screen_w = self.root.winfo_screenwidth()
@@ -317,15 +305,11 @@ class AutoFishing:
         # 指定主窗口位置与大小
         self.root.geometry(f"+{round(self.screen_w/5)}+{round(self.screen_h/5)}")
 
-        self.game_resolution.geometry("850x480")
-        self.game_resolution.resizable(False, False)
-        self.winCenter(self.game_resolution, 850, 480)
 
         # self.top.overrideredirect(True)
         # self.game_resolution.overrideredirect(True)
 
         # self.top.attributes('-alpha', 0.2)
-        self.game_resolution.attributes('-alpha', 0.2)
 
         # self.top.attributes("-topmost", True) 
         # print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
@@ -337,10 +321,41 @@ class AutoFishing:
         l1.grid(row=0, column=0)
 
         # select 框
-        self.selected = ttk.Combobox(self.frame, values=["850x480(推荐)", "1920x1080", "其他模式"], state="readonly")
+        self.selectors = ["850x480(推荐)", "1920x1080", "其他模式"]
+        self.selected = ttk.Combobox(self.frame, values=self.selectors, state="readonly")
         self.selected.bind("<<ComboboxSelected>>", self.selectmode)
-        self.selected.current(0)
+        
+        # check Conf
+        self.conf = Conf()
+        if self.conf.chekc_conf:
+            self.conf.load()
+            self.index = self.conf.index
+            self.win_pos = self.conf.win_pos
+            self.template = self.conf.template
+            self.screen_pos = self.conf.screen_pos
+
+            self.selected.current(self.index)
+        else:
+            self.index = 0
+            self.win_pos = "850x480"
+            self.template = str(TEMPLATE_PATH)
+            self.screen_pos = (700, 300, 150, 160)
+
+            self.conf.save(0, self.template, self.win_pos, self.screen_pos)
+            self.selected.current(0)
+
         self.selected.grid(row=0, column=1)
+
+        # 设置游戏对齐窗口
+        self.game_resolution = tk.Toplevel(self.root)
+        self.game_resolution.geometry(self.win_pos)
+        self.game_resolution.resizable(False, False)
+        self.game_resolution.attributes('-alpha', 0.2)
+        tmp = self.win_pos.split("+")[0]
+        x, y = tmp.split("x")
+        logger.debug(f"x, y: {x}, {y}")
+        self.winCenter(self.game_resolution, int(x), int(y))
+
 
         # label = tkinter.Label(top, bg="#f21312")
         # label.pack(fill=tkinter.BOTH, expand="y")
@@ -397,20 +412,48 @@ class AutoFishing:
     def mainloop(self):
         self.root.mainloop()
     
+
     def selectmode(self, event):
         value = self.selected.get()
-        logger.info("select mode event:", event, "value:", value)
+        logger.info(f"切换模式: {value}")
+        logger.debug(f"切换模式: {event} value: {value}")
 
         if value == "850x480(推荐)":
-            self.conf = Conf(Path("images") / "mc-fishing_850x480.png",
-                                win_pos=self.game_resolution.winfo_geometry(),
-                                temp_post=(700, 300, 150, 160)
-                            )
+            self.index = 0
+            self.template = Path("images") / "mc-fishing_850x480.png"
+            self.win_pos = "850x480"
+            self.screen_pos = (700, 300, 150, 160) # 左上角坐标，和截图的长宽。
+
+            self.game_resolution.resizable(True, True)
+            self.game_resolution.geometry(self.win_pos)
+            self.game_resolution.resizable(False, False)
+            self.game_resolution.attributes('-alpha', 0.2)
+            tmp = self.win_pos.split("+")[0]
+            x, y = tmp.split("x")
+            self.winCenter(self.game_resolution, int(x), int(y))
+
+            self.conf = Conf()
+            self.conf.save(self.index, self.template, self.win_pos, self.screen_pos)
+
         elif value == "1920x1080":
-            self.conf = Conf(Path("images") / "mc-fishing_1920x1080.png",
-                                win_pos=self.game_resolution.winfo_geometry(),
-                                temp_post=(700, 300, 150, 160)
-                            )
+            self.index = 1
+            self.template = Path("images") / "mc-fishing_1920x1080_1.18.png"
+            self.win_pos = "1920x1080"
+            # self.screen_pos = (1600, 630, 1050, 980)
+            # self.screen_pos = (1600, 630, 310, 430)
+            self.screen_pos = (1600, 560, 300, 430)
+
+            self.game_resolution.resizable(True, True)
+            self.game_resolution.geometry(self.win_pos)
+            self.game_resolution.resizable(False, False)
+            self.game_resolution.attributes('-alpha', 0.2)
+            tmp = self.win_pos.split("+")[0]
+            x, y = tmp.split("x")
+            self.winCenter(self.game_resolution, int(x), int(y))
+
+            self.conf = Conf()
+            self.conf.save(self.index, self.template, self.win_pos, self.screen_pos)
+
         elif value == "其他模式":
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
             self.selected.current(0)
@@ -485,9 +528,9 @@ class AutoFishing:
             self.start_stop_var.set("暂停")
             self.run_lock.acquire()
 
-            # 拿到 游戏屏幕位置
+            # 拿到游戏屏幕位置
             game_geometry = self.game_resolution.winfo_geometry()
-            logger.info(f"game_resolution geometry: {game_geometry}")
+            logger.info(f"拿到游戏屏幕位置: {game_geometry}")
 
             w, tmp = game_geometry.split("x")
             h, x, y = tmp.split("+")
@@ -495,16 +538,19 @@ class AutoFishing:
             self.game_position = (int(x), int(y))
 
             # 根据 game_position 位置，算出 目标图像在屏幕中的位置
-            temp_x1, temp_y1 = self.game_position[0] + 700, self.game_position[1] + 300
-            temp_x2, temp_y2 = temp_x1 + 150, temp_y1 + 160
+            # temp_x1, temp_y1 = self.game_position[0] + 700, self.game_position[1] + 300
+            # temp_x2, temp_y2 = temp_x1 + 150, temp_y1 + 160
+            temp_x1, temp_y1 = self.game_position[0] + self.screen_pos[0], self.game_position[1] + self.screen_pos[1]
+            temp_x2, temp_y2 = temp_x1 + self.screen_pos[2], temp_y1 + self.screen_pos[3]
+
 
             screentshot_pos = (temp_x1, temp_y1, temp_x2, temp_y2)
-            logger.debug(f"tempalte posistion: {screentshot_pos}")
+            logger.debug(f"截图位置: {screentshot_pos}")
 
-            self.BF = BaitFish(screentshot_pos, str(TEMPLATE_PATH))
+            self.BF = BaitFish(screentshot_pos, str(self.template))
             self.th = Thread(target=self.run, daemon=True)
             self.th.start()
-            logger.info(f"{self.th.name} autofish running.")
+            logger.info(f"{self.th.name} 开始运行 ...")
     
     def pregess(self):
         print(self._pregess + "\r", end="", flush=True)
