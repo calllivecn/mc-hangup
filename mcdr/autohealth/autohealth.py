@@ -28,47 +28,63 @@ PLUGIN_NAME = "可使背包里的：面包，鸡肉，牛肉，猪肉，自动�
 CMD = CMDPREFIX + ID_NAME
 
 FOOD = {
-    "minecraft:cooked_bread": 1,
-    "minecraft:cooked_chicken": 1,
-    "minecraft:cooked_beef": 2,
-    "minecraft:cooked_porkchop": 2,
-    "minecraft:cooked_cod": 1,
+    "minecraft:cooked_bread": 2,
+    "minecraft:cooked_chicken": 2,
+    "minecraft:cooked_cod": 2,
+    "minecraft:cooked_beef": 1,
+    "minecraft:cooked_porkchop": 1,
 }
 
-def check_food(server, player):
-    text = server.rcon_query(f"data get entity {player} Invetory")
+# 结束flag
+EXIT=False
 
-    for food in FOOD.items():
-        count = re.findall(f"""Slot: ([0-9]+)b, id: {food}, Count: ([0-9]+)b""", text)
+def check_food(server, player):
+    text = server.rcon_query(f"data get entity {player} Inventory")
+
+    for food, value in FOOD.items():
+        count = re.findall(f"""Slot: ([0-9]+)b, id: "{food}", Count: ([0-9]+)b""", text)
         total = sum([int(x[1]) for x in count])
-        if total > 1:
+        if total >= value:
             server.logger.debug(f"玩家 {player} 回血食物 {food}：{total}")
             return food
-        else:
-            return None
     
     return None
 
 
 @new_thread("auto health")
-def add_health(server, player):
-    while True:
+def add_health(server, player, number):
+    server.logger.info(f"{player} 自动回血技能启动。")
+    server.tell(player, RText(f"自动回血技能启动", RColor.yellow))
+
+    global EXIT
+    while EXIT:
         #calllivecn has the following entity data: 20.0f
         text = server.rcon_query(f"data get entity {player} Health")
-        result = re.findall(f"""{player} has the following entity data: (.*)f""", text)
+        result = re.match(f"""{player} has the following entity data: (.*)f""", text)
         health = float(result.group(1))
-        if health < 20:
+        if health < number:
             food = check_food(server, player)
             if food:
-                server.rcon_query(f"clear {player} {food} {FOOD[food]}")
-                server.rcon_query(f"effect give {player} minecraft:instant_health 1 {FOOD[food]}")
+                result = server.rcon_query(f"clear {player} {food} {FOOD[food]}")
+                if re.match(f"No items were found on player {player}", result):
+                    server.tell(player, RText(f"背包当前食物不够了!!!", RColor.red))
+                    EXIT=False
+                else:
+                    # server.rcon_query(f"effect give {player} minecraft:instant_health 1 {FOOD[food]} true")
+                
+                    # 状态效果等级是从0开始的
+                    server.rcon_query(f"effect give {player} minecraft:instant_health 1 0 true")
+                    # server.rcon_query(f"effect give {player} minecraft:regeneration 1 3 true") 不行，太慢
+                    # /effect give calllivecn minecraft:regeneration 1 3 true
+                    time.sleep(0.2)
             else:
                 server.tell(player, RText(f"背包当前食物不够了!!!", RColor.red))
-                server.tell(player, RText(f"自动回血技能结束。", RColor.red))
-                break
+                EXIT=False
         else:
-            time.sleep(0.1)
+            time.sleep(1)
 
+    server.logger.info(f"{player} 自动回血技能结束。")
+    server.tell(player, RText(f"自动回血技能结束。", RColor.yellow))
 
 
 @permission
@@ -78,22 +94,44 @@ def help_and_run(src):
     line1 = f"{'='*10} 使用方法 {'='*10}"
     line2 = f"{CMD}                      查看方法和使用"
     line3 = f"{CMD} <number>             支持运行时间(后面需要添加上时间限制)"
-    # line4 = RText(f"{CMD} all                  使用背包全部的绿宝石购买", RColor.yellow)
+    line4 = f"{CMD} stop                 结束技能"
 
-    server.reply(info, "\n".join([line1, line2, line3]))
+    server.reply(info, "\n".join([line1, line2, line3, line4]))
 
 
 @permission
-def shopping(src, ctx):
+def auto(src, ctx):
     server, info = __get(src)
     number = int(ctx.get("number"))
-    add_health(server, info.player)
+
+    global EXIT
+    if EXIT is True:
+        server.reply(info, f"自动回血技能已经发动，可以stop后重新发动。")
+    else:
+        EXIT = True
+        if 1<= number < 20:
+            add_health(server, info.player, number)
+        else:
+            server.reply(info, f"number的有效范围: 1<= number < 20")
+
+
+
+@permission
+def stop(src, ctx):
+    server, info = __get(src)
+    global EXIT
+    EXIT = False
+    server.reply(info, f"自动回血技能结束。")
 
 def build_command():
     c = Literal(CMD).runs(lambda src: help_and_run(src))
-    c.then(Integer("number").runs(lambda src, ctx: shopping(src, ctx)))
+    c.then(Integer("number").runs(lambda src, ctx: auto(src, ctx)))
+    c.then(Literal("stop").runs(lambda src, ctx: stop(src, ctx)))
     return c
 
 def on_load(server, old_plugin):
+    global EXIT
+    if old_plugin is not None:
+        old_plugin.EXIT=False
     server.register_help_message(CMD, PLUGIN_NAME, PermissionLevel.USER)
     server.register_command(build_command())

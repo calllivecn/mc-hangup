@@ -1,0 +1,14 @@
+{
+    "id": "autohealth", 
+    "version": "0.0.1",
+    "name": "技能自动回血",
+    "description": "没有介绍",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/mcdr",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+	}
+}
+
