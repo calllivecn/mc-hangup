@@ -30,23 +30,24 @@ CMD = CMDPREFIX + ID_NAME
 
 
 # config file
-conf_raw="""\
-[foods]
-minecraft:cooked_bread = 2
-minecraft:cooked_chicken= 2
-minecraft:cooked_cod = 2
-minecraft:cooked_beef = 1
-minecraft:cooked_porkchop = 1
+CONF_INIT="""\
+[minecraft]
+cooked_bread = 2
+cooked_chicken= 2
+cooked_cod = 2
+cooked_beef = 1
+cooked_porkchop = 1
 """
 
+CONF_FILENAME=CONFIG_DIR / (ID_NAME + ".conf")
 
-conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), conf_context=None)
+conf = readcfg(CONF_FILENAME, init_context=CONF_INIT)
 
 
-
-FOOD = []
+FOOD = {}
 for node in conf.sections():
-    FOOD.append(conf.items("minect"))
+    for k, v in conf.items(node):
+        FOOD[":".join([node, k])] =  int(v)
 
 """
 FOOD = {
@@ -64,7 +65,7 @@ EXIT=False
 def check_food(server, player):
     text = server.rcon_query(f"data get entity {player} Inventory")
 
-    for food, value in FOOD:
+    for food, value in FOOD.items():
         count = re.findall(f"""Slot: ([0-9]+)b, id: "{food}", Count: ([0-9]+)b""", text)
         total = sum([int(x[1]) for x in count])
         if total >= value:
@@ -99,7 +100,7 @@ def add_health(server, player, number):
                     server.rcon_query(f"effect give {player} minecraft:instant_health 1 0 true")
                     # server.rcon_query(f"effect give {player} minecraft:regeneration 1 3 true") 不行，太慢
                     # /effect give calllivecn minecraft:regeneration 1 3 true
-                    time.sleep(0.2)
+                    time.sleep(0.1)
             else:
                 server.tell(player, RText(f"背包当前食物不够了!!!", RColor.red))
                 EXIT=False
