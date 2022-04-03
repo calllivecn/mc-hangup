@@ -40,8 +40,7 @@ cooked_porkchop = 1
 """
 
 
-conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), conf_context=conf_raw)
-
+conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), init_context=conf_raw)
 
 
 FOOD = []
