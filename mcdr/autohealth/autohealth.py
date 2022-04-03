@@ -11,6 +11,7 @@ from funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,
+    readcfg,
     RText,
     RTextList,
     RColor,
@@ -27,6 +28,27 @@ PLUGIN_NAME = "可使背包里的：面包，鸡肉，牛肉，猪肉，自动�
 
 CMD = CMDPREFIX + ID_NAME
 
+
+# config file
+conf_raw="""\
+[foods]
+minecraft:cooked_bread = 2
+minecraft:cooked_chicken= 2
+minecraft:cooked_cod = 2
+minecraft:cooked_beef = 1
+minecraft:cooked_porkchop = 1
+"""
+
+
+conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), conf_context=None)
+
+
+
+FOOD = []
+for node in conf.sections():
+    FOOD.append(conf.items("minect"))
+
+"""
 FOOD = {
     "minecraft:cooked_bread": 2,
     "minecraft:cooked_chicken": 2,
@@ -34,6 +56,7 @@ FOOD = {
     "minecraft:cooked_beef": 1,
     "minecraft:cooked_porkchop": 1,
 }
+"""
 
 # 结束flag
 EXIT=False
@@ -41,7 +64,7 @@ EXIT=False
 def check_food(server, player):
     text = server.rcon_query(f"data get entity {player} Inventory")
 
-    for food, value in FOOD.items():
+    for food, value in FOOD:
         count = re.findall(f"""Slot: ([0-9]+)b, id: "{food}", Count: ([0-9]+)b""", text)
         total = sum([int(x[1]) for x in count])
         if total >= value:
