@@ -30,9 +30,7 @@ CMDPREFIX="."
 # mcdr_v2.x
 CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
-
 # 
-
 def readcfg(filename, init_context=None):
     conf = configparser.ConfigParser()
     if filename.exists():

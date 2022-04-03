@@ -30,7 +30,7 @@ CMD = CMDPREFIX + ID_NAME
 
 
 # config file
-conf_raw="""\
+CONF_INIT="""\
 [minecraft]
 cooked_bread = 2
 cooked_chicken= 2
@@ -40,7 +40,7 @@ cooked_porkchop = 1
 """
 
 
-conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), init_context=conf_raw)
+conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), init_context=CONF_INIT)
 
 
 FOOD = []
