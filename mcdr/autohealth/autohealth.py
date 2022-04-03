@@ -31,22 +31,22 @@ CMD = CMDPREFIX + ID_NAME
 
 # config file
 conf_raw="""\
-[foods]
-minecraft:cooked_bread = 2
-minecraft:cooked_chicken= 2
-minecraft:cooked_cod = 2
-minecraft:cooked_beef = 1
-minecraft:cooked_porkchop = 1
+[minecraft]
+cooked_bread = 2
+cooked_chicken= 2
+cooked_cod = 2
+cooked_beef = 1
+cooked_porkchop = 1
 """
 
 
-conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), conf_context=None)
+conf = readcfg(CONFIG_DIR / (ID_NAME + ".conf"), conf_context=conf_raw)
 
 
 
 FOOD = []
 for node in conf.sections():
-    FOOD.append(conf.items("minect"))
+    FOOD.append(conf.items(node))
 
 """
 FOOD = {
