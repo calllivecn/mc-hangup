@@ -5,6 +5,7 @@
 
 import re
 import time
+import configparser
 from pathlib import Path
 
 
@@ -28,6 +29,18 @@ CMDPREFIX="."
 # CONFIG_DIR = Path(__file__).parent.parent / "config"
 # mcdr_v2.x
 CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
+
+
+# 
+
+def readcfg(filename, init_context=None):
+    if filename.exists():
+        conf = configparser.ConfigParser()
+        return conf.read_file(filename)
+    else:
+        return 
+
+
 
 def __get(src):
     return src.get_server(), src.get_info()
