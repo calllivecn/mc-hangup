@@ -30,15 +30,19 @@ CMDPREFIX="."
 # mcdr_v2.x
 CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
-
 # 
-
 def readcfg(filename, init_context=None):
+    conf = configparser.ConfigParser()
     if filename.exists():
-        conf = configparser.ConfigParser()
-        return conf.read_file(filename)
+        conf.read(str(filename))
+        return conf
     else:
-        return 
+        if init_context is None:
+            raise Exception(f"初始化配置文本没有提供: {init_context}")
+        else:
+            conf.read_string(init_context)
+            conf.write(filename)
+            return conf
 
 
 
