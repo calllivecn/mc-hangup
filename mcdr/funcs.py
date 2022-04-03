@@ -34,11 +34,14 @@ CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 # 
 
 def readcfg(filename, init_context=None):
+    conf = configparser.ConfigParser()
     if filename.exists():
-        conf = configparser.ConfigParser()
-        return conf.read_file(filename)
+        conf.read_file(filename)
+        return conf
     else:
-        return 
+        conf.read_string(init_context)
+        conf.write(filename)
+        return conf
 
 
 
