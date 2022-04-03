@@ -18,6 +18,7 @@ from funcs import (
     RAction,
     Literal,
     Integer,
+    Float,
     new_thread,
     permission,
     PermissionLevel,
@@ -31,6 +32,12 @@ CMD = CMDPREFIX + ID_NAME
 
 # config file
 CONF_INIT="""\
+[autohealth]
+# 检测血量时间间隔单位秒 min: , max: 15
+Interval=1
+# 0.1 ~ 1 之间
+HealthPercentage=0.8
+
 [minecraft]
 cooked_bread = 2
 cooked_chicken= 2
@@ -43,9 +50,23 @@ CONF_FILENAME=CONFIG_DIR / (ID_NAME + ".conf")
 
 conf = readcfg(CONF_FILENAME, init_context=CONF_INIT)
 
+# auto health 配置
+Interval = conf.getfloat("autohealth", "Interval")
+
+if Interval < 1:
+    Interval = 1
+elif Interval > 15:
+    Interval = 15
+
+HealthPercentage = conf.getfloat("autohealth", "Interval")
+
 
 FOOD = {}
 for node in conf.sections():
+
+    if node == "autohealth":
+        continue
+
     for k, v in conf.items(node):
         FOOD[":".join([node, k])] =  int(v)
 
@@ -80,13 +101,19 @@ def add_health(server, player, number):
     server.logger.info(f"{player} 自动回血技能启动。")
     server.tell(player, RText(f"自动回血技能启动", RColor.yellow))
 
+    # 拿到玩家当前的最大血量
+    result = server.rcon_query(f"attribute {player} minecraft:generic.max_health base get")
+    re_match = re.match(f"Base value of attribute Max Health for entity calllivecn is (.*)", result)
+    max_health = float(re_match.group(1))
+
     global EXIT
     while EXIT:
         #calllivecn has the following entity data: 20.0f
         text = server.rcon_query(f"data get entity {player} Health")
         result = re.match(f"""{player} has the following entity data: (.*)f""", text)
         health = float(result.group(1))
-        if health < number:
+        cmp = health / max_health
+        if cmp <= number:
             food = check_food(server, player)
             if food:
                 result = server.rcon_query(f"clear {player} {food} {FOOD[food]}")
@@ -100,12 +127,12 @@ def add_health(server, player, number):
                     server.rcon_query(f"effect give {player} minecraft:instant_health 1 0 true")
                     # server.rcon_query(f"effect give {player} minecraft:regeneration 1 3 true") 不行，太慢
                     # /effect give calllivecn minecraft:regeneration 1 3 true
-                    time.sleep(0.1)
+                    time.sleep(0.2)
             else:
                 server.tell(player, RText(f"背包当前食物不够了!!!", RColor.red))
                 EXIT=False
         else:
-            time.sleep(1)
+            time.sleep(Interval)
 
     server.logger.info(f"{player} 自动回血技能结束。")
     server.tell(player, RText(f"自动回血技能结束。", RColor.yellow))
@@ -117,7 +144,7 @@ def help_and_run(src):
 
     line1 = f"{'='*10} 使用方法 {'='*10}"
     line2 = f"{CMD}                      查看方法和使用"
-    line3 = f"{CMD} <number>             支持运行时间(后面需要添加上时间限制)"
+    line3 = f"{CMD} <百分比>              血量低于多少时开始回血(后面需要添加上时间限制)"
     line4 = f"{CMD} stop                 结束技能"
 
     server.reply(info, "\n".join([line1, line2, line3, line4]))
@@ -126,17 +153,17 @@ def help_and_run(src):
 @permission
 def auto(src, ctx):
     server, info = __get(src)
-    number = int(ctx.get("number"))
+    number = float(ctx.get("number"))
 
     global EXIT
     if EXIT is True:
         server.reply(info, f"自动回血技能已经发动，可以stop后重新发动。")
     else:
         EXIT = True
-        if 1<= number < 20:
+        if 0.01<= number <= 0.99:
             add_health(server, info.player, number)
         else:
-            server.reply(info, f"number的有效范围: 1<= number < 20")
+            server.reply(info, f"number的有效范围: 0.01<= number < 0.99")
 
 
 
@@ -149,7 +176,7 @@ def stop(src, ctx):
 
 def build_command():
     c = Literal(CMD).runs(lambda src: help_and_run(src))
-    c.then(Integer("number").runs(lambda src, ctx: auto(src, ctx)))
+    c.then(Float("number").runs(lambda src, ctx: auto(src, ctx)))
     c.then(Literal("stop").runs(lambda src, ctx: stop(src, ctx)))
     return c
 

@@ -19,7 +19,7 @@ from mcdreforged.api.decorator import new_thread
 # from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
 # mcdr_v2.x
 from mcdreforged.command.builder.nodes.basic import Literal
-from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer
+from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
