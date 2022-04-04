@@ -143,8 +143,8 @@ def help_and_run(src):
     server, info = __get(src)
 
     line1 = f"{'='*10} 使用方法 {'='*10}"
-    line2 = f"{CMD}                      查看方法和使用"
-    line3 = f"{CMD} <百分比>              血量低于多少时开始回血(后面需要添加上时间限制)"
+    line2 = f"{CMD}                      查看方法和使用(一次回复2心，4点血。)"
+    line3 = f"{CMD} <百分比>              血量低于多少时开始回血(建议0.8,后面需要添加上时间限制)"
     line4 = f"{CMD} stop                 结束技能"
 
     server.reply(info, "\n".join([line1, line2, line3, line4]))
