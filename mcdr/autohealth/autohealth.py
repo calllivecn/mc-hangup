@@ -124,8 +124,7 @@ def clear_food(server, player, food_local):
     return False
 
 
-@new_thread("auto health")
-def add_health(server, player, number):
+def add_health_thread(server, player, number):
     # copy 一份 FOOD
     food_local = copy.deepcopy(FOOD)
 
@@ -142,10 +141,6 @@ def add_health(server, player, number):
     while EXIT:
         #calllivecn has the following entity data: 20.0f
         text = server.rcon_query(f"data get entity {player} Health")
-
-        if text is None:
-            server.logger.debug(f"玩家{player}下线")
-            return 
 
         result = re.match(f"""{player} has the following entity data: (.*)f""", text)
         health = float(result.group(1))
@@ -172,6 +167,13 @@ def add_health(server, player, number):
 
     server.logger.info(f"{player} 自动回血技能结束。")
     server.tell(player, RText(f"自动回血技能结束。", RColor.yellow))
+
+@new_thread("auto health")
+def add_health(server, player, number):
+    try:
+        add_health_thread(server, player, number)
+    except AttributeError:
+        server.logger.info(f"玩家 {player} 下线, 自动回血技能结束。")
 
 
 @permission
