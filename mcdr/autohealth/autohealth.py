@@ -23,10 +23,11 @@ from funcs import (
     new_thread,
     permission,
     PermissionLevel,
+    item_body,
 )
 
 ID_NAME = "autohealth"
-PLUGIN_NAME = "可使背包里的：面包，鸡肉，牛肉，猪肉，自动回血3分钟或者没有食物为止。"
+PLUGIN_NAME = "自动回血3分钟或者到没有食物为止。"
 
 CMD = CMDPREFIX + ID_NAME
 
@@ -84,41 +85,11 @@ FOOD = {
 # 结束flag
 EXIT=False
 
-## 只找只有一层{}的物品
-def item_body(result):
-    items=[]
-    stack = []
-    start = 0 
-    end = 0
-    stack1_flag=True
-
-    for i, c in enumerate(result):
-        if c == "{":
-            stack.append("}")
-            start = i
-
-        elif c == "}":
-            if stack1_flag and len(stack) == 1:
-                end = i
-                stack.pop()
-                items.append(result[start:end+1])
-
-            elif not stack1_flag and len(stack) == 1:
-                stack1_flag = True
-                start, end = i, i 
-                stack.pop()
-
-            elif len(stack) > 1:
-                start, end = i, i 
-                stack1_flag=False
-                stack.pop()
-    
-    return ",".join(items)
-
 
 def check_food(server, player, food_local):
     result = server.rcon_query(f"data get entity {player} Inventory")
 
+    # 只找只有一层{}中括号的物品， 目的是排除玩家身上容器里面的物品。
     text = item_body(result)
 
     server.logger.debug(f"FOOD: {food_local}")
@@ -207,12 +178,15 @@ def add_health(server, player, number):
 def help_and_run(src):
     server, info = __get(src)
 
-    line1 = f"{'='*10} 使用方法 {'='*10}"
-    line2 = f"{CMD}                      查看方法和使用(一次回复2心，4点血。)"
-    line3 = f"{CMD} <百分比>              血量低于多少时开始回血(建议0.8,后面需要添加上时间限制)"
-    line4 = f"{CMD} stop                 结束技能"
+    line = [
+        f"{'='*10} 使用方法 {'='*10}",
+        "可使用背包里的：面包，鸡肉，牛肉，猪肉，自动回血3分钟或者没有食物为止。",
+        f"{CMD}                      查看方法和使用(一次回复2心，4点血。)",
+        f"{CMD} <百分比>              血量低于多少时开始回血(建议0.8,后面需要添加上时间限制)",
+        f"{CMD} stop                 结束技能",
+    ]
 
-    server.reply(info, "\n".join([line1, line2, line3, line4]))
+    server.reply(info, "\n".join(line))
 
 
 @permission
