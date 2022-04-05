@@ -72,8 +72,9 @@ class State:
         self.SERVER_UP = 2
         self.NOTPLAYERS = 3
         self.SERVER_DOWN = 4
+        self.SERVER_STARTING = 5
 
-        self._state = self.SERVER_UP
+        self._state = self.SERVER_STARTING
 
         self.PLAYERS = []
 
@@ -168,15 +169,18 @@ async def handler(reader, writer):
         if path == "/" + SECRET:
             # check_mc_server_is_running
             if STATE.state == STATE.NOTPLAYERS:
-                writer.write(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
+                writer.write(httpResponse("服务器启动完成，没有玩家，倒计时关闭中..."))
                 await writer.drain()
             elif STATE.state == STATE.HAVE_PLAYER:
                 writer.write(httpResponse_players(STATE.PLAYERS))
                 await writer.drain()
             elif STATE.state == STATE.SERVER_DOWN:
-                writer.write(httpResponse("正在开启服务器..."))
+                writer.write(httpResponse("正在启动服务器...请稍等..."))
                 await writer.drain()
-                STATE.state = STATE.SERVER_UP
+                STATE.state = STATE.SERVER_STARTING
+            elif STATE.state == STATE.SERVER_STARTING:
+                writer.write(httpResponse("服务器启动中...请稍等..."))
+                await writer.drain()
             else:
                 writer.write(httpResponse("未知状态..."))
                 await writer.drain()
@@ -264,13 +268,13 @@ def execute(server):
             waittime = WAITTIME * 60
 
         
-        if STATE.state == STATE.SERVER_UP:
+        if STATE.state == STATE.SERVER_STARTING:
             server.logger.info("启动服务器中...")
 
             if not server.is_server_running():
                 server.start()
 
-            STATE.state = STATE.NOTPLAYERS
+            # STATE.state = STATE.NOTPLAYERS
 
         elif STATE.state == STATE.SERVER_DOWN:
 
@@ -392,10 +396,11 @@ def on_unload(server):
     pass
 
 
-#def on_server_startup(server):
-#    server.logger.info("on_server_startup()")
-#    STATE.state = STATE.NOTPLAYERS
-#
+# def on_server_startup(server, info):
+def on_server_startup(server):
+    server.logger.info("on_server_startup() 我监听服务器启动成功！")
+    STATE.state = STATE.SERVER_UP
+
 #def on_server_stop(server):
 #    server.logger.info("on_server_stop()")
 #    STATE.state = STATE.SERVER_DOWN
