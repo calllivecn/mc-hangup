@@ -31,7 +31,6 @@ SECRET = b""
 # 没有玩家后10分钟关闭服务器
 WAITTIME = 10
 
-
 cfg = Path("config") / "mcsleep.json"
 
 
@@ -68,13 +67,15 @@ class State:
     def __init__(self):
         self._lock = Lock()
 
-        self.PLAYERS = 1
-        self.IDLE = self.PLAYERS
+        self.HAVE_PLAYER = 1
+        self.IDLE = self.HAVE_PLAYER
         self.SERVER_UP = 2
         self.NOTPLAYERS = 3
         self.SERVER_DOWN = 4
 
         self._state = self.SERVER_UP
+
+        self.PLAYERS = []
 
     @property    
     def state(self):
@@ -108,6 +109,22 @@ def httpResponse(msg):
     data = "\r\n".join(response).encode("utf8") + msg
     return data
 
+def httpResponse_players(players):
+    msg = "<h1>服务器运行中！玩家列表：</h1>\n"
+
+    for player in players:
+        msg += f"<li>{player}</li>\n"
+
+    msg = msg.encode("utf8")
+    response = [
+            "HTTP/1.1 200 ok",
+            "Server: server",
+            "Content-Type: text/html;charset=UTF-8",
+            "Content-Length: " + str(len(msg)),
+            "\r\n",
+            ]
+    data = "\r\n".join(response).encode("utf8") + msg
+    return data
 
 async def return_ip(writer, ip):
     writer.write(httpResponse(ip))
@@ -153,8 +170,8 @@ async def handler(reader, writer):
             if STATE.state == STATE.NOTPLAYERS:
                 writer.write(httpResponse("服务器在运行，没有玩家，倒计时关闭中..."))
                 await writer.drain()
-            elif STATE.state == STATE.PLAYERS:
-                writer.write(httpResponse("服务器在运行，且有玩家。"))
+            elif STATE.state == STATE.HAVE_PLAYER:
+                writer.write(httpResponse_players(STATE.PLAYERS))
                 await writer.drain()
             elif STATE.state == STATE.SERVER_DOWN:
                 writer.write(httpResponse("正在开启服务器..."))
@@ -219,6 +236,8 @@ def start_httpmcsleep():
         asyncio.run(httpmcsleep())
     except asyncio.exceptions.CancelledError:
         pass
+    except RuntimeError:
+        pass
     print("asyncio.run() --> 安全退出")
 
 #################
@@ -261,7 +280,7 @@ def execute(server):
                 server.wait_for_start()
                 server.logger.info("服务器已关闭")
 
-        elif STATE.state == STATE.PLAYERS:
+        elif STATE.state == STATE.HAVE_PLAYER:
             pass
 
         elif STATE.state == STATE.NOTPLAYERS:
@@ -302,12 +321,16 @@ def players(server):
             # server.logger.info(f"players() server.rcon_query() --> {result}")
 
             match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-            players = int(match.group(1))
+            count = int(match.group(1))
+            players = match.group(3)
+            # 去除空格
+            players = list(map(lambda x: x.strip(), players.split(",")))
 
-            if players == 0:
+            if count == 0:
                 STATE.state = STATE.NOTPLAYERS
             else:
-                STATE.state = STATE.PLAYERS
+                STATE.state = STATE.HAVE_PLAYER
+                STATE.PLAYERS = players
 
         # 每秒check退出标志
         for _ in range(30):
@@ -385,4 +408,4 @@ def on_unload(server):
 def on_player_joined(server, player, info):
     if STATE.state == STATE.NOTPLAYERS:
         server.logger.info(f"玩家 {player} 加入游戏，中断 waitsleep")
-        STATE.state = STATE.PLAYERS
+        STATE.state = STATE.HAVE_PLAYER

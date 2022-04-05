@@ -18,6 +18,7 @@ from funcs import (
     Integer,
     permission,
     PermissionLevel,
+    item_body,
 )
 
 ID_NAME = "totem"
@@ -29,7 +30,9 @@ CMD = CMDPREFIX + ID_NAME
 UNIT_PRICE=7
 
 def emerald(server, player):
-    text = server.rcon_query(f"data get entity {player} Inventory")
+    result = server.rcon_query(f"data get entity {player} Inventory")
+
+    text = item_body(result)
 
     count = re.findall(f"""Slot: ([0-9]+)b, id: "minecraft:emerald", Count: ([0-9]+)b""", text)
     emerald_total = sum([int(x[1]) for x in count])
@@ -45,7 +48,7 @@ def help_and_run(src):
     line1 = f"{'='*10} 使用方法 {'='*10}"
     line2 = f"{CMD}                      查看方法和使用"
     line3 = f"{CMD} <number>             购买number个不死图腾(7绿宝石/个)"
-    line4 = RText(f"{CMD} all                  使用背包全部的绿宝石购买", RColor.yellow)
+    line4 = RText(f"{CMD} all                   使用背包全部的绿宝石购买", RColor.yellow)
 
     total = emerald(server, info.player)
 

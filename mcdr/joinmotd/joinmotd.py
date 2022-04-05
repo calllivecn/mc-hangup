@@ -2,16 +2,15 @@
 
 from re import match
 
-from mcdreforged.api.decorator import new_thread
-from mcdreforged.api.command import Literal
-from mcdreforged.api.types import ServerInterface, Info, PlayerCommandSource
-from mcdreforged.api.rtext import RText, RTextTranslation, RTextList, RAction
-from mcdreforged.minecraft.rtext import RColor
-
 from funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,
+    RText,
+    RColor,
+    RAction,
+    RTextList,
+    Literal,
 )
 
 CMD = CMDPREFIX + 'joinmotd'
@@ -38,7 +37,7 @@ def welcome_cmd(src, ctx):
 def on_player_joined(server, player, info):
     welcome(server, player)
 
-def on_load(server: ServerInterface, prev):
+def on_load(server, prev):
 
     server.register_help_message(CMD, "欢迎信息")
     server.register_command(

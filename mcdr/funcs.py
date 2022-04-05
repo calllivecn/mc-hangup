@@ -146,6 +146,7 @@ def check_level(server, info):
         return True
 
 
+# 竖项格式化
 def fmt(ls, delimite=10):
     ls_len = len(ls)
 
@@ -174,3 +175,39 @@ def fmt(ls, delimite=10):
 
         output_list.append(line)
     return output_list
+
+
+## 只找只有一层{}中括号的物品， 目的是排除玩家身上容器里面的物品。
+def item_body(result):
+    """
+    param: 一般是 "/data get entity {player} Inventory" 后的结果
+    return: 由"," 隔开的每个物品组成的字符串
+    """
+    items=[]
+    stack = []
+    start = 0 
+    end = 0
+    stack1_flag=True
+
+    for i, c in enumerate(result):
+        if c == "{":
+            stack.append("}")
+            start = i
+
+        elif c == "}":
+            if stack1_flag and len(stack) == 1:
+                end = i
+                stack.pop()
+                items.append(result[start:end+1])
+
+            elif not stack1_flag and len(stack) == 1:
+                stack1_flag = True
+                start, end = i, i 
+                stack.pop()
+
+            elif len(stack) > 1:
+                start, end = i, i 
+                stack1_flag=False
+                stack.pop()
+    
+    return ",".join(items)
