@@ -1,0 +1,14 @@
+{
+    "id": "speedrun", 
+    "version": "0.1.0",
+    "name": "大逃杀",
+    "description": "可以的",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/mcdr",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+	}
+}
+
