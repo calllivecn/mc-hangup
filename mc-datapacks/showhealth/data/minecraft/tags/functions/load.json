@@ -1,6 +1,6 @@
 {
     "replace": false,
     "values": [
-        "showhealth:load"
+        "showhealth:init"
     ]
 }
