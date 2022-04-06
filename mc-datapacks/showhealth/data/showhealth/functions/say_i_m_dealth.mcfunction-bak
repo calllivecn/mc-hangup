@@ -1,0 +1,4 @@
+#say @e[tag=Im_dealth] @s 死了
+execute as @e[type=player,tag=Im_dealth] at @s run me 死了
+
+#say @e[tag=Im_dealth] @s 死了
