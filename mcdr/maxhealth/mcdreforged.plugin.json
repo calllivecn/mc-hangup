@@ -1,0 +1,13 @@
+{
+    "id": "maxhealth",
+    "version": "0.1",
+    "name": "最大血量",
+    "description": "现在(2022-04-07)我应该可以用数据包实现",
+    "author": [
+        "calllivecn"
+    ],
+    "link": "https://github.com/github/mc-hangup/mcdr/joinMOTD.py",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
