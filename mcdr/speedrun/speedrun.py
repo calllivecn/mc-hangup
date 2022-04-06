@@ -170,21 +170,6 @@ class Team:
         self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar score""")
 
 
-    # 控制台有玩家名字相关的消息, 就说明可能是有玩家死亡，在对比玩家死亡记数。
-    def haveplayer(self, content):
-
-        # 排除玩家在线时，关服的情况。排除玩家退出的情况。
-        if re.search("(.*) lost connection", content) or re.match(f"(.*) left the game", content) or re.match("(.*) joined the game", content):
-            return None
-
-        for player in self.players_deathcount.keys():
-            result = re.search(player, content)
-            if result:
-                return player
-
-        return None
-
-
     def join(self, player):
         self.players.add(player)
 
@@ -483,21 +468,16 @@ def on_info(server, info):
     elif info.content == "unready":
         TEAM.unready(info.player)
         return
+    
+    result = re.match(f"\* (.*) 死了", info.content)
+    if result:
+        # player 死亡
+        player = result.group(1)
+        TEAM.player_death(player)
+        server.logger.info(f"检测到玩家 {player} 死亡")
+    # else:
+        # server.logger.info(f"没有检测到玩家死亡")
 
-    if len(TEAM.players) >= 1 and TEAM.haveplayer(info.content):
-        for death_player in TEAM.players_deathcount.keys():
-            result = server.rcon_query(f"scoreboard players get {death_player} death")
-            count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
-
-            # server.logger.info(f"TEAM.players_deathcount{{}} --> {TEAM.players_deathcount}, count:{count}")
-
-            if death_player and count:
-                c = int(count.group(1))
-                if TEAM.players_deathcount[death_player] != c:
-                    TEAM.players_deathcount[death_player] = c
-                    server.logger.info(f"检测到玩家 {death_player} 死亡, 次数为：{count.group(1)}")
-                    # 检测有到玩家死亡
-                    TEAM.player_death(death_player)
 
 
 def on_load(server, old_plugin):
