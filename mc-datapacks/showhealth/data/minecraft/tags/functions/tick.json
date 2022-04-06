@@ -1,6 +1,7 @@
 {
     "replace": false,
     "values": [
-        "showhealth:tick"
+        "showhealth:showhealth",
+        "showhealth:say_i_m_dealth"
     ]
 }
