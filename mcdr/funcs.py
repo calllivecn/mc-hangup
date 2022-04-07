@@ -211,3 +211,21 @@ def item_body(result):
                 stack.pop()
     
     return ",".join(items)
+
+
+# 配合 showhealth 数据包检测玩家死亡事件
+def event_player_death(server, info):
+    result = re.match(f"\* (.*) 死了", info)
+    if result:
+        # player 死亡
+        player = result.group(1)
+        result = server.rcon_query(f"data get entity {player} DeathTime")
+        if result:
+            deathtime = re.match(f"{player} has the following entity data: (.*)s", result)
+            t = deathtime.group(1)
+            server.logger.debug(f"玩家 {player} 的死亡时间计数：{deathtime}")
+            if t != "0":
+                server.logger.info(f"检测到玩家 {player} 死亡")
+                return player
+    
+    return None

@@ -20,6 +20,7 @@ from funcs import (
     new_thread,
     permission,
     PermissionLevel,
+    # event_player_death,
 )
 
 
@@ -36,6 +37,23 @@ SOUL_DIR = CONFIG_DIR / "maxhealth"
 # 根本拿不到死亡信息
 # def on_death_message(server, death_message):
     # server.logger.info(f"什么信息--> {death_message}")
+
+def event_player_death(server, info):
+    result = re.match(f"\* (.*) 死了", info)
+    if result:
+        # player 死亡
+        player = result.group(1)
+        result = server.rcon_query(f"data get entity {player} DeathTime")
+        if result:
+            deathtime = re.match(f"{player} has the following entity data: (.*)s", result)
+            t = deathtime.group(1)
+            server.logger.debug(f"玩家 {player} 的死亡时间计数：{deathtime}")
+            if t != "0":
+                server.logger.info(f"检测到玩家 {player} 死亡")
+                return player
+    
+    return None
+
 
 # 等玩家重生
 @new_thread
@@ -54,28 +72,9 @@ def life(server, player):
 
 def on_info(server, info):
     if info.source == 0:
-        result = re.match(f"\* (.*) 死了", info.content)
-        if result:
-            # player 死亡
-            player = result.group(1)
-            server.logger.info(f"检测到玩家 {player} 死亡")
+        player = event_player_death(server, info.content)
+        if player:
             life(server, player)
-
-        """
-        death_player = haveplayer(server, info.content)
-        if death_player:
-            result = server.rcon_query(f"scoreboard players get {death_player} death")
-            count = re.match(f"{death_player} has ([0-9]+) \[死亡记数\]", result)
-
-            if death_player and count:
-                c = int(count.group(1))
-
-                if players_deathcount[death_player] != c:
-                    players_deathcount[death_player] = c
-                    server.logger.info(f"检测到玩家：{death_player} 死亡, 次数为：{count.group(1)}")
-
-        players_deathcount[info.player] = int(count.group(1))
-        """
 
 
 # def build_command():
