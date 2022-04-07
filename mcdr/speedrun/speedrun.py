@@ -24,19 +24,9 @@ from funcs import (
     Integer,
     new_thread,
     PermissionLevel,
+    event_player_death,
 )
 
-
-# 我的线程装饰器
-def newthread(func):
-    def wrap(*args, **kwargs):
-        print("我的线程开始执行。")
-        th = Thread(target=func, args=args, kwargs=kwargs)
-        th.start()
-        return th
-    
-    return wrap
-        
 
 cmdprefix = "." + "speedrun"
 
@@ -94,6 +84,7 @@ class Team:
         if not server.is_rcon_running():
             return
 
+    def init_speedrun(self):
         # 设置记分板
         self.server.rcon_query(f"""scoreboard objectives add death deathCount ["死亡记数"]""")
 
@@ -103,9 +94,14 @@ class Team:
         self.server.rcon_query(f"""team add {self.teamname}""")
         # 关闭团队PVP
         self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
+    
 
+    # 初始化玩家的计分板
+    def init_scoreboard(self, p):
+
+        """
         result = self.server.rcon_query("list")
-        # server.logger.info(f"players() server.rcon_query() --> {result}")
+        self.server.logger.debug(f"players() server.rcon_query() --> {result}")
         match = re.match("There are [0-9]+ of a max of [0-9]+ players online: (.*)", result)
         players_raw = match.group(1).split(",")
         for p in players_raw:
@@ -118,52 +114,25 @@ class Team:
         # 插件重载时，随机拿个玩家的，设置为世界出生点。
         if len(self.players) >= 1:
             self.setworldspawn()
+        """
         
-        self.init_scoreboard()
+        result = self.server.rcon_query(f"scoreboard players get {p} death")
 
-    # 初始化玩家的计分板
-    def init_scoreboard(self, p=None):
-
-        if p == None:
-            for player in self.players_deathcount.keys():
-                result = self.server.rcon_query(f"scoreboard players get {player} death")
-
-                if re.match(f"Can't get value of death for {player}; none is set", result):
-                    self.server.rcon_query(f"scoreboard players set {player} death 0")
-                    self.players_deathcount[player] = 0
-                else:
-                    deathcount = re.match(f"{player} has ([0-9]+) \[死亡记数\]", result)
-                    self.players_deathcount[player] = int(deathcount.group(1))
-        
-            self.server.logger.info(f"players_deathcount{{}} --> {self.players_deathcount}")
-
-            # 设置初始得分为 0
-            for player in self.players_deathcount.keys():
-                result = self.server.rcon_query(f"scoreboard players get {player} score")
-
-                if re.match(f"Can't get value of score for {player}; none is set", result):
-                    self.server.rcon_query(f"scoreboard players set {player} score 0")
-
-            # self.server.logger.info(f"输出玩家字典 --> {TEMA.players_deathcount}")
+        if re.match(f"Can't get value of death for {p}; none is set", result):
+            self.server.rcon_query(f"scoreboard players set {p} death 0")
+            self.players_deathcount[p] = 0
         else:
-
-            result = self.server.rcon_query(f"scoreboard players get {p} death")
-
-            if re.match(f"Can't get value of death for {p}; none is set", result):
-                self.server.rcon_query(f"scoreboard players set {p} death 0")
+            deathcount = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
+            if deathcount is None:
                 self.players_deathcount[p] = 0
             else:
-                deathcount = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
-                if deathcount is None:
-                    self.players_deathcount[p] = 0
-                else:
-                    self.players_deathcount[p] = int(deathcount.group(1))
+                self.players_deathcount[p] = int(deathcount.group(1))
 
-            # 设置初始得分为 0
-            result = self.server.rcon_query(f"scoreboard players get {p} score")
+        # 设置初始得分为 0
+        result = self.server.rcon_query(f"scoreboard players get {p} score")
 
-            if re.match(f"Can't get value of score for {p}; none is set", result):
-                self.server.rcon_query(f"scoreboard players set {p} score 0")
+        if re.match(f"Can't get value of score for {p}; none is set", result):
+            self.server.rcon_query(f"scoreboard players set {p} score 0")
 
         # 至少要有玩家和，至少有一个玩家有对应记分板的值，才能显示出来。。。
         self.server.rcon_query(f"""scoreboard objectives setdisplay list death""")
@@ -171,7 +140,11 @@ class Team:
 
 
     def join(self, player):
+
         self.players.add(player)
+
+        # 初始化玩家计分板
+        self.init_scoreboard(player)
 
         # 开局中有新玩家进入服务器把他改在旁观者 ?
         self.server.rcon_query(f"team join {self.teamname} {player}")
@@ -202,7 +175,6 @@ class Team:
             self.game_start(self.gameid)
     
 
-    #@new_thread("speed run ready thread")
     def ready(self, player):
         # 如果已经开始游戏，跳过
         if not self.game_started:
@@ -243,9 +215,9 @@ class Team:
         p = random.choice(list(self.players))
         self.x, self.y, self.z = get_pos(self.server, p)
         self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
-        self.server.logger.info(f"开局重设世界生出点：x:{self.x} {self.y} z:{self.z}")
+        self.server.logger.info(f"开局重设世界生出点：x:{self.x} y:{self.y} z:{self.z}")
     
-    # 他追杀者，屏幕中间，显示，逃亡者，坐标。
+    # 追杀者，屏幕中间，显示，逃亡者，坐标。
     def show_running_location(self, time_=1800):
         # 这里的时间是1tick， 所以30分钟为 20*1800
         # 每局，结束时。要在显示，开始信息时，关闭。
@@ -288,19 +260,23 @@ class Team:
         # 设置白天
         self.server.rcon_query(f"time set day")
 
-        # 先要扩大边界
-        self.server.rcon_query(f"worldborder set 60000000")
+        # 先要扩大边界                             29999984
+        self.server.rcon_query(f"worldborder set 29999984")
+        # self.server.say("先扩大世界边界")
+        
 
         # 调换世界生出点
         self.x += 2000
         # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
         while True:
-            result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 15 30 false @a")
+            self.server.say(RText("寻找新一局初生点...", RColor.yellow))
+            # result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 15 30 false @a")
+            result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 50 60 false @a")
             if re.match("Could not spread ([0-9]+) entities around (.*) \(too many entities for space - try using spread of at most ([0-9\.]+)\)", result):
-                self.z += 100
+                self.z += 500
             else:
                 break
-            time.sleep(0.1)
+            time.sleep(1)
 
         # 设置世界中心和边界
         self.server.rcon_query(f"worldborder center {self.x} {self.z}")
@@ -328,8 +304,7 @@ class Team:
         self.server.say(f"逃亡者是：{self.player_running}")
 
 
-    #@new_thread("Speed run thread")
-    @newthread
+    @new_thread("Speed run thread")
     def game_start(self, gameid):
         # 点我unready
         unready = RText("秒钟后游戏开始, 请不要中途退出。", RColor.yellow)
@@ -383,11 +358,6 @@ class Team:
                 self.show_running_location()
                 time.sleep(sleep)
 
-        # 怎么结束？不好检测，玩家死亡。
-        # 1. 使用 scoresbaord 记录玩家死亡数。
-        # 2. 每次有玩家死亡，就拿到他的死亡记数，看看是否是逃亡者死亡。
-
-
         # 时间到，逃亡者胜利。
         self.game_end("running")
 
@@ -438,8 +408,11 @@ class Team:
 
 
 def on_server_startup(server):
-    server.logger.info("Speed Run Server running")
-    # waitrcon(server)
+    global TEAM
+    server.logger.info("Speed Run 服务器启动完成")
+    waitrcon(server)
+    TEAM = Team(server)
+    TEAM.init_speedrun()
 
 
 def on_player_joined(server, player, info):
@@ -449,7 +422,6 @@ def on_player_joined(server, player, info):
         TEAM = Team(server)
 
     TEAM.join(player)
-    TEAM.init_scoreboard(player)
 
 
 def on_player_left(server, player):
@@ -468,13 +440,10 @@ def on_info(server, info):
     elif info.content == "unready":
         TEAM.unready(info.player)
         return
-    
-    result = re.match(f"\* (.*) 死了", info.content)
-    if result:
-        # player 死亡
-        player = result.group(1)
+
+    player = event_player_death(server, info.content)
+    if player:
         TEAM.player_death(player)
-        server.logger.info(f"检测到玩家 {player} 死亡")
     # else:
         # server.logger.info(f"没有检测到玩家死亡")
 
@@ -488,6 +457,7 @@ def on_load(server, old_plugin):
 
     # 如果是第一次启动
     if old_plugin == None:
+        # TEAM = Team(server)
         pass
     else:
         # 修改重载前的，gameid.
