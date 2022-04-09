@@ -73,7 +73,7 @@ def victor(x1, y1, x2, y2):
 
 
 def show(server, player, s):
-    server.rcon_query(f"title {player} times 10 60 10")
+    # server.rcon_query(f"title {player} times 10 60 10")
     server.rcon_query(f"""title {player} subtitle {{"text":"{s}"}}""")
     server.rcon_query(f"""title {player} title {{"text":""}}""")
 
@@ -149,8 +149,8 @@ def flow_stop(src, ctx):
         server.reply(info, RText(f"没有使用flow", RColor.yellow))
 
 
-# def on_player_joined(server, player, info):
-    # welcome(server, player)
+def on_player_joined(server, player, info):
+    server.rcon_query(f"title {player} times 10 60 10")
 
 def help_and_run(src):
     server, info = __get(src)
