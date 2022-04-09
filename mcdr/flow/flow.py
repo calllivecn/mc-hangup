@@ -24,9 +24,12 @@ PLAYERS = {}
 def get_pos(server, player):
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {player} Pos")
-    position = re.search(f"{player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+    position = re.match(f"{player} has the following entity data: \[(.*)d, (.*)d, (.*)d\]", rcon_result)
     x, y, z = float(position.group(1)), float(position.group(2)), float(position.group(3))
-    return x, y, z
+    # 查询维度
+    rcon_result = server.rcon_query(f"data get entity {player} Dimension")
+    world = re.match(f'{player} has the following entity data: "(.*)"', rcon_result).group(1)
+    return x, y, z, world
 
 
 def get_rotation(server, player):
@@ -77,12 +80,23 @@ def show(server, player, s):
 
 def flow(server, player1, player2):
     while True:
-        p1x, p1y, p1z = get_pos(server, player1)
+        # 如果玩家不在, 说明需要停止flow
+        if not PLAYERS.get(player1):
+            server.logger.info(f"{player1} 停止 flow {player2}")
+            break
+
+        time.sleep(3)
+
+        p1x, p1y, p1z, p1world = get_pos(server, player1)
         rotation = get_rotation(server, player1)
         # r = mc_to_360(rotation)
         r = round(rotation, 1)
 
-        p2x, p2y, p2z = get_pos(server, player2)
+        p2x, p2y, p2z, p2world = get_pos(server, player2)
+
+        if p1world != p2world:
+            show(server, player1, "⤬")
+            continue
 
         X = (p2x - p1x)
         Z = (p2z - p1z)
@@ -101,9 +115,8 @@ def flow(server, player1, player2):
         s = rotate(relative_angle)
 
         server.logger.debug(f"相对坐标系角度：{a} - flower: {r} = 相对方向：{relative_angle}  指向：{s}")
-
         show(server, player1, s)
-        time.sleep(1)
+
 
 @new_thread("flow 任务")
 def flow_thread(server, player1, player2):
@@ -116,7 +129,6 @@ def flow_thread(server, player1, player2):
 
 def flow_cmd(src, ctx):
     server, info = __get(src)
-    # welcome(server, info.player)
     player2 = ctx.get("player")
     if info.player == player2:
         server.reply(info, RText(f"你不需要flow你自己", RColor.red))
@@ -125,7 +137,17 @@ def flow_cmd(src, ctx):
             server.reply(info, RText(f"不用重复开flow功能", RColor.red))
         else:
             PLAYERS[info.player] = player2
+            server.reply(info, RText(f"开始flow {player2}", RColor.yellow))
             flow_thread(server, info.player, player2)
+
+def flow_stop(src, ctx):
+    server, info = __get(src)
+    if PLAYERS.get(info.player):
+        server.reply(info, RText(f"停止flow", RColor.yellow))
+        PLAYERS.pop(info.player)
+    else:
+        server.reply(info, RText(f"没有使用flow", RColor.yellow))
+
 
 # def on_player_joined(server, player, info):
     # welcome(server, player)
@@ -134,9 +156,13 @@ def help_and_run(src):
     server, info = __get(src)
 
     line = [
+        f"{'='*10} 说明 {'='*10}",
+        f"1. ←↑→↓↖↗↘↙: 目标相对你的方向",
+        f"2. ⤬: 目标你和不在同一维度",
         f"{'='*10} 使用方法 {'='*10}",
-        f"{CMD}                      查看帮忙信息",
+        f"{CMD}                    查看帮忙信息",
         f"{CMD} <玩家>              你想要跟随的玩家",
+        f"{CMD}stop               停止flow",
     ]
 
     server.reply(info, "\n".join(line))
@@ -151,4 +177,5 @@ def on_load(server, prev):
     server.register_help_message(CMD, "跟随玩家位置")
 
     server.register_command(build_command())
+    server.register_command(Literal(f"{CMD}stop").runs(lambda src, ctx: flow_stop(src, ctx)))
 
