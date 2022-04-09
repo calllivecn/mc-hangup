@@ -1,0 +1,13 @@
+{
+    "id": "flow",
+    "version": "0.1",
+    "name": "flow",
+    "description": "",
+    "author": [
+        "calllivecn"
+    ],
+    "link": "https://github.com/github/mc-hangup/mcdr/joinMOTD.py",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
