@@ -19,22 +19,7 @@ from funcs import (
 
 CMD = CMDPREFIX + 'flow'
 
-PLAYERS_DICT = {}
-
-
-def welcome(server, player):
-    msg = [
-        RText("="*10 + "嗨～！" + "="*10 + "\n\n"),
-        RText(f"欢迎！ {player} ！\n\n", RColor.yellow),
-    ]
-
-    r = RText(">>> 点击这里，查看可用命令 <<<", RColor.green)
-    r.set_hover_text("!!help")
-    r.set_click_event(RAction.run_command, f"!!help")
-
-    msg.append(r)
-
-    server.tell(player, RTextList(*msg))
+PLAYERS = {}
 
 def get_pos(server, player):
     # 查询坐标
@@ -49,25 +34,6 @@ def get_rotation(server, player):
     rotation = re.match(f"{player} has the following entity data: \\[(.*)f, (.*)f\]", result)
     return float(rotation.group(1))
 
-
-# 查看相对角度，返回方向字符。
-def angle(a):
-    if 337.5 <= a < 360 or 0 <= a < 22.5:
-        return "↓"
-    elif 22.5 <= a < 67.5:
-        return "↘"
-    elif 67.5 <= a < 112.5:
-        return "→"
-    elif 112.5 <= a < 157.5:
-        return "↗"
-    elif 157.5 <= a < 202.5:
-        return "↑"
-    elif 202.5 <= a < 247.5:
-        return "↖"
-    elif 247.5 <= a < 292.5:
-        return "←"
-    elif 292.5 <= a < 337.5:
-        return "↙"
 
 # 查看相对角度，返回方向字符。
 def rotate(a):
@@ -96,7 +62,6 @@ def rotate(a):
         return "↑"
 
 
-
 ANGLE = 180/math.pi
 
 def victor(x1, y1, x2, y2):
@@ -110,7 +75,6 @@ def show(server, player, s):
     server.rcon_query(f"""title {player} title {{"text":""}}""")
 
 
-@new_thread
 def flow(server, player1, player2):
     while True:
         p1x, p1y, p1z = get_pos(server, player1)
@@ -119,39 +83,6 @@ def flow(server, player1, player2):
         r = round(rotation, 1)
 
         p2x, p2y, p2z = get_pos(server, player2)
-
-        """
-        try:
-            # a = math.atan((p2x - p1x) / (p2z - p1z)) * (180/math.pi)
-            X = (p2x - p1x)
-            Z = (p2z - p1z)
-            a = math.atan(X / Z) * (180/math.pi)
-        except ZeroDivisionError:
-            # Z == 0, 说明 a 为 90 or -90
-            if p2x > p1x:
-                a = -90
-            else:
-                a = 90
-            
-        if X >= 0:
-            if Z > 0:
-                a = a
-            elif Z == 0:
-                # 说明坐标相同, 在一起。
-                show(server, player1, "↺")
-            else:
-                a -= -90
-        elif X < 0:
-            if Z >= 0:
-                a = -a
-            else:
-                a += 90
-            # 说明坐标相同, 在一起。
-            # show(server, player1, "↺")
-        """
-
-        # relative_angle = r - a
-        # s = angle(relative_angle)
 
         X = (p2x - p1x)
         Z = (p2z - p1z)
@@ -169,12 +100,19 @@ def flow(server, player1, player2):
 
         s = rotate(relative_angle)
 
-        server.logger.debug(f"相对坐标系角度：{a} 指向：{s}")
-        server.logger.info(f"相对坐标系角度：{a} - {r} = {relative_angle}  指向：{s}")
+        server.logger.debug(f"相对坐标系角度：{a} - flower: {r} = 相对方向：{relative_angle}  指向：{s}")
 
         show(server, player1, s)
         time.sleep(1)
 
+@new_thread("flow 任务")
+def flow_thread(server, player1, player2):
+    try:
+        flow(server, player1, player2)
+    except Exception:
+        if PLAYERS.get(player1):
+            PLAYERS.pop(player1)
+        server.logger.info(f"{player1} flow 任务退出。")
 
 def flow_cmd(src, ctx):
     server, info = __get(src)
@@ -183,7 +121,11 @@ def flow_cmd(src, ctx):
     if info.player == player2:
         server.reply(info, RText(f"你不需要flow你自己", RColor.red))
     else:
-        flow(server, info.player, player2)
+        if PLAYERS.get(info.player):
+            server.reply(info, RText(f"不用重复开flow功能", RColor.red))
+        else:
+            PLAYERS[info.player] = player2
+            flow_thread(server, info.player, player2)
 
 # def on_player_joined(server, player, info):
     # welcome(server, player)
