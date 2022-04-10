@@ -3,6 +3,7 @@
 import re
 import math
 import time
+import traceback
 
 from funcs import (
     CMDPREFIX,
@@ -40,9 +41,6 @@ def get_rotation(server, player):
 
 # 查看相对角度，返回方向字符。
 def rotate(a):
-    if abs(a) > 180:
-        a = 360 - abs(a)
-
     if 0 <= a < 22.5:
         return "↑"
     elif 22.5 <= a < 67.5:
@@ -110,11 +108,14 @@ def flow(server, player1, player2):
         relative_angle = round(a - r, 1)
 
         if abs(relative_angle) > 180:
-            relative_angle = 360 - abs(relative_angle)
+            relative_angle = round(360 - abs(relative_angle), 1)
+            if r < 0:
+                relative_angle = -relative_angle
 
         s = rotate(relative_angle)
 
-        server.logger.debug(f"相对坐标系角度：{a} - flower: {r} = 相对方向：{relative_angle}  指向：{s}")
+        server.logger.debug(f"相对坐标系角度：{a} - flower: {r} = 相对方向：{relative_angle} 指向：{s}")
+        server.logger.debug(f"值计数：{a} - {r} = {relative_angle} 指向：{s}")
         show(server, player1, s)
 
 
@@ -126,6 +127,7 @@ def flow_thread(server, player1, player2):
         if PLAYERS.get(player1):
             PLAYERS.pop(player1)
         server.logger.info(f"{player1} flow 任务退出。")
+        traceback.print_exc()
 
 def flow_cmd(src, ctx):
     server, info = __get(src)
