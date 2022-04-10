@@ -8,6 +8,7 @@ import re
 import time
 import math
 import random
+import traceback
 
 
 from funcs import (
@@ -78,12 +79,8 @@ def get_rotation(server, player):
     rotation = re.match(f"{player} has the following entity data: \\[(.*)f, (.*)f\]", result)
     return float(rotation.group(1))
 
-
 # 查看相对角度，返回方向字符。
 def rotate(a):
-    if abs(a) > 180:
-        a = 360 - abs(a)
-
     if 0 <= a < 22.5:
         return "↑"
     elif 22.5 <= a < 67.5:
@@ -154,7 +151,9 @@ def flow(server, flow_time, player1, player2):
         relative_angle = round(a - r, 1)
 
         if abs(relative_angle) > 180:
-            relative_angle = 360 - abs(relative_angle)
+            relative_angle = round(360 - abs(relative_angle), 1)
+            if r < 0:
+                relative_angle = -relative_angle
 
         s = rotate(relative_angle)
 
@@ -173,6 +172,7 @@ def flow_thread(server, flow_time, player1, player2):
         if PLAYERS.get(player1):
             PLAYERS.pop(player1)
         server.logger.info(f"{player1} flow 任务退出。")
+        traceback.print_exc()
 
 
 #######################
@@ -201,6 +201,10 @@ class Team:
         # 玩家列表
         self.players = set()
         self.readys = set()
+
+        self.x = None
+        self.y = None
+        self.z = None
 
     def init_speedrun(self):
         # 设置记分板
@@ -321,10 +325,13 @@ class Team:
             # 这样可以
             # self.server.rcon_query(f"execute at @a run pawnpoint {player}")
     
-        p = random.choice(list(self.players))
-        self.x, self.y, self.z = get_pos_point(self.server, p)
-        self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
-        self.server.logger.info(f"开局重设世界生出点：x:{self.x} y:{self.y} z:{self.z}")
+        # p = random.choice(list(self.players))
+        # self.x, self.y, self.z = get_pos_point(self.server, p)
+        # self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
+        # self.server.logger.info(f"开局重设世界生出点：x:{self.x} y:{self.y} z:{self.z}")
+
+        # 可以 一条指令 搞定
+        self.server.rcon_query(f"execute at @r run setworldspawn ~ ~ ~")
     
     # 追杀者，屏幕中间，显示，逃亡者，坐标。
     def show_running_location(self, time_=1800):
@@ -402,7 +409,7 @@ class Team:
         self.server.rcon_query(f"worldborder center {self.x} {self.z}")
         self.server.rcon_query(f"worldborder set 2000")
         
-        # 随机拿一名玩家的位置, 设置新的世界出生点。
+        # 给每个玩家设置出生点，还有设置新的世界初生点。
         self.setworldspawn()
 
         # 玩家死亡后立刻重生到新的地点
