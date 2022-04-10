@@ -168,19 +168,23 @@ async def handler(reader, writer):
 
         if path == "/" + SECRET:
             # check_mc_server_is_running
-            if STATE.state == STATE.NOTPLAYERS:
+            if STATE.state == STATE.NOTPLAYERS or STATE.state == STATE.SERVER_UP:
                 writer.write(httpResponse("服务器启动完成，没有玩家，倒计时关闭中..."))
                 await writer.drain()
+
             elif STATE.state == STATE.HAVE_PLAYER:
                 writer.write(httpResponse_players(STATE.PLAYERS))
                 await writer.drain()
+
             elif STATE.state == STATE.SERVER_DOWN:
                 writer.write(httpResponse("正在启动服务器...请稍等..."))
                 await writer.drain()
                 STATE.state = STATE.SERVER_STARTING
+
             elif STATE.state == STATE.SERVER_STARTING:
                 writer.write(httpResponse("服务器启动中...请稍等..."))
                 await writer.drain()
+
             else:
                 writer.write(httpResponse("未知状态..."))
                 await writer.drain()
@@ -360,7 +364,7 @@ def permission(func):
 def on_info(server, info):
     if info.source == 1 and info.content == cmdprefix + " wakeup":
         server.logger.info("mc sleep 启动服务器中...")
-        STATE.state = STATE.SERVER_UP
+        STATE.state = STATE.SERVER_STARTING
     elif info.source == 1 and info.content == cmdprefix + " sleep":
         server.logger.info("mc sleep 关闭服务器...")
         STATE.state = STATE.SERVER_DOWN
