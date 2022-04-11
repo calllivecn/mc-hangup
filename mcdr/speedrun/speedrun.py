@@ -382,28 +382,43 @@ class Team:
         # 设置白天
         self.server.rcon_query(f"time set day")
 
-        # 先要扩大边界                             29999984
+        # 先要扩大边界                             29999984 , worldborder 需要小于三千万
         self.server.rcon_query(f"worldborder set 29999984")
         # self.server.say("先扩大世界边界")
 
-        # 记录世界出生点
+        # 拿到当前位置
         self.x, self.y, self.z = get_pos_point(self.server, self.player_running)
 
         # 调换世界生出点
         self.x += 2000
         # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
         self.server.say(RText("寻找新一局初生点...", RColor.yellow))
-        time.sleep(1)
+
+        # 召唤一个看不见的小盔甲架，名字为随机。
+        armor_name = random.randint(10000,99999)
+        self.server.rcon_query(f'''execute @r run summon minecraft:armor_stand ~ ~ ~ {{Small:1,Invisible:1,CustomName:'{{"text":"{armor_name}"}}'}}''')
+
         while True:
             # result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 15 30 false @a")
-            result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 50 60 false @a")
+            # result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 50 60 false @a")
+
+            self.server.say(RText("寻找新一局初生点...", RColor.yellow))
+
+            result = self.server.rcon_query(f"""execute as @e[type=minecraft:armor_stand,nbt={{CustomName:'{{"text":"{armor_name}"}}'}}] run spreadplayers {self.x} {self.z} 50 60 false @s""")
+
             if re.match("Could not spread ([0-9]+) entities around (.*) \(too many entities for space - try using spread of at most ([0-9\.]+)\)", result):
                 self.z += 500
             else:
                 break
             time.sleep(1)
-            self.server.say(RText("寻找新一局初生点...", RColor.yellow))
-            self.server.logger.warning(result)
+            self.server.logger.info(result)
+
+        # 输送玩家过去
+        self.server.rcon_query(f"spreadplayers {self.x} {self.z} 50 60 false @a")
+        
+        # 去掉生成的盔甲架
+        self.server.rcon_query(f"""kill @e[type=minecraft:armor_stand,nbt={{CustomName:'{{"text":"{armor_name}"}}'}}]""")
+
 
         # 设置世界中心和边界
         self.server.rcon_query(f"worldborder center {self.x} {self.z}")
