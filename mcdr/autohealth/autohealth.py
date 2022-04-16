@@ -7,6 +7,7 @@
 import re
 import time
 import copy
+from winsound import PlaySound
 
 from funcs import (
     CMDPREFIX,
@@ -84,6 +85,7 @@ FOOD = {
 
 # 结束flag
 EXIT=False
+PLAYERS = {}
 
 
 def check_food(server, player, food_local):
@@ -137,8 +139,7 @@ def add_health_thread(server, player, number):
     re_match = re.match(f"Base value of attribute Max Health for entity {player} is (.*)", result)
     max_health = float(re_match.group(1))
 
-    global EXIT
-    while EXIT:
+    while (p := PLAYERS.get(player)):
         #calllivecn has the following entity data: 20.0f
         text = server.rcon_query(f"data get entity {player} Health")
 
@@ -161,7 +162,7 @@ def add_health_thread(server, player, number):
                 time.sleep(0.1)
             else:
                 server.tell(player, RText(f"背包当前食物不够了!!!", RColor.red))
-                EXIT=False
+                PLAYERS.pop(player)
         else:
             time.sleep(Interval)
 
@@ -196,11 +197,10 @@ def auto(src, ctx):
     server, info = __get(src)
     number = float(ctx.get("number"))
 
-    global EXIT
-    if EXIT is True:
+    if PLAYERS.get(info.player):
         server.reply(info, f"自动回血技能已经发动，可以stop后重新发动。")
     else:
-        EXIT = True
+        PLAYERS[info.player] = 1
         if 0.01<= number <= 0.99:
             add_health(server, info.player, number)
         else:
@@ -211,9 +211,10 @@ def auto(src, ctx):
 @permission
 def stop(src, ctx):
     server, info = __get(src)
-    global EXIT
-    EXIT = False
-    server.reply(info, f"自动回血技能结束。")
+    if PLAYERS.get(info.player):
+        PLAYERS.pop(info.player)
+        server.reply(info, f"自动回血技能结束。")
+
 
 def build_command():
     c = Literal(CMD).runs(lambda src: help_and_run(src))
