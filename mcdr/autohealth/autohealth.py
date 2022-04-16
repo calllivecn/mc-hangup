@@ -7,7 +7,6 @@
 import re
 import time
 import copy
-from winsound import PlaySound
 
 from funcs import (
     CMDPREFIX,
