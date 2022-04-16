@@ -1,2 +1,0 @@
-scoreboard objectives remove show_health
-scoreboard objectives remove total_health
