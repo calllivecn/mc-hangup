@@ -118,7 +118,7 @@ def show(server, player, s):
 
 def flow(server, flow_time, player1, player2):
     C = 0
-    interval = 3
+    interval = 1
     while C <= flow_time:
         C += interval
         # 如果玩家不在, 说明需要停止flow
@@ -495,14 +495,14 @@ class Team:
                 first_show = False
 
                 for killer in self.killer:
-                    flow_thread(self.server, 60, killer, self.player_running)
+                    flow_thread(self.server, 300, killer, self.player_running)
 
                 time.sleep(5)
                 # self.show_running_location()
                 time.sleep(sleep - 5)
             else:
                 for killer in self.killer:
-                    flow_thread(self.server, 60, killer, self.player_running)
+                    flow_thread(self.server, 300, killer, self.player_running)
 
                 # self.show_running_location()
                 time.sleep(sleep)
