@@ -236,9 +236,6 @@ class Team:
         # 倒计时，中止flag
         self.countdowning = False
 
-        # 在重载时，初始化在线玩家死亡计数
-        # self.players_deathcount = {}
-
         # 玩家列表
         self.players = set()
         self.readys = set()
@@ -256,38 +253,9 @@ class Team:
         self.server.rcon_query(f"""scoreboard objectives add score dummy ["得分"]""")
 
         self.server.rcon_query(f"""team add {self.teamname}""")
+
         # 关闭团队PVP
         self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
-
-        # 关闭服务器命令通知
-        self.server.rcon_query(f"team modify {self.teamname} friendlyFire false")
-    
-
-    # 初始化玩家的计分板
-    def init_scoreboard(self, p):
-        '''
-        result = self.server.rcon_query(f"scoreboard players get {p} death")
-
-        if re.match(f"Can't get value of death for {p}; none is set", result):
-            self.server.rcon_query(f"scoreboard players set {p} death 0")
-            self.players_deathcount[p] = 0
-        else:
-            deathcount = re.match(f"{p} has ([0-9]+) \[死亡记数\]", result)
-            if deathcount is None:
-                self.players_deathcount[p] = 0
-            else:
-                self.players_deathcount[p] = int(deathcount.group(1))
-
-        # 设置初始得分为 0
-        result = self.server.rcon_query(f"scoreboard players get {p} score")
-
-        if re.match(f"Can't get value of score for {p}; none is set", result):
-            self.server.rcon_query(f"scoreboard players set {p} score 0")
-        '''
-
-        # 至少要有玩家和，至少有一个玩家有对应记分板的值，才能显示出来。。。
-        self.server.rcon_query(f"""scoreboard objectives setdisplay list death""")
-        self.server.rcon_query(f"""scoreboard objectives setdisplay sidebar score""")
 
 
     def join(self, player):
@@ -354,36 +322,7 @@ class Team:
             if self.countdowning:
                 self.countdowning = False
 
-    def setworldspawn(self):
-        # 为第个玩家重新设置出生点
-
-        # 这样一条指令就能设置所有玩家的出生点了～～～
-        self.server.rcon_query("execute at @a run spawnpoint @a")
-
-        # for player in self.players:
-            # 这条会出现，玩家的床被阻挡。。。,然后用到世界出生点信息，效果也可以。
-            # self.server.rcon_query(f"execute as @a run pawnpoint {player}")
-            
-            # 这样可以
-            # self.server.rcon_query(f"execute at @a run pawnpoint {player}")
     
-        # p = random.choice(list(self.players))
-        # self.x, self.y, self.z = get_pos_point(self.server, p)
-        # self.server.rcon_query(f"setworldspawn {self.x} {self.y} {self.z}")
-        # self.server.logger.info(f"开局重设世界生出点：x:{self.x} y:{self.y} z:{self.z}")
-
-        # 可以 一条指令 搞定
-        self.server.rcon_query(f"execute at @r run setworldspawn ~ ~ ~")
-    
-    # 追杀者，屏幕中间，显示，逃亡者，坐标。
-    def show_running_location(self, time_=1800):
-        # 这里的时间是1tick， 所以30分钟为 20*1800
-        # 每局，结束时。要在显示，开始信息时，关闭。
-        t = 20*time_
-        # self.server.rcon_query(f"title @a[tag=!running] times 1 {t} 1")
-        self.server.rcon_query(f"""title @a[tag=!running] subtitle {{"text":"x:{self.running_x} y:{self.running_y} z:{self.running_z}"}}""")
-        # self.server.rcon_query(f"""title @a[tag=!running] title {{"text":""}}""")
-
     def game_start_init(self):
         # 做一些，开局前的准备; # 在每次开局前做？
 
@@ -402,38 +341,6 @@ class Team:
 
         self.server.rcon_query("function speedrun:game_start_init1")
 
-        """
-        # 清除玩家成就
-        # self.server.rcon_query(f"advancement revoke @a everything")
-
-        # 清空玩家物品
-        self.server.rcon_query(f"clear @a")
-
-        # 清除玩家使用床等物品，的记录点, java 版并不行。
-        # self.server.rcon_query(f"clearspawnpoint @a")
-
-        # 清空玩家效果
-        self.server.rcon_query(f"effect clear @a")
-
-        # 清空玩家等级
-        self.server.rcon_query(f"experience set @a 0 levels")
-        self.server.rcon_query(f"experience set @a 0 points")
-
-        # 玩家生命恢复
-        # self.server.rcon_query(f"effect give @a minecraft:instant_health 1 20 true")
-        self.server.rcon_query(f"effect give @a minecraft:instant_health 1 4 true")
-
-        # 恢复饱食度
-        self.server.rcon_query(f"effect give @a minecraft:saturation 1 20 true")
-
-        # 设置白天
-        self.server.rcon_query(f"time set day")
-
-        # 先要扩大边界                             29999984 , worldborder 需要小于三千万
-        self.server.rcon_query(f"worldborder set 29999984")
-        # self.server.say("先扩大世界边界")
-
-        """
 
         # 拿到当前位置
         self.x, self.y, self.z = get_pos_point(self.server, random.choice(list(self.players)))
@@ -442,17 +349,14 @@ class Team:
         self.x += 2000
         # spreadplayers <x> <z> <分散间距> <最大范围> [under 最大高度] <考虑队伍> <传送目标…>
 
-        # 召唤一个看不见的小盔甲架，名字为随机。
-        # armor_name = random.randint(10000,99999)
-        # self.server.rcon_query(f'''execute @r run summon minecraft:armor_stand ~ ~ ~ {{Small:1,Invisible:1,CustomName:'{{"text":"{armor_name}"}}'}}''')
-
+        # 召唤一个看不见的小盔甲架，打上tag。
         self.server.rcon_query(f'''summon minecraft:armor_stand ~ ~ ~ {{Marker:1,Small:1,Invisible:1,NoGravity:1,Invulnerable:1,Tags:["{armor_stand_name}"]}}''')
 
         while True:
+            self.server.say(RText("寻找新一局初生点...", RColor.yellow))
+
             # result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 15 30 false @a")
             # result = self.server.rcon_query(f"spreadplayers {self.x} {self.z} 50 60 false @a")
-
-            self.server.say(RText("寻找新一局初生点...", RColor.yellow))
 
             result = self.server.rcon_query(f"""execute as @e[type=minecraft:armor_stand,tag={armor_stand_name}] run spreadplayers {self.x} {self.z} 50 60 false @s""")
 
@@ -488,36 +392,11 @@ class Team:
             time.sleep(1)
         
 
-        # 去掉生成的盔甲架
-        # self.server.rcon_query(f"""kill @e[type=minecraft:armor_stand,tag={armor_stand_name}]""")
-
-
         # 设置世界中心和边界
         self.server.rcon_query(f"worldborder center {self.x} {self.z}")
-        # self.server.rcon_query(f"worldborder set 2000")
         
         # 给每个玩家设置出生点，还有设置新的世界初生点。
-        #self.setworldspawn()
         self.server.rcon_query("function speedrun:game_start_init2")
-
-        # 玩家死亡后立刻重生到新的地点
-        # self.server.rcon_query(f"gamerule doImmediateRespawn true")
-        # self.server.rcon_query(f"kill @a")
-        # self.server.rcon_query(f"gamerule doImmediateRespawn false")
-        
-        # 开启玩家之间 PVP
-        # self.server.rcon_query(f"team empty {self.teamname}")
-
-        # 
-        # self.server.rcon_query(f"gamemode survival @a")
-
-        # 用 title 提示玩家游戏开始。
-        # self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
-
-        # self.server.rcon_query("title @a times 1 100 1")
-        # self.server.rcon_query("""title @a subtitle {{"text":"逃亡者是：{self.player_running}", "bold": true, "color":"red"}}""")
-        # self.server.rcon_query(f"""title @a title {{"text":"游戏开始！","bold":true, "color": "yellow"}}""")
-        # self.server.say(f"逃亡者是：{self.player_running}")
 
 
     @new_thread("Speed run thread")
@@ -581,36 +460,13 @@ class Team:
         # 结束flow 
         PLAYERS.clear()
 
-        # self.server.rcon_query(f"team join {self.teamname} @a")
-        # self.server.rcon_query(f"gamemode adventure @a")
-
-        # self.server.rcon_query("title @a times 2 100 2")
-        # self.server.rcon_query("""title @a subtitle {"text":"游戏时间到！","bold":true, "color": "yellow"}""")
-
         # 结束提示, running: 逃亡者胜。
         if who == "running":
             self.server.rcon_query("tag @a[tag=running] add win")
-
-            # self.server.rcon_query("""title @a[tag=running] title {"text":"胜利！","bold":true, "color": "yellow"}""")
-            # self.server.rcon_query("""title @a[tag=!running] title {"text":"失败！","bold":true, "color": "yellow"}""")
-
-            # 计算得分
-            # self.server.rcon_query(f"scoreboard players add @a[tag=running] score 1")
-
         else:
             self.server.rcon_query("tag @a[tag=!running] add win")
-
-            # self.server.rcon_query("""title @a[tag=!running] title {"text":"胜利！","bold":true, "color": "yellow"}""")
-            # self.server.rcon_query("""title @a[tag=running] title {"text":"失败！","bold":true, "color": "yellow"}""")
-
-            # 计算得分
-            # self.server.rcon_query(f"scoreboard players add @a[tag=!running] score 1")
         
         self.server.rcon_query("function speedrun:game_end")
-
-        # 给逃亡者上tag, 结束时，取消掉
-        # self.server.rcon_query(f"tag @a remove running")
-        # self.server.rcon_query(f"tag @a remove killer")
 
         # self.server.rcon_query("execute at @a run playsound minecraft:item.totem.use player @a")
 
