@@ -41,7 +41,7 @@ Interval=1
 HealthPercentage=0.8
 
 [minecraft]
-cooked_bread = 2
+bread = 2
 cooked_chicken= 2
 cooked_cod = 2
 cooked_beef = 1
@@ -72,15 +72,7 @@ for node in conf.sections():
     for k, v in conf.items(node):
         FOOD.append((":".join([node, k]), int(v)))
 
-"""
-FOOD = {
-    "minecraft:cooked_bread": 2,
-    "minecraft:cooked_chicken": 2,
-    "minecraft:cooked_cod": 2,
-    "minecraft:cooked_beef": 1,
-    "minecraft:cooked_porkchop": 1,
-}
-"""
+
 
 # 结束flag
 EXIT=False
@@ -139,6 +131,7 @@ def add_health_thread(server, player, number):
     max_health = float(re_match.group(1))
 
     while (p := PLAYERS.get(player)):
+
         #calllivecn has the following entity data: 20.0f
         text = server.rcon_query(f"data get entity {player} Health")
 
@@ -165,8 +158,6 @@ def add_health_thread(server, player, number):
         else:
             time.sleep(Interval)
 
-    server.logger.info(f"{player} 自动回血技能结束。")
-    server.tell(player, RText(f"自动回血技能结束。", RColor.yellow))
 
 @new_thread("auto health")
 def add_health(server, player, number):
@@ -174,6 +165,8 @@ def add_health(server, player, number):
         add_health_thread(server, player, number)
     except AttributeError:
         server.logger.info(f"玩家 {player} 下线, 自动回血技能结束。")
+        if PLAYERS.get(player):
+            PLAYERS.pop(player)
 
 
 @permission
@@ -213,6 +206,9 @@ def stop(src, ctx):
     if PLAYERS.get(info.player):
         PLAYERS.pop(info.player)
         server.reply(info, f"自动回血技能结束。")
+    else:
+        server.reply(info, f"自动回血技能未启动。")
+
 
 
 def build_command():
