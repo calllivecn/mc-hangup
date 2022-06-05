@@ -101,6 +101,22 @@ def check_food(server, player, food_local):
     
     return None
 
+# 使用倍率加血，回血快。
+def index_health(need, food, food_v):
+    i = 0 # 加血倍率 0~28
+    t_need = 0 
+    reduce_food = 0 
+    while True:
+        t_n = (4<<i)
+        t_f = food_v*(1<<i+1)
+        if need >= t_n and food >= t_f:
+            i+=1
+            t_need, reduce_food = t_n, t_f 
+        else:
+            break
+
+    return (i, reduce_food)
+
 
 # 这样不行，clear 是最多减 v 个。
 def clear_food(server, player, food_local):
