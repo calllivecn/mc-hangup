@@ -5,15 +5,11 @@
 
 import os
 import re
-import sys
-import json
 import time
 import shutil
 import subprocess
 from pathlib import Path
 from threading import Lock
-
-from pprint import pprint
 
 # from mcdreforged import config
 # from mcdreforged.api.decorator import new_thread
@@ -31,54 +27,36 @@ from funcs import (
     new_thread,
     permission,
     PermissionLevel,
+    readcfg,
+    get_players,
 )
 
 CMD = CMDPREFIX + "bak"
 PLUGIN_NAME = "服务端自动备份工具(rsync)"
 
-config_file = CONFIG_DIR / "backup.json"
-
-# 默认目录 和 备份路径(相对mcdr的路径)
-BACKUP_DIR = Path("backup")
-AUTOBACKUP_DIR = BACKUP_DIR / "autobackup"
-WORLD_DIR = Path("server") / "world"
-BACKUP_INFO = BACKUP_DIR / "backupinfo.json"
+CONF_FILE = CONFIG_DIR / "backup.conf"
 
 # 配置文件
 
-CFG = {
-    "world_dir": str(WORLD_DIR),
-    "backup_dir": str(BACKUP_DIR),
-    "backup_interval": 30 * 60,
-    "backup_seq": [1, 2, 2, 4, 3],
-}
+cfg_text = """\
+[backup]
+# 默认目录备份路径(相对mcdr的路径)
+world_dir = server/world
+backup_dir = backup
 
-def read_cfg(server):
-    global BACKUP_DIR
-    global WORLD_DIR
-    global AUTOBACKUP_DIR
-    global CFG
+# 多长时间备份一次, 单位分钟。
+backup_interval = 30
+"""
 
-    if config_file.exists():
-        with open(config_file) as f:
-            CFG = json.load(f)
+conf = readcfg(CONF_FILE, cfg_text)
 
-            BACKUP_DIR = Path(CFG["backup_dir"])
-            WORLD_DIR = Path(CFG["world_dir"])
+# 默认目录 和 备份路径(相对mcdr的路径)
+WORLD_DIR = Path(conf.get("backup", "world_dir"))
+BACKUP_DIR = Path(conf.get("backup", "backup_dir"))
+BACKUP_INTERVAL = conf.getint("backup", "backup_interval")
 
-    else:
-        with open(config_file, "w") as f:
-            json.dump(CFG, f, ensure_ascii=False, indent=4)
-
-    # init
-    if not BACKUP_DIR.exists():
-        os.makedirs(BACKUP_DIR)
-    
-    # init autobackup 目录
-    # if not AUTOBACKUP_DIR.exists():
-        # os.makedirs(AUTOBACKUP_DIR)
-    
-    return True
+if not BACKUP_DIR.exists():
+    BACKUP_DIR.mkdir()
 
 
 # 给一个锁
@@ -108,7 +86,6 @@ class BackupInternal:
         self._lock.release()
 
 
-SAVED_THE_GAME = Lock()
 PLUGIN_RELOAD = False
 B = BackupInternal()
 backing = Lock()
@@ -117,19 +94,29 @@ backing = Lock()
 ### 定义 
 
 
-def backup2current(source, target):
-    if not source.endswith("/"):
-        source = source + "/"
+def backup2current(latest: Path, source: Path, target: Path):
+    latest_ = str(latest.absolute())
+    source_ = str(source)
+    target_ = str(target)
+
+    if not source_.endswith("/"):
+        source_ = source_ + "/"
     
     print(f"rsync: {source} ==> {target}")
     try:
-        # subprocess.check_call(["rsync", "-av", "--delete", source, target])
-        subprocess.check_call(["rsync", "-a", "--delete", source, target])
+        subprocess.run(["rsync", "-a", "--delete", "--link-dest", latest_, source_, target_])
     except FileNotFoundError as e:
         raise e
     except Exception as e:
         raise e
-
+    
+    latest_symlink = target.parts[-1]
+    # 把软链指向最新备份目录
+    if latest.exists():
+        os.remove(latest)
+        latest.symlink_to(latest_symlink)
+    else:
+        latest.symlink_to(latest_symlink)
 
 
 class BackInfo:
@@ -139,104 +126,68 @@ class BackInfo:
         self.server = server
 
         self.cur_timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+        self.cur = BACKUP_DIR / self.cur_timestamp
 
-        self.backup_seq = CFG["backup_seq"]
-        self.backup_info = BACKUP_DIR / "backupinfo.json"
+        self.backup_list = os.listdir(BACKUP_DIR)
+        self.backup_list.sort()
 
-        self.backup_list = []
-        self.rollback_last = {"timestamp": "", "msg": ""}
-
-        # 读写备份信息的锁
-        self.__rw = Lock()
+        self.rollback_last = BACKUP_DIR / "rollback_last"
+        self.latest = BACKUP_DIR / "latest"
 
 
-        # 初始化bak目录
-        for i in range(len(self.backup_seq)):
-            bak = BACKUP_DIR / f"bak-{i}"
-            if not bak.exists():
-                bak.mkdir()
-
-            self.backup_list.append({"value": self.backup_seq[i] - 1, "timestamp": "", "msg":""})
-            
-
-        if BACKUP_INFO.exists():
-            self.__read()
-        else:
-            self.__write()
-
-    
     def list(self):
         ls = []
 
-        for d in self.backup_list:
-            ls.append((d["timestamp"], d["msg"]))
-        
-        if self.rollback_last["timestamp"] == "":
-            return ls, None
+        for b in self.backup_list:
+            bak = BACKUP_DIR / b
+            if bak.is_dir() and not bak.is_symlink():
+                filename = Path(str(bak) + ".msg")
+                msg = self.__readmsg(filename)
+                ls.append((b, msg))
+
+        ls.reverse()
+        return ls
+
+
+    def autobackup(self, msg=""):
+
+        self.server.say(RTextList(RText("开始备份存档： "), RText(f"{self.cur_timestamp} ", RColor.yellow), RText("...")))
+
+        t1 = time.time()
+
+        # save-off
+        self.server.rcon_query("save-off")
+        # server.rcon_query("save-all flush")
+
+        result = self.server.rcon_query("save-all")
+        if re.findall("Saved the game", result):
+            # self.server.say("拿到 `Saved the game` 结果")
+            pass
         else:
-            return ls, (self.rollback_last["timestamp"], self.rollback_last["msg"])
-        
-    
-    def __update(self, msg):
-        """
-        更新 value archivename
-        return 要被删除的 archivename, 没有 return ""
-        """
+            # self.server.say(RText("服务器可能 过于卡顿 备份失败。。。", RColor.red))
+            # self.server.say(RText(f"没拿到 ｀Saved the game｀ 拿到的是{result}", RColor.red))
+            self.server.rcon_query("save-on")
+            return
 
-        cur = self.cur_timestamp
-        cur_msg = msg
+        try:
+            backup2current(self.latest, WORLD_DIR, self.cur)
+        except Exception as e:
+            self.server.say(RText("插件内部错误。。。", RColor.red))
+            raise e
+        finally:
+            self.server.rcon_query("save-on")
 
-        baks = []
+        t2 = time.time()
 
-        seq_len = len(self.backup_list)
-        print("self.backup_list ==> ")
-        pprint(self.backup_list)
+        # 写下备注
+        if msg:
+            self.__write(msg)
 
-        # 从第2个开始，算起
-        for i in range(seq_len):
-
-            self.backup_list[i]["value"] += 1
-
-            if self.backup_seq[i] <= self.backup_list[i]["value"]:
-                self.backup_list[i]["value"] = 0
-
-                self.backup_list[i]["timestamp"], cur = cur, self.backup_list[i]["timestamp"]
-                
-                #update 备份注释
-                self.backup_list[i]["msg"], cur_msg = cur_msg, self.backup_list[i]["msg"]
-
-                # 准备执行备份递进
-                baks.append(BACKUP_DIR / f"bak-{i}")
-            else:
-                # if self.backup_list[i]["timestamp"] != "" and cur != self.backup_list[i]:
-                    # baks.append(BACKUP_DIR / f"bak-{i}")
-                break
-
-        print("self.backup_list ==> 执行后 ")
-        pprint(self.backup_list)
-
-        baks_stack = []
-        if len(baks) >= 2:
-            a = baks[1:]
-            b = baks[:-1]
-            a.reverse()
-            b.reverse()
-
-            baks_stack = list(zip(b, a))
-
-        print("baks_stack ==> ")
-        pprint(baks_stack)
-
-        for src, target in baks_stack:
-            self.__baks(src, target)
-
-
-        self.__write()
+        self.server.say(RTextList(RText("备份存档： "), RText(f"{self.cur_timestamp}", RColor.yellow), RText(" 完成 "), RText(f"耗时：{round(t2-t1, 2)}s", RColor.yellow)))
 
 
     def rollback(self, number):
-        tm = self.backup_list[number]["timestamp"]
-        msg = self.backup_list[number]["msg"]
+        tm, msg = self.list()[number]
 
         if msg == "":
             self.server.say(RText(f"服务器30s 后回滚到：{tm}", RColor.green))
@@ -261,80 +212,34 @@ class BackInfo:
             self.server.logger.info("服务器没有运行")
             return
 
-        
-        rollback_dir = BACKUP_DIR/"rollback"
-        if rollback_dir.exists():
-            shutil.rmtree(str(rollback_dir))
+        # 备份下
+        self.autobackup("上一次 rollback 时的备份")
+
+        if self.rollback_last.exists():
+            os.remove(self.rollback_last)
+
+        self.rollback_last.symlink_to(self.cur)
 
         try:
-            shutil.move(str(WORLD_DIR), str(rollback_dir))
-            backup2current(str(BACKUP_DIR/f"bak-{number}"), str(WORLD_DIR))
+            shutil.move(tm, WORLD_DIR)
         except Exception as e:
             raise e
-        
-        # 更新 BackInfo
-        self.rollback_last["timestamp"] = time.strftime("%Y-%m-%d_%H:%M:%S")
-        self.rollback_last["msg"] =  msg
-        self.__write()
         
         self.server.start()
 
 
-
-    def __read(self):
-
-        with self.__rw:
-
-            with open(BACKUP_INFO, "r") as f:
-                j = json.load(f)
-
-            self.backup_list = j["backup_list"]
-            self.rollback_last = j["rollback_last"]
-        
-    def __write(self):
-        with self.__rw:
-            with open(BACKUP_INFO, "w") as f:
-                j = {"backup_list": self.backup_list, "rollback_last": self.rollback_last}
-                json.dump(j, f, ensure_ascii=False, indent=4)
-    
-    def __baks(self, src, target):
-            backup2current(str(src), str(target))
-
-    def autobackup(self, msg=""):
-
-
-        self.server.say(RTextList(RText("开始备份存档： "), RText(f"{self.cur_timestamp} ", RColor.yellow), RText("...")))
-
-        t1 = time.time()
-        # save-off
-        self.server.rcon_query("save-off")
-        # server.rcon_query("save-all flush")
-
-        result = self.server.rcon_query("save-all")
-
-        if re.findall("Saved the game", result):
-            # self.server.say("拿到 `Saved the game` 结果")
-            pass
+    def __readmsg(self, filename: Path):
+        if filename.is_file():
+            with open(filename, "r") as f:
+                return f.read()
         else:
-            # self.server.say(RText("服务器可能 过于卡顿 备份失败。。。", RColor.red))
-            # self.server.say(RText(f"没拿到 ｀Saved the game｀ 拿到的是{result}", RColor.red))
-            return
+            return ""
 
 
-        try:
-            backup2current(str(WORLD_DIR), str(BACKUP_DIR/"bak-0"))
-        except Exception as e:
-            self.server.say(RText("插件内部错误。。。", RColor.red))
-            raise e
-        
-        self.server.rcon_query("save-on")
-
-        t2 = time.time()
-
-        self.server.say(RTextList(RText("备份存档： "), RText(f"{self.cur_timestamp}", RColor.yellow), RText(" 完成 "), RText(f"耗时：{round(t2-t1, 2)}s", RColor.yellow)))
-
-        # 更新存档信息
-        self.__update(msg)
+    def __write(self, msg: str):
+        filename = Path(str(self.cur) + ".msg")
+        with open(filename, "w") as f:
+            f.write(msg)
 
 
 @new_thread("auto backup")
@@ -381,49 +286,23 @@ def rollback_lock(server, number):
         B.value = 0
 
 
-def waitrcon(server):
-    # server刚启动时，等待rcon
-    while True:
-
-        if server.is_rcon_running():
-            # server.logger.info("rcon is running")
-            break
-        # else:
-            # server.logger.info("wait rcon is running")
-        
-        time.sleep(5)
-
-
 def player_online(server):
 
-    if server.is_server_startup():
-
-        waitrcon(server)
-
-        result = server.rcon_query("list")
-        # server.logger.info(f"players() server.rcon_query() --> {result}")
-
-        match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-        players = int(match.group(1))
-
-        if players == 0:
-            return False
-        else:
-            return True
-
-    else:
+    players = get_players(server)
+    if players == 0:
         return False
+    else:
+        return True
 
 
 @new_thread("backup Timer")
 def wait30minute(server):
 
-    minute30 = 30
     while True:
 
         # 每分钟检测有没有有玩家 在线，并累计。
         B.value = 0
-        while B.value < minute30:
+        while B.value < BACKUP_INTERVAL:
 
             time.sleep(60)
             if player_online(server):
@@ -464,20 +343,19 @@ def ls(src, ctx):
     msg=[f"{'='*10} 当前存档 {'='*10}"]
 
     bi = BackInfo(server)
-    archives, rollback = bi.list()
+    archives = bi.list()
+    baks = []
     for i, archive in enumerate(archives):
         if archive[1] == "":
-            msg.append(f"[{i}] 存档： {archive[0]}")
+            baks.append(f"[{i}] 存档： {archive[0]}")
         else:
-            msg.append(f"[{i}] 存档： {archive[0]} 注释： {archive[1]}")
+            baks.append(f"[{i}] 存档： {archive[0]} 注释： {archive[1]}")
+
+    baks.reverse()
+    msg += baks
 
     msg.append(f"{'-'*30}")
-
-    if rollback:
-        msg.append(f"上次回滚前的存档： {rollback[0]} 注释： {rollback[1]}")
-
-    msg.append(f"使用： {CMD} rollback <序号> 回滚")
-
+    msg.append(f"使用: {CMD} rollback <序号> 回滚")
     server.reply(info, "\n".join(msg))
 
 
@@ -531,9 +409,6 @@ def on_info(server, info):
 def on_load(server, old_plugin):
     server.register_help_message(CMD, PLUGIN_NAME, PermissionLevel.ADMIN)
     server.register_command(build_command())
-
-    # init
-    read_cfg(server)
 
     wait30minute(server)
 
