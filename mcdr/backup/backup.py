@@ -44,8 +44,10 @@ cfg_text = """\
 world_dir = server/world
 backup_dir = backup
 
-# 多长时间备份一次, 单位分钟。
+# 多长时间备份一次, 单位分钟。 需要>=10, 小于10会固定在10
 backup_interval = 30
+# 最多保留多少份备份。需要>=1, 小于1会固定在1
+backup_count = 24
 """
 
 conf = readcfg(CONF_FILE, cfg_text)
@@ -54,6 +56,13 @@ conf = readcfg(CONF_FILE, cfg_text)
 WORLD_DIR = Path(conf.get("backup", "world_dir"))
 BACKUP_DIR = Path(conf.get("backup", "backup_dir"))
 BACKUP_INTERVAL = conf.getint("backup", "backup_interval")
+BACKUP_COUNT = conf.getint("backup", "backup_count")
+
+if BACKUP_INTERVAL < 10:
+    BACKUP_INTERVAL = 10
+
+if BACKUP_COUNT < 1:
+    BACKUP_COUNT = 1
 
 if not BACKUP_DIR.exists():
     BACKUP_DIR.mkdir()
@@ -112,7 +121,7 @@ def backup2current(latest: Path, source: Path, target: Path):
     
     latest_symlink = target.parts[-1]
     # 把软链指向最新备份目录
-    if latest.exists():
+    if latest.is_symlink():
         os.remove(latest)
         latest.symlink_to(latest_symlink)
     else:
@@ -131,7 +140,6 @@ class BackInfo:
         self.backup_list = os.listdir(BACKUP_DIR)
         self.backup_list.sort()
 
-        self.rollback_last = BACKUP_DIR / "rollback_last"
         self.latest = BACKUP_DIR / "latest"
 
 
@@ -185,6 +193,8 @@ class BackInfo:
 
         self.server.say(RTextList(RText("备份存档： "), RText(f"{self.cur_timestamp}", RColor.yellow), RText(" 完成 "), RText(f"耗时：{round(t2-t1, 2)}s", RColor.yellow)))
 
+        self.autoremove()
+
 
     def rollback(self, number):
         tm, msg = self.list()[number]
@@ -201,7 +211,11 @@ class BackInfo:
                 self.server.say(RText(f"服务器{i}s 后回滚到：{tm}", RColor.green))
             else:
                 self.server.say(RText(f"服务器{i}s 后回滚到：{tm} 注释： {msg}", RColor.green))
+                time.sleep(1)
         
+        # 备份下
+        self.autobackup("上一次 rollback 时的备份")
+
         
         if self.server.is_server_running():
             self.server.logger.info("关闭服务器中...")
@@ -212,20 +226,38 @@ class BackInfo:
             self.server.logger.info("服务器没有运行")
             return
 
-        # 备份下
-        self.autobackup("上一次 rollback 时的备份")
-
-        if self.rollback_last.exists():
-            os.remove(self.rollback_last)
-
-        self.rollback_last.symlink_to(self.cur)
+        bak = str(BACKUP_DIR / tm)
+        if not bak.endswith("/"):
+            bak = bak + "/"
 
         try:
-            shutil.move(tm, WORLD_DIR)
+            subprocess.run(["rsync", "-a", "--delete", bak, str(WORLD_DIR)])
         except Exception as e:
+            self.server.say(RText("插件内部错误。。。", RColor.red))
             raise e
         
         self.server.start()
+    
+
+    def remove(self, number):
+        baks = self.list()
+        tm, msg = baks[number]
+
+        bak = BACKUP_DIR / tm
+        shutil.rmtree(bak)
+        filename = Path(str(bak) + ".msg")
+        if filename.exists():
+            os.remove(filename)
+        
+        # 如果删除最新的备份，需要把latest 指向倒数第2个
+        if number == 0 and len(baks) > 2:
+            os.remove(self.latest)
+            self.latest.symlink_to(baks[1][0])
+    
+    def autoremove(self):
+        baks = self.list()
+        for bak in baks[BACKUP_COUNT-1:]:
+            shutil.rmtree(BACKUP_DIR / bak[0])
 
 
     def __readmsg(self, filename: Path):
@@ -242,7 +274,7 @@ class BackInfo:
             f.write(msg)
 
 
-@new_thread("auto backup")
+@new_thread("backup auto backup")
 def autobackup_lock(server):
 
     if backing.locked():
@@ -256,7 +288,7 @@ def autobackup_lock(server):
         # 每次备份后，需要reset 自动备份计时器（B.value）
         B.value = 0
 
-@new_thread("manual backup")
+@new_thread("bakcup manual backup")
 def manual_backup_lock(server, msg):
 
     if backing.locked():
@@ -271,7 +303,7 @@ def manual_backup_lock(server, msg):
         B.value = 0
 
 
-@new_thread("rollback")
+@new_thread("backup rollback")
 def rollback_lock(server, number):
 
     if backing.locked():
@@ -284,6 +316,12 @@ def rollback_lock(server, number):
         
         # 每次备份后，需要reset 自动备份计时器（B.value）
         B.value = 0
+
+
+@new_thread("backup remove")
+def th_remove(server, number):
+    bi = BackInfo(server)
+    bi.remove(number)
 
 
 def player_online(server):
@@ -305,8 +343,12 @@ def wait30minute(server):
         while B.value < BACKUP_INTERVAL:
 
             time.sleep(60)
-            if player_online(server):
-                B.value += 1
+            if server.is_server_running():
+                try:
+                    if player_online(server):
+                        B.value += 1
+                except BaseException as e:
+                    server.logger.warning(f"刚rollbak完启动时rcon_query可能还没连接好: {e}")
             
             if PLUGIN_RELOAD:
                 server.logger.info("backup Timer 线程退出")
@@ -331,6 +373,7 @@ def help(src):
     f"{CMD} list               列出所有备份",
     f"{CMD} backup             手动触发创建备份",
     f"{CMD} backupmsg <备注>    手动触发创建备份, 添加注释",
+    f"{CMD} remove <序号>       删除备份",
     f"{CMD} rollback <序号>     恢复到指定备份",
     ]
     server.reply(info, "\n".join(msg))
@@ -347,9 +390,9 @@ def ls(src, ctx):
     baks = []
     for i, archive in enumerate(archives):
         if archive[1] == "":
-            baks.append(f"[{i}] 存档： {archive[0]}")
+            baks.append(f"[{i}]存档: {archive[0]}")
         else:
-            baks.append(f"[{i}] 存档： {archive[0]} 注释： {archive[1]}")
+            baks.append(f"[{i}]存档: {archive[0]} 注释: {archive[1]}")
 
     baks.reverse()
     msg += baks
@@ -375,7 +418,6 @@ def backup_msg(src, ctx):
 
 @permission
 def rollback(src, ctx):
-
     server = src.get_server()
     info = src.get_info()
 
@@ -386,18 +428,33 @@ def rollback(src, ctx):
     ls = bi.list()
     ls_len = len(ls)
     if 0 > number or number > ls_len - 1:
-        server.reply(info, RText(f"回滚号，只能在 0-{ls_len - 1} 范围", RColor.red))
+        server.reply(info, RText(f"备份号，只能在 0-{ls_len - 1} 范围", RColor.red))
         return
     
     rollback_lock(server, number)
 
 
+@permission
+def remove(src, ctx):
+    server = src.get_server()
+    number = int(ctx.get("number"))
+    info = src.get_info()
+
+    bi = BackInfo(server)
+    ls = bi.list()
+    ls_len = len(ls)
+    if 0 > number or number > ls_len - 1:
+        server.reply(info, RText(f"备份号，只能在 0-{ls_len - 1} 范围", RColor.red))
+        return
+        
+    th_remove(server, number)
 
 def build_command():
     c = Literal(CMD).runs(lambda src: help(src))
     c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
     c.then(Literal("backup").runs(lambda src, ctx: backup(src, ctx)))
     c.then(Literal("backupmsg").then(QuotableText("msg").runs(lambda src, ctx: backup_msg(src, ctx))))
+    c.then(Literal("remove").then(Integer("number").runs(lambda src, ctx: remove(src, ctx))))
     c.then(Literal("rollback").then(Integer("number").runs(lambda src, ctx: rollback(src, ctx))))
     return c
 

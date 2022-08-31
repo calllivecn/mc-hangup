@@ -1,6 +1,6 @@
 {
     "id": "backup", 
-    "version": "0.1.0",
+    "version": "1.0.0",
     "name": "服务端自动备份工具(rsync)",
     "author": [
         "calllivecn"
