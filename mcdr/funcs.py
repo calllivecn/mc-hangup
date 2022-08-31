@@ -40,9 +40,10 @@ def readcfg(filename, init_context=None):
         if init_context is None:
             raise Exception(f"初始化配置文本没有提供: {init_context}")
         else:
-            conf.read_string(init_context)
             with open(filename, "w") as fp:
-                conf.write(fp)
+                fp.write(init_context)
+
+            conf.read_string(init_context)
             return conf
 
 
