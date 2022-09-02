@@ -4,55 +4,40 @@
 # author calllivecn <c-all@qq.com>
 
 import re
-import ssl
 import sys
 import time
-import json
-import socket
 import asyncio
-import binascii
-import ipaddress
-import traceback
 from threading import Lock
 from pathlib import Path
-from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 
 from funcs import (
     CMDPREFIX,
     new_thread,
     PermissionLevel,
+    readcfg,
 )
 
 cmdprefix = CMDPREFIX + "mcsleep"
 
-PORT = 35565
-SECRET = b""
+cfg_filename = Path("config") / "mcsleep.conf"
+
+cfg_text="""\
+[mcsleep]
+port = 35565
+waittime = 10
+secret = c9efe47150254f2688248fcaadf72e92
+"""
+
+conf = readcfg(cfg_filename, cfg_text)
 
 # 没有玩家后10分钟关闭服务器
-WAITTIME = 10
-
-cfg = Path("config") / "mcsleep.json"
+PORT = conf.getint("mcsleep", "port")
+WAITTIME = conf.getint("mcsleep", "waittime")
+SECRET = conf.get("mcsleep", "secret")
 
 
 # 插件重载时，退出线程
 PLUGIN_RELOAD = False
-
-def get_set_secret():
-    global WAITTIME
-    global PORT
-    global SECRET
-    if cfg.exists():
-        with open(cfg) as f:
-           data = json.load(f) 
-
-        SECRET = data["secret"]
-        PORT = data["port"]
-        WAITTIME = data["waittime"]
-
-    else:
-        SECRET = binascii.b2a_hex(ssl.RAND_bytes(16)).decode()
-        with open(cfg, "w") as f:
-            json.dump({"waittime": WAITTIME, "port": PORT, "secret": SECRET}, f, ensure_ascii=False, indent=4)
 
 
 ##########################################
@@ -372,9 +357,6 @@ def on_info(server, info):
 
 def on_load(server, old_plugin):
     server.register_help_message(cmdprefix, '没有玩家时，休眠服务器。', PermissionLevel.ADMIN)
-
-    # 读配置
-    get_set_secret()
 
     # 启动http开关
     if old_plugin is None:
