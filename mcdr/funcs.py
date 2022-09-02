@@ -5,6 +5,7 @@
 
 import re
 import time
+import contextvars
 import configparser
 from pathlib import Path
 
@@ -45,7 +46,6 @@ def readcfg(filename, init_context=None):
 
             conf.read_string(init_context)
             return conf
-
 
 
 def __get(src):
