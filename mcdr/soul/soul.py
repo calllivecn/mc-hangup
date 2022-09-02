@@ -3,6 +3,7 @@
 # date 2021-02-09 11:18:15
 # author calllivecn <c-all@qq.com>
 
+from enum import unique
 import re
 import os
 import time
@@ -21,7 +22,6 @@ from funcs import (
     timestamp,
     permission,
     PermissionLevel,
-
 )
 
 ID_NAME = "soul"
@@ -32,6 +32,7 @@ CMD = CMDPREFIX + ID_NAME
 SOUL_DIR = CONFIG_DIR / ID_NAME
 
 SOUL_SPELL = [
+    "咒语：",
     "मम्मी मम्मी सह",
     "भाई भगवान, उन लोगों के लिए दया करो जो कल्पित बौने हैं",
     "इस व्यक्ति की आत्मा को बुलाओ ~",
@@ -39,6 +40,7 @@ SOUL_SPELL = [
 
 # 一次灵魂出窍时间
 SOUL_TIME=180
+SOUL_PLAYERS = {}
 
 if not SOUL_DIR.exists():
     os.makedirs(SOUL_DIR)
@@ -55,7 +57,15 @@ def set_soul_info(player, soul_info):
     soul_player = SOUL_DIR / (player + ".json")
     with open(soul_player, "w+") as f:
         return json.dump(soul_info, f, ensure_ascii=False, indent=4)
+    
 
+# 学习时的，魔咒。
+def learning(server, info):
+    for line in SOUL_SPELL:
+        server.reply(info, RText(line, RColor.green))
+        time.sleep(0.5)
+
+# def condition(server, info):
 def condition(server, info):
     soul_player = SOUL_DIR / (info.player + ".json")
     if soul_player.exists():
@@ -68,19 +78,31 @@ def condition(server, info):
             server.reply(info, RText("等你到一定等级了在来找我吧！", RColor.green))
             return False
         else:
+            learning(server, info)
             server.rcon_query(f"execute at {info.player} run experience add {info.player} -30 levels")
             server.rcon_query(f"execute at {info.player} run playsound minecraft:entity.player.levelup player {info.player}")
             server.reply(info, RText("你现在已经学习会了～", RColor.green))
             set_soul_info(info.player, {"timestamp": timestamp()})
             return True
 
-@new_thread("soul")
-def timing(server, player):
 
-    # time.sleep(10) # 测试
+# 检查玩家是否提前退出soul
+def check_exit(player, unique_id):
+    data = SOUL_PLAYERS.get(player)
+    if data and data == unique_id:
+        return False
+    else:
+        return True
+
+
+@new_thread("soul")
+def timing(server, player, unique_id):
 
     # 留出10秒，给倒计时。
     time.sleep(SOUL_TIME - 10)
+    if check_exit(player, unique_id):
+        server.logger.info(f"玩家 {player} 已经提前退出 soul。")
+        return
 
     rcon_result = server.rcon_query(f"data get entity {player} playerGameType")
     result = re.match(f"{player} has the following entity data: ([0-9]+)", rcon_result)
@@ -100,8 +122,10 @@ def timing(server, player):
     time.sleep(5)
 
     for i in range(5, 0, -1):
-       server.tell(player, RText(f"{i}秒后，返回身体.", RColor.green))
-       time.sleep(1)
+        server.tell(player, RText(f"{i}秒后，返回身体.", RColor.green))
+        if check_exit(player, unique_id):
+            return
+        time.sleep(1)
 
     player_soul = get_soul_info(player)
     if player_soul:
@@ -124,7 +148,6 @@ def soul(src, ctx):
     if not condition(server, info):
         return
 
-
     # 查询游戏模式
     rcon_result = server.rcon_query(f"data get entity {info.player} playerGameType")
 
@@ -132,7 +155,6 @@ def soul(src, ctx):
         prompt = "rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。"
         server.logger.warning(prompt)
         server.reply(info, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
-
         return
     
     gamemode = re.match(f"{info.player} has the following entity data: ([0-9]+)", rcon_result).group(1)
@@ -174,7 +196,11 @@ def soul(src, ctx):
         server.rcon_query(f"execute at {info.player} run playsound minecraft:entity.player.levelup player {info.player}")
 
         server.reply(info, RText("注意！3分钟后会回到你的身体！(输入指令可提前返回)", RColor.yellow))
-        timing(server, info.player)
+        server.reply(info, RText("可以按快捷栏数字键切换到其他玩家视角。", RColor.green))
+
+        unique_id = time.monotonic_ns()
+        SOUL_PLAYERS[info.player] = unique_id
+        timing(server, info.player, unique_id)
 
     elif gamemode == "3":
         player_soul = get_soul_info(info.player)
@@ -195,6 +221,7 @@ def soul(src, ctx):
     
     else:
         return
+
 
 # def on_user_info(server, info):
     # pass
@@ -224,3 +251,6 @@ def build_command():
 def on_load(server, old_plugin):
     server.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
     server.register_command(build_command())
+
+    if old_plugin is not None:
+        SOUL_PLAYERS = old_plugin.SOUL_PLAYERS
