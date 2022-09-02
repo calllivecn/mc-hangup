@@ -1,8 +1,7 @@
 {
     "id": "mcsleep", 
-    "version": "0.1.0",
+    "version": "1.0.0",
     "name": "没有玩家时，休眠服务器。",
-    "description": "可以的",
     "author": [
         "calllivecn"
    ],
