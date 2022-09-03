@@ -214,6 +214,8 @@ def soul(src, ctx):
             server.rcon_query(f"execute at {info.player} run effect clear {info.player} minecraft:night_vision")
             server.rcon_query(f"execute at {info.player} run gamemode survival {info.player}")
 
+            SOUL_PLAYERS.pop(info.player)
+
         else:
             server.reply(info, RText("出了点问题，请联系管理员。", RColor.red))
             server.logger.warning(f"玩家 {info.player} 被卡在灵魂模式了。。。")
