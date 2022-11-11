@@ -33,3 +33,4 @@ time set day
 # 先要扩大边界                             29999984 , worldborder 需要小于三千万
 worldborder set 29999984
 # self.server.say("先扩大世界边界")
+
