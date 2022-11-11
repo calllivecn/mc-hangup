@@ -266,7 +266,8 @@ class Team:
         self.server.rcon_query(f"advancement grant @a everything")
 
         # 初始化玩家计分板
-        self.init_scoreboard(player)
+        # self.init_scoreboard(player)
+        self.init_speedrun()
 
         # 开局中有新玩家进入服务器把他改在旁观者 ?
         self.server.rcon_query(f"team join {self.teamname} {player}")

@@ -1,6 +1,3 @@
-# 
-tag @a remove freeze
-
 worldborder set 2000
 
 kill @e[type=minecraft:armor_stand,tag=armor_stand_freeze_23jl]
