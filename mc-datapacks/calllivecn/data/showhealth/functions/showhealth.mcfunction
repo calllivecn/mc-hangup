@@ -1,4 +1,3 @@
-schedule function showdealth:showhealth 1s
 
 execute as @a at @s store result score @s show_health as @e[distance=..10,sort=nearest,limit=1,nbt={DeathTime:0s},type=!armor_stand,type=!minecraft:player] run data get entity @s Health
 
@@ -8,3 +7,5 @@ execute as @a at @s if entity @e[distance=..10,sort=nearest,limit=1,nbt={DeathTi
 
 execute as @a at @s unless entity @e[distance=..10,sort=nearest,limit=1,nbt={DeathTime:0s},type=!armor_stand,type=!minecraft:player] run scoreboard players reset @s show_health
 execute as @a at @s unless entity @e[distance=..10,sort=nearest,limit=1,nbt={DeathTime:0s},type=!armor_stand,type=!minecraft:player] run scoreboard players reset @s total_health
+
+schedule function showhealth:showhealth 1s
