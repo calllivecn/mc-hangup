@@ -1,6 +1,6 @@
 {
     "replace": false,
     "values": [
-        "zxdeath:say_death"
+        "test:say_death"
     ]
 }
