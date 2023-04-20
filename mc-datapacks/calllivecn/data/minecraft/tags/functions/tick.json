@@ -1,6 +1,7 @@
 {
     "replace": false,
     "values": [
-        "deaths:say_death"
+        "deaths:say_death",
+		"totem:tick"
     ]
 }
