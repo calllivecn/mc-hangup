@@ -5,6 +5,8 @@ tag @a[nbt={Health:0.0f}] add im_death
 
 execute as @a[tag=im_death,tag=!i_say_death] at @s run me 死了
 
+# 尝试看看能不能，拿到身上物品
+
 # 保证只说一次，然后移除 i_say_death
 tag @a[tag=im_death,tag=!i_say_death,nbt={Health:0.0f}] add i_say_death
 

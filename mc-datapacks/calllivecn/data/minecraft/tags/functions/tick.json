@@ -2,6 +2,6 @@
     "replace": false,
     "values": [
         "showhealth:showhealth",
-        "showhealth:say_i_m_dealth"
+        "event_death:say_i_m_dealth"
     ]
 }
