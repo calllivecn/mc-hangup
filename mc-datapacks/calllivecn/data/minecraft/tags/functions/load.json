@@ -2,6 +2,8 @@
     "replace": false,
     "values": [
         "showhealth:init",
-		"showhealth:showhealth"
+		"showhealth:showhealth",
+		"totem:init",
+		"totem:seconds"
     ]
 }
