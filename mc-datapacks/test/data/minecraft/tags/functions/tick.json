@@ -1,6 +1,6 @@
 {
     "replace": false,
     "values": [
-        "test:say_death"
+		"totem:tick"
     ]
 }
