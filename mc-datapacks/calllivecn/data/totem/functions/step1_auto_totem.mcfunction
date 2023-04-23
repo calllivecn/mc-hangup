@@ -1,6 +1,11 @@
 
 # 选择 启动了自动图腾功能的玩家+背包有图腾，+副手为空+副手没图腾的。
-execute as @a[scores={zxmc.totem=1},nbt={Inventory:[{id:"minecraft:totem_of_undying"}]},nbt=!{Inventory:[{Slot:-106b}]},nbt=!{Inventory:[{Slot:-106b,id:"minecraft:totem_of_undying"}]}] at @s[] run function totem:step2_auto_totem
+execute as @a[scores={zxmc.totem=1}] at @s[nbt={Inventory:[{id:"minecraft:totem_of_undying"}]},nbt=!{Inventory:[{Slot:-106b}]},nbt=!{Inventory:[{Slot:-106b,id:"minecraft:totem_of_undying"}]}] run function totem:step2_auto_totem
+
+
+# 选择 启动了自动图腾功能的玩家+背包有图腾，+副手不为空+副手不是图腾的。
+execute as @a[scores={zxmc.totem=1}] at @s[nbt={Inventory:[{id:"minecraft:totem_of_undying"}]},nbt={Inventory:[{Slot:-106b}]},nbt=!{Inventory:[{Slot:-106b,id:"minecraft:totem_of_undying"}]}] run function totem:step2_swap_item
+
 
 # 尝试看看能不能，拿到身上物品(-106b 是检测副手，可以检测到。哈哈), nbt={SelectedItem:{id:""}} 检测主手
 #execute as @a[tag=im_death] at @s[nbt={Inventory:[{Slot:-106b}]}] run say 有物品
@@ -12,4 +17,5 @@ execute as @a[scores={zxmc.totem=1},nbt={Inventory:[{id:"minecraft:totem_of_undy
 
 # 检测玩家背包中有没有指定物品
 #execute as @a[tag=im_death] at @s[nbt={Inventory:[{id:"minecraft:totem_of_undying"}]}] run say 是不死图腾
+
 
