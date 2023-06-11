@@ -46,6 +46,9 @@ INVITE = {}
 # 如果插件重载，则退出。线程
 PLUGIN_RELOAD = False
 
+if not TP_CONFIG_DIR.exists():
+    os.makedirs(TP_CONFIG_DIR)
+
 
 def user_tp_store_init(server):
 
@@ -54,9 +57,6 @@ def user_tp_store_init(server):
     if len(players) == 0:
         server.logger("当前没有玩家在线")
         return
-
-    if not TP_CONFIG_DIR.exists():
-        os.makedirs(TP_CONFIG_DIR)
 
     for p in get_players(server):
         player_json = TP_CONFIG_DIR / (p + ".json")
@@ -83,6 +83,9 @@ def click_invite(player1, player2):
 def click_text(player, label_name, world, x, y, z):
     #r = RText(label_name, RColor.blue)
     r = RText(label_name, RColor.yellow)
+    x = round(x)
+    y = round(y)
+    z = round(z)
     r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
     # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
     r.set_click_event(RAction.run_command, f"{CMD} {label_name}")
