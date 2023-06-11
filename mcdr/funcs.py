@@ -10,8 +10,14 @@ import configparser
 from pathlib import Path
 
 
-from mcdreforged.api.rtext import RText, RColor, RAction, RStyle, RTextList
 from mcdreforged.api.decorator import new_thread
+from mcdreforged.api.rtext import (
+    RText,
+    RColor,
+    RAction,
+    RStyle,
+    RTextList,
+)
 
 # mcdr_v2.x 还不能拿到 插件元数据
 # from mcdreforged.plugin.meta.metadata import Metadata
