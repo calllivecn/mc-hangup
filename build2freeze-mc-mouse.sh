@@ -23,9 +23,9 @@ trap "safe_exit" SIGTERM SIGINT EXIT
 cp mc-mouse.py "$TMP/mcmouse.py"
 
 if [ -n "$1" ];then
-	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@"${1}"
+	pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@"${1}"
 else
-	pip3 install --no-compile --target "$TMP" git+https://github.com.cnpmjs.org/calllivecn/keyboardmouse@master
+	pip3 install --no-compile --target "$TMP" git+https://github.com/calllivecn/keyboardmouse@master
 fi
 
 
