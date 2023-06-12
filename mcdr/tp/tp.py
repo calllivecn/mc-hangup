@@ -8,7 +8,6 @@ import os
 import time
 import json
 import copy
-from pathlib import Path
 
 from funcs import (
     CMDPREFIX,
@@ -20,6 +19,7 @@ from funcs import (
     RStyle,
     RTextList,
     Literal,
+    Integer,
     QuotableText,
     new_thread,
     permission,
@@ -76,11 +76,11 @@ def player_save(player, data):
 
 def click_invite(player1, player2):
     r = RText(f"{player1} 邀请你tp TA.", RColor.green)
-    r.set_hover_text(RText(f"点击向玩家 {player1} 传送", RColor.green))
+    r.set_hover_text(RText(f"点击向玩家 {player1} 传送,或者输入 {CMD} accept {player1}", RColor.green))
     r.set_click_event(RAction.run_command, f"{CMD} accept {player1}")
     return r
 
-def click_text(player, label_name, world, x, y, z):
+def click_text(number, label_name, world, x, y, z):
     #r = RText(label_name, RColor.blue)
     r = RText(label_name, RColor.yellow)
     x = round(x)
@@ -88,8 +88,12 @@ def click_text(player, label_name, world, x, y, z):
     z = round(z)
     r.set_hover_text(RText(f"点击传送[{x}, {y}, {z}]", RColor.green))
     # r.set_click_event(RAction.run_command, f"/execute at {player} in {world} run teleport {player} {x} {y} {z}")
-    r.set_click_event(RAction.run_command, f"{CMD} {label_name}")
-    return r
+    # r.set_click_event(RAction.run_command, f"{CMD} {label_name}")
+    r.set_click_event(RAction.run_command, f"{CMD} {number}")
+
+    text = RTextList(RText("<", RColor.yellow), RText(number, RColor.green), RText(">", RColor.yellow), r)
+    return text
+
 
 @permission
 def help(src):
@@ -97,14 +101,17 @@ def help(src):
 
     msg=[f"{'='*10} 使用方法 {'='*10}",
     f"{CMD}                               查看使用方法",
-    f"{CMD} <收藏点>                       tp 到收藏点",
+    f"{CMD} <收藏点序号>                    tp 到收藏点",
     f"{CMD} list                          列出所有收藏点",
-    f"{CMD} add <收藏点名字>                添加或修改当前位置为收藏点",
-    f"{CMD} remove <收藏点名字>             删除收藏点",
-    f"{CMD} rename <收藏点名字> <新名字>     修改收藏点名字",
+    f"{CMD} add <收藏点名字>                添加当前位置为收藏点",
+    f"{CMD} update <收藏点序号>             更新收藏点为当前位置",
+    f"{CMD} remove <收藏点序号>             删除收藏点",
+    f"{CMD} rename <收藏点序号> <新名字>     修改收藏点名字",
     f"{CMD} invite <玩家>                  邀请玩家到你当前的位置",
     f"{CMD} accept <玩家>                  接收一个玩家对你的邀请(时效3分钟)",
     ]
+    # msg = [ RText(m + "\n", RColor.white) for m in msg ]
+    # server.reply(info, RTextList(*msg))
     server.reply(info, "\n".join(msg))
 
 
@@ -125,6 +132,15 @@ def check_level(server, info):
         return True
 
 
+def number2key(server, info, u, number):
+    if not 0 < number <= len(u):
+        server.reply(info, RText("请输入正确的序号...", RColor.red))
+        return False
+    else:
+        label_name = list(u.keys())[number-1]
+        return label_name
+
+
 @permission
 def ls(src, ctx):
     server, info = __get(src)
@@ -141,8 +157,10 @@ def ls(src, ctx):
     else:
         msg1 = [RText(f"{'='*10} 收藏点 {'='*10}\n", RColor.white)]
         msg2 = []
+        seq = 1
         for label_name, data in u.items():
-            msg2.append(click_text(info.player, label_name, data["world"], data["x"], data["y"], data["z"]))
+            msg2.append(click_text(seq, label_name, data["world"], data["x"], data["y"], data["z"]))
+            seq += 1
 
         msg = msg1 + fmt(msg2)
         server.reply(info, RTextList(*msg))
@@ -164,7 +182,14 @@ def teleport(src, ctx):
     if u is None:
         server.reply(info, "\n".join(msg))
     else:
-        label_name = ctx.get("label_name")
+        # label_name = ctx.get("label_name")
+
+        # 收藏点序号
+        number = ctx.get("number")
+        label_name = number2key(server, info, u, number)
+        if label_name is False:
+            return
+
         label = u.get(label_name)
 
         if label is None:
@@ -222,6 +247,49 @@ def add(src, ctx):
 
     server.logger.debug(f"add ctx -------------->\n{ctx}")
 
+
+@permission
+def update(src, ctx):
+    server, info = __get(src)
+    u = USERTP.get(info.player)
+
+    # 查询世界
+    rcon_result = server.rcon_query(f"data get entity {info.player} Dimension")
+
+    if rcon_result is None:
+        prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
+        server.logger.warning(prompt)
+        server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
+
+    world = re.match('{} has the following entity data: "(.*)"'.format(info.player), rcon_result).group(1)
+
+    # 查询坐标
+    rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
+    position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+    x, y, z = position.group(1), position.group(2), position.group(3)
+    x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
+
+    if u is None:
+        server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
+    else:
+
+        number = ctx.get("number")
+        label_name = number2key(server, info, u, number)
+        if label_name is False:
+            return
+
+        label = u.get(label_name)
+
+        if label is None:
+            server.reply(info, RText(f"没有 {label_name} 收藏点", RColor.red))
+        else:
+            if check_level(server, info):
+                u[label_name] = {"world": world, "x": x, "y": y, "z":z}
+                player_save(info.player, u)
+                playsound(server, info.player)
+                server.reply(info, RText("更新新地点成功", RColor.green))
+
+
 @permission
 def remove(src, ctx):
     server, info = __get(src)
@@ -231,7 +299,10 @@ def remove(src, ctx):
     if u is None:
         server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
     else:
-        label_name = ctx.get("label_name")
+        number = ctx.get("number")
+        label_name = number2key(server, info, u, number)
+        if label_name is False:
+            return
 
         label = u.get(label_name)
 
@@ -258,18 +329,21 @@ def rename(src, ctx):
     else:
         u = USERTP.get(info.player)
 
-        label_name = ctx["label_name"]
+        number = ctx.get("number")
+        label_name = number2key(server, info, u, number)
+        if label_name is False:
+            return
+
         label = u.get(label_name)
 
         if label is None:
             server.reply(info, RText(f"没有 {label_name} 收藏点", RColor.red))
         else:
-            if check_level(server, info):
-                v = u.pop(label_name)
-                u[ctx["label_name2"]] = v
-                player_save(info.player, u)
-                playsound(server, info.player)
-                server.reply(info, RText("修改名称成功", RColor.green))
+            v = u.pop(label_name)
+            u[ctx["label_name2"]] = v
+            player_save(info.player, u)
+            playsound(server, info.player)
+            server.reply(info, RText("修改名称成功", RColor.green))
 
     server.logger.debug(f"rename ctx -------------->\n{ctx}")
 
@@ -349,11 +423,12 @@ def accept(src, ctx):
 
 def build_command():
     c = Literal(CMD).runs(lambda src: help(src))
-    c = c.then(QuotableText("label_name").runs(lambda src, ctx: teleport(src, ctx)))
+    c = c.then(Integer("number").runs(lambda src, ctx: teleport(src, ctx)))
     c.then(Literal("list").runs(lambda src, ctx: ls(src, ctx)))
     c.then(Literal("add").then(QuotableText("label_name").runs(lambda src, ctx: add(src, ctx))))
-    c.then(Literal("remove").then(QuotableText("label_name").runs(lambda src, ctx: remove(src, ctx))))
-    c.then(Literal("rename").then(QuotableText("label_name").then(QuotableText("label_name2").runs(lambda src, ctx: rename(src, ctx)))))
+    c.then(Literal("update").then(Integer("number").runs(lambda src, ctx: update(src, ctx))))
+    c.then(Literal("remove").then(Integer("number").runs(lambda src, ctx: remove(src, ctx))))
+    c.then(Literal("rename").then(Integer("number").then(QuotableText("label_name2").runs(lambda src, ctx: rename(src, ctx)))))
     c.then(Literal("invite").then(QuotableText("player").runs(lambda src, ctx: invite(src, ctx))))
     c.then(Literal("accept").then(QuotableText("player").runs(lambda src, ctx: accept(src, ctx))))
     return c

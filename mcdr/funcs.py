@@ -177,6 +177,7 @@ def fmt(ls, delimite=10):
                 break
 
             line += ls[l] + RText(",  ")
+            # line += ls[l] + RText(",\t")
 
         if j < (range_delimite - 1):
             line = line + RText("\n")
