@@ -135,7 +135,8 @@ def timing(server, player, unique_id):
         z = player_soul["z"]
 
         server.rcon_query(f"execute at {player} in {world} run teleport {player} {x} {y} {z}")
-        server.rcon_query(f"execute at {player} run gamemode survival {player}")
+        server.rcon_query(f"effect clear {player} minecraft:night_vision")
+        server.rcon_query(f"gamemode survival {player}")
     else:
         server.tell(player, RText("出了点问题，请联系管理员。", RColor.red))
         server.logger.warning(f"玩家 {player} 被卡在灵魂模式了。。。")
@@ -183,7 +184,7 @@ def soul(src, ctx):
         x, y, z = position.group(1), position.group(2), position.group(3)
 
         #x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
-        # 向上加0.5格，修复返回原地时，可能从不完整方块下落。
+        # 向上加0.3格，修复返回原地时，可能从不完整方块下落。
         x, y, z = round(float(x), 1), round(float(y), 1) + 0.3, round(float(z), 1)
 
         set_soul_info(info.player, {"timestamp": timestamp(), "world": world, "x": x, "y": y, "z": z})
@@ -191,9 +192,13 @@ def soul(src, ctx):
         # 扣掉1级
         server.rcon_query(f"experience add {info.player} -1 levels")
 
-        server.rcon_query(f"execute at {info.player} run gamemode spectator {info.player}")
-        server.rcon_query(f"execute at {info.player} run effect give {info.player} minecraft:night_vision {SOUL_TIME} 0 true")
-        server.rcon_query(f"execute at {info.player} run playsound minecraft:entity.player.levelup player {info.player}")
+        # server.rcon_query(f"execute at {info.player} run gamemode spectator {info.player}")
+        # server.rcon_query(f"execute at {info.player} run effect give {info.player} minecraft:night_vision {SOUL_TIME*30} 0 true")
+        # server.rcon_query(f"execute at {info.player} run playsound minecraft:entity.player.levelup player {info.player}")
+
+        server.rcon_query(f"gamemode spectator {info.player}")
+        server.rcon_query(f"effect give {info.player} minecraft:night_vision 999999 0 true")
+        server.rcon_query(f"playsound minecraft:entity.player.levelup player {info.player}")
 
         server.reply(info, RText("注意！3分钟后会回到你的身体！(输入指令可提前返回)", RColor.yellow))
         server.reply(info, RText("可以按快捷栏数字键切换到其他玩家视角。", RColor.green))
@@ -211,8 +216,10 @@ def soul(src, ctx):
             z = player_soul["z"]
 
             server.rcon_query(f"execute at {info.player} in {world} run teleport {info.player} {x} {y} {z}")
-            server.rcon_query(f"execute at {info.player} run effect clear {info.player} minecraft:night_vision")
-            server.rcon_query(f"execute at {info.player} run gamemode survival {info.player}")
+            # server.rcon_query(f"execute at {info.player} run effect clear {info.player} minecraft:night_vision")
+            # server.rcon_query(f"execute at {info.player} run gamemode survival {info.player}")
+            server.rcon_query(f"effect clear {info.player} minecraft:night_vision")
+            server.rcon_query(f"gamemode survival {info.player}")
 
             SOUL_PLAYERS.pop(info.player)
 
