@@ -22,6 +22,7 @@ from threading import Thread, Lock
 import cv2
 import numpy as np
 import pyscreenshot
+import mss
 
 try:
     import matplotlib.pyplot as plt
@@ -53,12 +54,28 @@ def getlogger(level=logging.INFO):
 logger = getlogger()
 
 
+def runtime(func):
+    def wrap(*args, **kwargs):
+        t1 = time.time()
+        result = func(*args, **kwargs)
+        t2 = time.time()
+        logger.debug(f"{func.__name__} 的运行耗时: {t2-t1} /秒")
+        return result
+    
+    return wrap
 
+
+MC_PROMPT="""\
+1. 需要把游戏的字幕打开。
+2. 把游戏窗口调整为和这个窗口一样大，并重叠，然后点开始。
+"""
+
+# 每秒检测帧数
+FPS = 30
 
 # TEMPLATE_PATH = Path("images") / "mc-fishing_1920x1080.png"
 # TEMPLATE_PATH = Path("images") / "mc-fishing_850x480.png"
 TEMPLATE_PATH = Path("images") / "mc-fishing_850x480_1.18.png"
-
 ICON = Path("images") / "icon.png"
 
 class Conf:
@@ -196,7 +213,6 @@ class BaitFish:
 
         # position: (200, 200, 400, 500) 
         self.position = position
-        logger.debug(f"self.target size: {position[2] - position[0]}")
 
         # 拿到模板图片大小
         template_size = self.template.shape
@@ -218,17 +234,29 @@ class BaitFish:
         # logger.debug(f"template_size resize 2: {self.template_size}")
 
         # cv2.imwrite(f"{time.time_ns()}-temp.PNG", self.temp) #, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-    
+
+        self.mss_shot = mss.mss()
+
+    def mss_close(self):
+        self.mss_shot.close()
+
 
     # 获取屏幕指定位置的截图
+    @runtime
     def screenshot(self):
         img = pyscreenshot.grab(bbox=self.position)
 
         # RGBA 2 RGB
         img = img.convert("RGB")
         if len(sys.argv) >= 2 and sys.argv[1] == "--debug":
+
+            imgs = Path("img-debug")
+            if not imgs.is_dir():
+                os.mkdir(imgs)
+
             t=time.time_ns()
-            img.save(f"img-debug/{t}-RGB.png")
+            img.save(f"{str(imgs)}/{t}-RGB.png")
+
         # self.target_img = np.asanyarray(img)
 
         # RGB 2 BGR
@@ -243,6 +271,34 @@ class BaitFish:
         # plt.show()
 
         return self.target_img
+    
+
+    # 获取屏幕指定位置的截图(新版库，性能高)
+    @runtime
+    def screenshot_mss(self):
+        img = self.mss_shot.grab(self.position)
+        self.target_img = cv2.cvtColor(np.asanyarray(img), cv2.COLOR_RGB2BGR)
+        return self.target_img
+
+
+    @runtime
+    def search_one_picture(self) -> bool:
+
+        img_gray = cv2.cvtColor(self.target_img, cv2.COLOR_BGR2GRAY)
+
+        self.result = cv2.matchTemplate(img_gray, self.temp, cv2.TM_CCOEFF_NORMED)
+        """
+        返回的是 ([x1, ...], [y1, ...])
+        """
+
+        loc = np.where(self.result >= self.threshold)
+        """
+        loc: 是这样的 loc=(array([], dtype=int64), array([], dtype=int64))
+        """
+        if len(loc[0]) >= 1:
+            return True
+        else:
+            return False
 
 
     # 找图 返回最近似的点
@@ -254,6 +310,7 @@ class BaitFish:
         img_gray = cv2.cvtColor(self.target_img, cv2.COLOR_BGR2GRAY)
 
         self.result = cv2.matchTemplate(img_gray, self.temp, cv2.TM_CCOEFF_NORMED)
+        logger.info(f"{self.result=}")
 
         # cv2.imwrite(f"{time.time_ns()}-img.PNG", img_gray)
 
@@ -262,6 +319,8 @@ class BaitFish:
         # 使用灰度图像中的坐标对原始RGB图像进行标记
         point = ()
         for pt in zip(*loc[::-1]):
+            # 在图像上绘制一个矩形。
+            # 参数img是要绘制矩形的图像，pt1和pt2是矩形的对角线顶点，color是矩形的颜色，thickness是矩形边框的粗细。
             cv2.rectangle(img_gray, pt, (pt[0] + self.template_size[1], pt[1] + self.template_size[0]), (7, 249, 151), 2)
             point = pt
 
@@ -269,6 +328,7 @@ class BaitFish:
             return None,None,None
         
         return img_gray, point[0]+ self.template_size[1]/2, point[1]
+
 
 # 创建顶级组件容器
 class AutoFishing:
@@ -290,8 +350,8 @@ class AutoFishing:
         self._pregess = "-"
 
         # 设置应用图标
-        # self.root.iconbitmap(tk.PhotoImage(ICON))
-        self.root.iconphoto(False, tk.PhotoImage(file=ICON))
+        # self.root.iconbitmap(str(tk.PhotoImage(ICON)))
+        self.root.iconphoto(True, tk.PhotoImage(file=ICON))
 
         # 不允许改变窗口大小
         # root.resizable(False, False)
@@ -348,11 +408,20 @@ class AutoFishing:
 
         # 设置游戏对齐窗口, 
         self.game_resolution = tk.Toplevel(self.root)
+        self.game_resolution.title("MC 匹配窗口")
 
         # 查看之前的配置里有保存位置没有。
         self.game_resolution.geometry(self.win_pos)
         self.game_resolution.resizable(False, False)
         self.game_resolution.attributes('-alpha', 0.2)
+
+        # self.game_resolution.destroy()
+        # 禁止关闭提示窗口
+        self.game_resolution.protocol("WM_DELETE_WINDOW", lambda : None)
+
+        # label = tk.Label(self.game_resolution, text="把游戏窗口调整为和这个窗口一样大，在点开始。", bg="#f21312")
+        # label.pack(fill=tk.BOTH, expand="y")
+
 
         # 如果没有配置说明是初始化，需要把窗口移到中间。
         if not self.conf.chekc_conf:
@@ -379,10 +448,11 @@ class AutoFishing:
         label.pack(fill=tk.BOTH, expand="yes")
         # label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
 
-        label2 = tk.Label(label, borderwidth=5)
+        label2 = tk.Label(label, text=MC_PROMPT, borderwidth=5)
         label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
-        label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
+        # label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
+
 
         self.run_lock = Lock()
 
@@ -402,10 +472,11 @@ class AutoFishing:
         self.speed = []
         self.fishingspeed_timestamp = time.time()
         self.fishcount_var = tk.StringVar()
-        self.fishcount_string = "当前钓鱼速度为：{} s/条，已经钓到 {} 条鱼"
+        self.fishcount_string = "钓鱼平均速度为：{} s/条，本次已经钓到 {} 条鱼"
         self.fishcount_var.set(self.fishcount_string.format(self.fishingspeed, self.fishcount))
         fishcount_label = tk.Label(self.root, textvariable=self.fishcount_var)
         fishcount_label.pack()
+
 
     def addButton(self, text, func):
         # 上个按钮
@@ -465,6 +536,7 @@ class AutoFishing:
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
             self.selected.current(0)
     
+
     def winCenter(self, win, w, h):
         # w = win.winfo_width()
         # h = win.winfo_height()
@@ -497,6 +569,9 @@ class AutoFishing:
         self.fishcount += 1
         self.fishingspeed = round(cur - self.fishingspeed_timestamp)
 
+        if self.fishcount == 0:
+            self.fishcount_var.set(self.fishcount_string.format(speed, self.fishcount))
+
         # 如果是正常钓鱼，不是暂停，钓鱼时间应该会小于45s
         if self.fishingspeed <= 45:
 
@@ -523,6 +598,7 @@ class AutoFishing:
             self.game_resolution.deiconify()
 
             logger.info(f"stoping... {self.th.name}")
+
         else:
             # 隐藏窗口
             # self.top.withdraw()
@@ -552,13 +628,15 @@ class AutoFishing:
             temp_x2, temp_y2 = temp_x1 + self.screen_pos[2], temp_y1 + self.screen_pos[3]
 
 
-            screentshot_pos = (temp_x1, temp_y1, temp_x2, temp_y2)
-            logger.debug(f"截图位置: {screentshot_pos}")
+            self.screenshot_pos = (temp_x1, temp_y1, temp_x2, temp_y2)
+            logger.debug(f"截图位置: {self.screenshot_pos}")
 
-            self.BF = BaitFish(screentshot_pos, str(self.template))
+            # 这个必须在子线程里面实例化
+            # self.BF = BaitFish(self.screenshot_pos, str(self.template))
             self.th = Thread(target=self.run, daemon=True)
             self.th.start()
             logger.info(f"{self.th.name} 开始运行 ...")
+
     
     def pregess(self):
         print(self._pregess + "\r", end="", flush=True)
@@ -574,34 +652,48 @@ class AutoFishing:
             self._pregess = "-"
     
     def run(self):
+
+        BF = BaitFish(self.screenshot_pos, str(self.template))
+
+        alarm_time = time.time()
         while self.run_lock.locked():
 
             start = time.time()
 
-            p = self.BF.screenshot()
-            img, x, y = self.BF.search_picture()
+            # BF.screenshot()
+            BF.screenshot_mss()
+
+            # img, x, y = BF.search_picture()
+            find_img = BF.search_one_picture()
 
             end = time.time()
 
             t = round(end - start, 3)
-            if img is None:
+            # if img is None:
+            if find_img is False:
                 self.pregess()
-                interval = 0.1 -  t
+                interval = 1/FPS -  t
                 if interval >= 0:
                     time.sleep(interval)
                 else:
-                    logger.warning(f"{t}/s 当前机器性能不足，可能错过收竽时机。")
+                    # 每10s钟才输出一次警告信息
+                    cur = time.time()
+                    if (cur - alarm_time) > 10.0:
+                        alarm_time = cur
+                        logger.warning(f"{t}/s 当前机器性能不足，可能错过收竽时机。")
             else:
                 t = round(end - start, 3)
                 # 收鱼竿
                 # subprocess.run("xdotool click 3".split())
                 self.fishshow(end)
-                self.mouse.click_right()
                 logger.info("收鱼竿")
-                # cv2.imwrite(f"""{time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())}.PNG""", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-                time.sleep(1)
                 self.mouse.click_right()
-                time.sleep(2)
+                # cv2.imwrite(f"""{time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())}.PNG""", img)# [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                # 这里是等待上次的，“浮漂：溅起水花” 从字幕里退出。
+                time.sleep(3)
+                self.mouse.click_right()
+
+
 
             # start = end
             # print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: {t}/s 当前性能。""")
@@ -612,6 +704,9 @@ class AutoFishing:
         if self.run_lock.locked():
             self.run_lock.release()
         # cv2.destroyAllWindows()
+
+        BF.mss_close()
+
 
 
 # main
