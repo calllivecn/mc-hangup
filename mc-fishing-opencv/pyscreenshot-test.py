@@ -7,5 +7,7 @@
 import pyscreenshot
 
 
-pyscreenshot.grab(bbox=(0, 0, 400, 800))
+img = pyscreenshot.grab(bbox=(0, 0, 400, 800))
+
+print(img)
 

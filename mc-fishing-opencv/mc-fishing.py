@@ -69,6 +69,8 @@ def runtime(func):
 MC_PROMPT="""\
 1. 需要把游戏的字幕打开。
 2. 把游戏窗口调整为和这个窗口一样大，并重叠，然后点开始。
+3. 挂机时可以把帧数调低+可视范围调低+画质调低，
+4. 在使用地毯mod加速时，最高只到/tick rate 50 就好，在多没有用。
 """
 
 # 每秒检测帧数
@@ -80,6 +82,9 @@ TEMPLATE_PATH = Path("images") / "mc-fishing_850x480_1.18.png"
 ICON = Path("images") / "icon.png"
 
 class Conf:
+    """
+    ~~这玩意有bug,不能保存左上角坐标。改成左下角坐标，然后推算左上解坐标。~~
+    """
 
     def __init__(self, savefile="data.json"):
         if savefile != Path:
@@ -120,12 +125,12 @@ class Conf:
         
         return True
 
+# check 桌面环境
 
 class Mouse:
 
     def __init__(self):
         # default usage
-
         if sys.platform == "linux":
 
             if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
@@ -354,11 +359,8 @@ class BaitFish:
 # 创建顶级组件容器
 class AutoFishing:
 
-    # 创建tkinter主窗口
+    # 创建tkinter主窗口 # 初始化窗口，配置相关
     def __init__(self):
-
-        # 初始化窗口，配置相关
-        # self.kbm = libkbm.VirtualKeyboardMouse()
 
         # mouse click <right>
         # click_right is function()
@@ -712,18 +714,6 @@ class AutoFishing:
         logger.debug(f"FPS：{fps}")
         BF.set_fps(fps)
 
-        """
-        # 检测是否重新开始计数
-        if self.reset_fishingcount.locked():
-            logger.debug(f"重新开始钓鱼计数")
-            self.fishcount = 0
-            self.fishingspeed = 0
-            self.avg_speed = 0
-            self.reset_fishingcount.release()
-            self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
-        """
-            
-
         # 如果超过60s 还没有收杆，可以是钩到水里的实体了。需要先下杆。
         fishing_timeout_flag = time.time()
 
@@ -733,10 +723,9 @@ class AutoFishing:
 
         while self.run_lock.locked():
 
-
             start = time.time()
 
-            # 如果超过60s 还没有收杆，可以是钩到水里的实体了。需要先下杆。
+            # 如果超过60s 还没有收杆，可能是钩到水里的实体了。需要先收一下杆。
             if (start - fishing_timeout_flag) > 60:
                 fishing_timeout_flag = start
                 logger.debug(f"超1分钟没有上钩了，收一下杆。")
@@ -805,9 +794,6 @@ class AutoFishing:
                 self.mouse.click_right()
                 fishing_time = time.time()
 
-
-            # start = end
-            # print(f"""{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: {t}/s 当前性能。""")
 
         th = threading.current_thread()
         print(th.name, "退出...")
