@@ -3,7 +3,7 @@ import time
 import threading
 
 import numpy as np
-from mss import mss
+import mss
 
 
 # 这是截全屏
@@ -13,7 +13,7 @@ monitor = {"top": 40, "left": 0, "width": 800, "height": 640}
 monitor = (40, 0, 800, 640)
 
 def test():
-    sct = mss(display=":1.0")
+    sct = mss.mss()
 
     t1 = time.time()
     for i in range(10):
