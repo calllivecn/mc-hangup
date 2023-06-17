@@ -238,6 +238,7 @@ class BaitFish:
 
         self.mss_shot = mss.mss()
 
+
     def mss_close(self):
         self.mss_shot.close()
 
@@ -405,6 +406,7 @@ class AutoFishing:
         self.selectors = ["850x480(推荐)", "1920x1080", "其他模式"]
         self.selected = ttk.Combobox(self.frame, values=self.selectors, state="readonly")
         self.selected.bind("<<ComboboxSelected>>", self.selectmode)
+    
         
         # check Conf
         self.conf = Conf()
@@ -462,11 +464,6 @@ class AutoFishing:
         # label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
 
 
-        # 添加重新计数 btn
-        self.clear_fishingcount = tk.Button(self.root, text="重计钓鱼数")
-        self.clear_fishingcount.bind("<Button-1>", lambda e: self.clear_fishingcount_func)
-        self.clear_fishingcount.pack()
-
 
         self.run_lock = Lock()
         
@@ -495,6 +492,33 @@ class AutoFishing:
         fishcount_label = tk.Label(self.root, textvariable=self.fishcount_var)
         fishcount_label.pack()
 
+        # 添加重新计数 btn
+        self.clear_fishingcount = tk.Button(self.root, text="重计钓鱼数")
+        self.clear_fishingcount.bind("<Button-1>", lambda e: self.clear_fishingcount_func())
+        self.clear_fishingcount.pack()
+
+        # fps 
+        fps_frame = tk.Frame(self.root)
+        fps_frame.pack()
+
+        validate_cmd = self.root.register(self.__check_entry_input)
+
+        label_fps = tk.Label(fps_frame, text="FPS:")
+        label_fps.grid(row=0, column=0)
+
+        self.label_fps = tk.Entry(fps_frame, width=4, validate="key", validatecommand=(validate_cmd, "%P"))
+        self.label_fps.insert(0, FPS)
+        self.label_fps.grid(row=0, column=1)
+
+
+    def __check_entry_input(self, value):
+        if value.isnumeric() or value == "":
+            if len(value) <= 4:
+                return True
+            else:
+                return False
+        else:
+            return False
 
     def addButton(self, text, func):
         # 上个按钮
@@ -503,10 +527,12 @@ class AutoFishing:
         btn1.pack()
     
     def clear_fishingcount_func(self):
-        if self.reset_fishingcount.locked():
-            pass
-        else:
-            self.reset_fishingcount.acquire()
+        logger.debug(f"重置计数")
+        with self.reset_fishingcount:
+            self.fishcount = 0
+            self.fishingspeed = 0
+            self.avg_speed = 0
+            self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
 
 
     def mainloop(self):
@@ -682,8 +708,21 @@ class AutoFishing:
 
         BF = BaitFish(self.screenshot_pos, str(self.template))
 
-        global FPS
-        BF.set_fps(FPS)
+        fps = int(self.label_fps.get())
+        logger.debug(f"FPS：{fps}")
+        BF.set_fps(fps)
+
+        """
+        # 检测是否重新开始计数
+        if self.reset_fishingcount.locked():
+            logger.debug(f"重新开始钓鱼计数")
+            self.fishcount = 0
+            self.fishingspeed = 0
+            self.avg_speed = 0
+            self.reset_fishingcount.release()
+            self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
+        """
+            
 
         # 如果超过60s 还没有收杆，可以是钩到水里的实体了。需要先下杆。
         fishing_timeout_flag = time.time()
@@ -694,13 +733,6 @@ class AutoFishing:
 
         while self.run_lock.locked():
 
-            # 检测是否重新开始计数
-            if self.reset_fishingcount.locked():
-                logger.debug(f"重新开始钓鱼计数")
-                self.fishcount = 0
-                self.fishingspeed = 0
-                self.reset_fishingcount.release()
-            
 
             start = time.time()
 
@@ -727,10 +759,10 @@ class AutoFishing:
             if find_img_count == 0:
                 self.pregess()
 
-                if FPS == 0:
+                if fps == 0:
                     interval = 0
                 else:
-                    interval = 1/FPS -  t
+                    interval = 1/fps -  t
 
                 if interval >= 0:
                     time.sleep(interval)
@@ -744,6 +776,9 @@ class AutoFishing:
             else:
 
                 fishing_timeout_flag = time.time()
+
+                # 如果钓鱼速度快于3s/条，需要等待到3s, 在出下一次杆.
+                # 上次收杆到下次出杆之间至少需要有3秒间隔
 
                 # 上次出杆到这次收杆的日间间隔。
                 t3 = fishing_timeout_flag - fishing_time
@@ -764,20 +799,9 @@ class AutoFishing:
                 # 这里是等待上次的，“浮漂：溅起水花” 从字幕里退出。
                 # time.sleep(3)
 
-                # 如果钓鱼速度快于3s/条，需要等待到3s, 在出下一次杆.
-                # 上次收杆到下次出杆之间至少需要有3秒间隔
-
-                """
-                if self.avg_speed < 3:
-                    wait = max(3 - self.avg_speed, 0.5)
-                else:
-                    wait = 0.5
-
-                """
-
                 time.sleep(0.5) 
 
-                logger.info("出鱼竿")
+                logger.debug("出鱼竿")
                 self.mouse.click_right()
                 fishing_time = time.time()
 
