@@ -21,7 +21,7 @@ from threading import Thread, Lock
 
 import cv2
 import numpy as np
-import pyscreenshot
+#import pyscreenshot
 import mss
 
 try:
@@ -72,6 +72,11 @@ MC_PROMPT="""\
 3. 挂机时可以把帧数调低+可视范围调低+画质调低，
 4. 在使用地毯mod加速时，最高只到/tick rate 50 就好，在多没有用。
 """
+
+
+with open("usage.txt") as f:
+    HELP_INFO=f.read()
+
 
 # 每秒检测帧数
 FPS = 30
@@ -398,10 +403,10 @@ class AutoFishing:
         # self.top.attributes("-topmost", True) 
         # print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
 
-        self.frame = tk.Frame(self.root)
+        self.frame = ttk.Frame(self.root)
         self.frame.pack()
 
-        l1 = tk.Label(self.frame, text="选择模式：")
+        l1 = ttk.Label(self.frame, text="选择模式：")
         l1.grid(row=0, column=0)
 
         # select 框
@@ -456,11 +461,17 @@ class AutoFishing:
 
 
         # game_resoultion
-        label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
+        # label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
+        label = ttk.Label(self.game_resolution, background="#1122cc", borderwidth=5)
         label.pack(fill=tk.BOTH, expand="yes")
         # label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
 
-        label2 = tk.Label(label, text=MC_PROMPT, borderwidth=5)
+        """
+        改为新方式：使用提示窗口+从文本里读取说明内容。
+        label2 = ttk.Label(label, text=MC_PROMPT, borderwidth=5)
+        """
+
+        label2 = ttk.Label(label, borderwidth=5)
         label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
         # label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
@@ -478,7 +489,7 @@ class AutoFishing:
         # start stop
         self.start_stop_var = tk.StringVar()
         self.start_stop_var.set("开始")
-        self.start_stop_btn = tk.Button(self.frame, textvariable=self.start_stop_var)
+        self.start_stop_btn = ttk.Button(self.frame, textvariable=self.start_stop_var)
         self.start_stop_btn.bind("<Button-1>", lambda e: self.start())
         self.start_stop_btn.grid(row=0, column=2)
         # self.frame_start_stop.pack()
@@ -491,26 +502,35 @@ class AutoFishing:
         self.fishcount_var = tk.StringVar()
         self.fishcount_string = "钓鱼平均速度为：{} s/条，本次已经钓到 {} 条鱼"
         self.fishcount_var.set(self.fishcount_string.format(self.fishingspeed, self.fishcount))
-        fishcount_label = tk.Label(self.root, textvariable=self.fishcount_var)
+        fishcount_label = ttk.Label(self.root, textvariable=self.fishcount_var)
         fishcount_label.pack()
 
         # 添加重新计数 btn
-        self.clear_fishingcount = tk.Button(self.root, text="重计钓鱼数")
+        self.clear_fishingcount = ttk.Button(self.root, text="重计钓鱼数")
         self.clear_fishingcount.bind("<Button-1>", lambda e: self.clear_fishingcount_func())
         self.clear_fishingcount.pack()
 
         # fps 
-        fps_frame = tk.Frame(self.root)
+        fps_frame = ttk.Frame(self.root)
         fps_frame.pack()
 
         validate_cmd = self.root.register(self.__check_entry_input)
 
-        label_fps = tk.Label(fps_frame, text="FPS:")
+        label_fps = ttk.Label(fps_frame, text="FPS:")
         label_fps.grid(row=0, column=0)
 
-        self.label_fps = tk.Entry(fps_frame, width=4, validate="key", validatecommand=(validate_cmd, "%P"))
+        self.label_fps = ttk.Entry(fps_frame, width=4, validate="key", validatecommand=(validate_cmd, "%P"))
         self.label_fps.insert(0, FPS)
         self.label_fps.grid(row=0, column=1)
+
+        # 使用说明
+        # help_info_frame = ttk.Frame(self.root)
+        # help_info_frame.pack()
+
+        help_info_btn = ttk.Button(self.root, text="使用说明", command=self.__help_info)
+        help_info_btn.pack(side="right")
+
+        self._help_info = False
 
 
     def __check_entry_input(self, value):
@@ -524,7 +544,7 @@ class AutoFishing:
 
     def addButton(self, text, func):
         # 上个按钮
-        btn1 = tk.Button(self.root, text=text)
+        btn1 = ttk.Button(self.root, text=text)
         btn1.bind("<Button-1>", func)
         btn1.pack()
     
@@ -535,6 +555,26 @@ class AutoFishing:
             self.fishingspeed = 0
             self.avg_speed = 0
             self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
+
+    def __help_info(self):
+        # 这个点几次就会执行几次，需要打个标判断一下。
+        if self._help_info:
+            pass
+        else:
+            help_window = tk.Toplevel(self.root)
+            help_window.title("使用说明")
+            self._help_info = True
+
+            def func_tmp():
+                self._help_info = False
+                help_window.destroy()
+
+            help_window.quit = func_tmp
+            label_text = ttk.Label(help_window, text=HELP_INFO)
+            label_text.pack()
+
+        # 这种方式，必须关闭了这个提示窗口才能点击开始。
+        # messagebox.showinfo(title="使用说明", message=HELP_INFO)
 
 
     def mainloop(self):
@@ -656,7 +696,6 @@ class AutoFishing:
 
         else:
             # 隐藏窗口
-            # self.top.withdraw()
             self.game_resolution.withdraw()
 
             logger.info("start ...")
