@@ -394,11 +394,9 @@ class AutoFishing:
         self.root.geometry(f"+{round(self.screen_w/5)}+{round(self.screen_h/5)}")
 
 
-
         # self.top.overrideredirect(True)
         # self.game_resolution.overrideredirect(True)
 
-        # self.top.attributes('-alpha', 0.2)
 
         # self.top.attributes("-topmost", True) 
         # print("grame_resolution topmost: ", self.game_resolution.attributes("-topmost"))
@@ -439,11 +437,12 @@ class AutoFishing:
         # 设置游戏对齐窗口, 
         self.game_resolution = tk.Toplevel(self.root)
         self.game_resolution.title("MC 匹配窗口")
+        self.game_resolution.update()
 
         # 查看之前的配置里有保存位置没有。
         self.game_resolution.geometry(self.win_pos)
         self.game_resolution.resizable(False, False)
-        self.game_resolution.attributes('-alpha', 0.2)
+        self.game_resolution.attributes('-alpha', 0.5)
 
         # self.game_resolution.destroy()
         # 禁止关闭提示窗口, 方式一
@@ -567,9 +566,7 @@ class AutoFishing:
 
             def func_tmp():
                 self._help_info = False
-                logger.info(f"{self._help_info=}")
                 help_window.destroy()
-
 
             help_window.protocol("WM_DELETE_WINDOW", func_tmp)
 
@@ -598,7 +595,7 @@ class AutoFishing:
             self.game_resolution.resizable(True, True)
             self.game_resolution.geometry(self.win_pos)
             self.game_resolution.resizable(False, False)
-            self.game_resolution.attributes('-alpha', 0.2)
+            self.game_resolution.attributes('-alpha', 0.5)
             tmp = self.win_pos.split("+")[0]
             x, y = tmp.split("x")
             self.winCenter(self.game_resolution, int(x), int(y))
@@ -617,7 +614,7 @@ class AutoFishing:
             self.game_resolution.resizable(True, True)
             self.game_resolution.geometry(self.win_pos)
             self.game_resolution.resizable(False, False)
-            self.game_resolution.attributes('-alpha', 0.2)
+            self.game_resolution.attributes('-alpha', 0.5)
             tmp = self.win_pos.split("+")[0]
             x, y = tmp.split("x")
             self.winCenter(self.game_resolution, int(x), int(y))
