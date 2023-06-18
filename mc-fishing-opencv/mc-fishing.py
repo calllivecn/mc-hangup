@@ -446,7 +446,7 @@ class AutoFishing:
         self.game_resolution.attributes('-alpha', 0.2)
 
         # self.game_resolution.destroy()
-        # 禁止关闭提示窗口
+        # 禁止关闭提示窗口, 方式一
         self.game_resolution.protocol("WM_DELETE_WINDOW", lambda : None)
 
         # label = tk.Label(self.game_resolution, text="把游戏窗口调整为和这个窗口一样大，在点开始。", bg="#f21312")
@@ -567,9 +567,12 @@ class AutoFishing:
 
             def func_tmp():
                 self._help_info = False
+                logger.info(f"{self._help_info=}")
                 help_window.destroy()
 
-            help_window.quit = func_tmp
+
+            help_window.protocol("WM_DELETE_WINDOW", func_tmp)
+
             label_text = ttk.Label(help_window, text=HELP_INFO)
             label_text.pack()
 
