@@ -290,11 +290,11 @@ class BaitFish:
 
         self.fps = fps
 
-        # 找到的图像的像素值和, init
-        self.img_light = 0
-
         #图中的小图
         self.template = cv2.imread(img_template)
+
+        # 找到的图像的像素值和, init
+        self.img_light = np.sum(self.template)
 
         # position: (200, 200, 400, 500) 
         self.position = position
@@ -333,28 +333,16 @@ class BaitFish:
         self.result = cv2.matchTemplate(img_gray, self.temp, cv2.TM_CCOEFF_NORMED)
         # 返回的是 ([x1, ...], [y1, ...])
 
-        loc = np.where(self.result >= self.threshold)
+        self.loc = np.where(self.result >= self.threshold)
         """
         loc：
         在匹配结果数组self.result中查找大于或等于阈值self.threshold的元素。
         该函数返回一个元组，其中包含两个数组，分别表示满足条件的元素的行和列索引。
         """
 
-        # 第一个
-        h1, w2 = loc
-        h, w, c = self.template_size
-        logger.log(DEBUG2, f"这是: {h1=} {w2=} {w=} {h=} {loc=}")
 
         # loc: 是这样的 loc=(array([], dtype=int64), array([], dtype=int64))
-        if len(loc[0]) >= 1:
-            h1, w2 = h1[0], w2[0]
-            n = self.target_img[h1:h1+h, w2:w2+w]
-            self.img_light = np.sum(n)
-            """
-            filename = "/".join(["debug", str(time.time_ns()) + ".png"])
-            logger.debug(f"{n.shape=} 保存下: {filename=}")
-            cv2.imwrite(filename, n)
-            """
+        if len(self.loc[0]) >= 1:
             return True
         else:
             return False
@@ -369,6 +357,23 @@ class BaitFish:
         loc = np.where(self.result >= self.threshold)
         # loc: 是这样的 loc=(array([], dtype=int64), array([], dtype=int64))
         return len(loc[0])
+    
+    def compute_temp_light(self):
+        """
+        需要在 search_one_picture() 之后执行
+        """
+        h1, w2 = self.loc
+        h, w, c = self.template_size
+        logger.log(DEBUG2, f"这是: {h1=} {w2=} {w=} {h=} {self.loc=}")
+        h1, w2 = h1[0], w2[0]
+        n = self.target_img[h1:h1+h, w2:w2+w]
+        self.img_light = np.sum(n)
+        """
+        filename = "/".join(["debug", str(time.time_ns()) + ".png"])
+        logger.debug(f"{n.shape=} 保存下: {filename=}")
+        cv2.imwrite(filename, n)
+        """
+
 
 
 
@@ -731,11 +736,41 @@ class AutoFishing:
         else:
             self._pregess = "-"
     
+
+    def retract_fishing_rod(self, t_interval):
+        self.fishshow(t_interval)
+        # 收鱼竿
+        logger.info("收鱼竿")
+        self.mouse.click_right()
+
+        time.sleep(0.5) 
+
+        logger.debug("出鱼竿")
+        self.mouse.click_right()
+
+
     def run(self):
+
 
         fps = int(self.label_fps.get())
         logger.debug(f"FPS：{fps}")
+
         BF = BaitFish(self.screenshot_pos, str(self.conf.template), fps)
+        img_light = BF.img_light
+
+        """
+        新的思路：如果这次找到的图片，亮度比上次高就说明，“浮漂：溅起水花” 从字幕里更新了(就是有鱼了)。
+        但这种比模板要求很高。需要刚刚只包含 “浮漂：溅起水花” or “浮漂：溅起”
+        """
+        def super_acceleration() -> bool:
+            nonlocal img_light
+            BF.compute_temp_light()
+            cmp = (BF.img_light / (img_light + 1))
+            truefalse = cmp > 1.1
+            logger.log(DEBUG2, f"打到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
+            # 更新
+            img_light = BF.img_light
+            return truefalse
 
         # 如果超过60s 还没有收杆，可以是钩到水里的实体了。需要先下杆。
         fishing_timeout_flag = time.time()
@@ -744,12 +779,26 @@ class AutoFishing:
 
         fishing_time = alarm_time
 
-        img_light = 0
+        def check_perf(t):
+            """
+             检测帧数，太快sleep()，不足输出警告。
+            """
+            interval = round(1/fps - t, 4)
+            if interval > 0:
+                time.sleep(interval)
+            else:
+                # 每10s钟才输出一次警告信息
+                cur = time.time()
+                if (cur - alarm_time) > 10.0:
+                    alarm_time = cur
+                    logger.warning(f"{t}/s 当前机器性能不足，可能错过收竽时机。")
+            
 
         while self.run_lock.locked():
             self.pregess()
 
             start = time.time()
+
             # 如果超过60s 还没有收杆，可能是钩到水里的实体了。需要先收一下杆。
             if (start - fishing_timeout_flag) > 60:
                 fishing_timeout_flag = start
@@ -758,78 +807,34 @@ class AutoFishing:
                 time.sleep(0.5)
                 self.mouse.click_right()
 
-            find_img_count = BF.search_one_picture()
+            find_img = BF.search_one_picture()
 
             end = time.time()
 
             # 截图+找图,消耗时间
             t = round(end - start, 3)
 
-            def check_perf():
-                interval = round(1/fps - t, 4)
-                if interval > 0:
-                    time.sleep(interval)
-                else:
-                    # 每10s钟才输出一次警告信息
-                    cur = time.time()
-                    if (cur - alarm_time) > 10.0:
-                        alarm_time = cur
-                        logger.warning(f"{t}/s 当前机器性能不足，可能错过收竽时机。")
-            
-            if find_img_count == 0:
-                check_perf()
-                
-            else:
+            # 匹配到模板
+            if find_img:
 
                 fishing_timeout_flag = time.time()
-
-                # 如果钓鱼速度快于3s/条，需要等待到3s, 在出下一次杆.
-                # 上次收杆到下次出杆之间至少需要有3秒间隔
-
-                """
-                新的思路：如果这次找到的图片，亮度比上次高就说明，“浮漂：溅起水花” 从字幕里更新了(就是有鱼了)。
-                """
-                cmp = (BF.img_light / (img_light + 1))
-                truefalse = cmp > 1.1
-                logger.log(DEBUG2, f"打到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
-                # 更新
-                img_light = BF.img_light
-
-                if truefalse:
-                    # 上鱼了
-                    pass
-                else:
-                    check_perf()
-                    continue
-
 
                 # 上次出杆到这次收杆的日间间隔。
                 t3 = fishing_timeout_flag - fishing_time
 
-                """
-                if find_img_count == 1 and t3 > 3.0:
-                    pass
-                elif find_img_count > 1 and t3 < 3.0:
-                    pass
+                if t3 < 3.0:
+                    if super_acceleration():
+                        self.retract_fishing_rod(t3)
+
                 else:
-                    check_perf()
-                    continue
-                """
-
-                self.fishshow(t3)
-
-                # 收鱼竿
-                logger.info("收鱼竿")
-                self.mouse.click_right()
-
-                # 这里是等待上次的，“浮漂：溅起水花” 从字幕里退出。
-                # time.sleep(3)
-
-                time.sleep(0.5) 
-
-                logger.debug("出鱼竿")
-                self.mouse.click_right()
+                    # 如果钓鱼速度快于3s/条，需要等待到3s, 在出下一次杆.
+                    # 上次收杆到下次出杆之间至少需要有3秒间隔
+                    self.retract_fishing_rod(t3)
+                
                 fishing_time = time.time()
+
+            # 检测帧数，太快sleep()，不足输出警告。
+            check_perf(t)
 
 
 
