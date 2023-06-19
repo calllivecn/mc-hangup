@@ -341,15 +341,20 @@ class BaitFish:
         """
 
         # 第一个
-        x, y = loc
+        h1, w2 = loc
         h, w, c = self.template_size
-        logger.log(DEBUG2, f"这是: {x=} {y=} {w=} {h=} {loc=}")
-        logger.debug(f"打到的模板图像的亮度值：{self.img_light=}")
+        logger.log(DEBUG2, f"这是: {h1=} {w2=} {w=} {h=} {loc=}")
 
         # loc: 是这样的 loc=(array([], dtype=int64), array([], dtype=int64))
         if len(loc[0]) >= 1:
-            x, y = x[0], y[0]
-            self.img_light = np.sum(self.target_img[y:y+h, x:x+w])
+            h1, w2 = h1[0], w2[0]
+            n = self.target_img[h1:h1+h, w2:w2+w]
+            self.img_light = np.sum(n)
+            """
+            filename = "/".join(["debug", str(time.time_ns()) + ".png"])
+            logger.debug(f"{n.shape=} 保存下: {filename=}")
+            cv2.imwrite(filename, n)
+            """
             return True
         else:
             return False
@@ -784,7 +789,9 @@ class AutoFishing:
                 """
                 新的思路：如果这次找到的图片，亮度比上次高就说明，“浮漂：溅起水花” 从字幕里更新了(就是有鱼了)。
                 """
-                truefalse = img_light < BF.img_light
+                cmp = (BF.img_light / (img_light + 1))
+                truefalse = cmp > 1.1
+                logger.log(DEBUG2, f"打到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
                 # 更新
                 img_light = BF.img_light
 
@@ -839,13 +846,19 @@ def main():
     import argparse
 
     parse = argparse.ArgumentParser(usage="%(prog)s [--option]")
-    parse.add_argument("--debug", action="store_true", help="debug")
+    parse.add_argument("-v", "--verbose", action="count", help="debug")
 
     args = parse.parse_args()
 
-    if args.debug:
+    if args.verbose == 1:
         logger.setLevel(logging.DEBUG)
         logger.debug("deubg 模式")
+
+    elif args.verbose == 2:
+        logger.setLevel(DEBUG2)
+        logger.log(DEBUG2, "deubg2 模式")
+    else:
+        logger.setLevel(logging.INFO)
 
     fishing = AutoFishing()
     fishing.mainloop()
