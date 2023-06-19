@@ -70,8 +70,9 @@ def search_picture(target, temp, threshold=0.7):
 
     # 使用灰度图像中的坐标对原始RGB图像进行标记
     point = ()
-    for pt in zip(*loc[::-1]):
-        cv2.rectangle(img_gray, pt, (pt[0] + temp_size[1], pt[1] + temp_size[0]), (7, 249, 151), 1)
+    # for pt in zip(*loc[::-1]):
+    for w, h in zip(*loc[::-1]):
+        cv2.rectangle(img_gray, (w, h), (w + temp_size[1], w + temp_size[0]), (7, 249, 151), 1)
         point = pt
 
     if point==():
