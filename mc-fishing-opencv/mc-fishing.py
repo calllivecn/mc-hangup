@@ -66,14 +66,6 @@ def runtime(func):
     return wrap
 
 
-MC_PROMPT="""\
-1. 需要把游戏的字幕打开。
-2. 把游戏窗口调整为和这个窗口一样大，并重叠，然后点开始。
-3. 挂机时可以把帧数调低+可视范围调低+画质调低，
-4. 在使用地毯mod加速时，最高只到/tick rate 50 就好，在多没有用。
-"""
-
-
 with open("usage.txt") as f:
     HELP_INFO=f.read()
 
