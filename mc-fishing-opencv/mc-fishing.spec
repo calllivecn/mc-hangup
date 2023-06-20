@@ -5,10 +5,10 @@ block_cipher = None
 
 
 a = Analysis(
-    ['mc-fishing.py'],
+    ['mc-fishing2.py'],
     pathex=[],
     binaries=[],
-    datas=[("images/", "images/")],
+    datas=[("images/", "images/"), ("usage.txt", ".")],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
