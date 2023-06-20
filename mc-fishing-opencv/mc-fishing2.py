@@ -62,13 +62,10 @@ except FileNotFoundError:
 DEBUG2 = 5
 
 # 默认检测帧率
-FPS = 10
+FPS = 5
 
 # 窗口图标
 ICON = Path("images") / "icon.png"
-
-# 窗口初始化默认，模板。
-TEMPLATE_PATH = Path("images") / "mc-fishing_850x480_1.18.png"
 
 
 class Conf:
@@ -94,7 +91,7 @@ class Conf:
 
             self.index = 0
             self.win_pos = "850x480"
-            self.template = str(TEMPLATE_PATH)
+            self.template = str(Path("images") / "mc-fishing_850x480_1.18.png")
             self.screen_pos = (700, 300, 150, 160)
 
             self._d = {
@@ -737,7 +734,10 @@ class AutoFishing:
             self._pregess = "-"
     
 
-    def retract_fishing_rod(self, t_interval):
+    def retract_fishing_rod(self):
+        fishing_time = time.time()
+        t_interval = fishing_time - self.fishing_last 
+        self.fishing_last = fishing_time
         self.fishshow(t_interval)
         # 收鱼竿
         logger.info("收鱼竿")
@@ -772,12 +772,8 @@ class AutoFishing:
             img_light = BF.img_light
             return truefalse
 
-        # 如果超过60s 还没有收杆，可以是钩到水里的实体了。需要先下杆。
-        fishing_timeout_flag = time.time()
-
-        alarm_time = fishing_timeout_flag
-
-        fishing_time = alarm_time
+        self.fishing_last = time.time()
+        alarm_time = self.fishing_last
 
         def check_perf(t):
             """
@@ -800,8 +796,8 @@ class AutoFishing:
             start = time.time()
 
             # 如果超过60s 还没有收杆，可能是钩到水里的实体了。需要先收一下杆。
-            if (start - fishing_timeout_flag) > 60:
-                fishing_timeout_flag = start
+            if (start - self.fishing_last) > 60:
+                self.fishing_last = start
                 logger.debug(f"超1分钟没有上钩了，收一下杆。")
                 self.mouse.click_right()
                 time.sleep(0.5)
@@ -817,22 +813,18 @@ class AutoFishing:
             # 匹配到模板
             if find_img:
 
-                fishing_timeout_flag = time.time()
-
                 # 上次出杆到这次收杆的日间间隔。
-                t3 = fishing_timeout_flag - fishing_time
+                t3 = time.time() - start
 
                 if t3 < 3.0:
                     if super_acceleration():
-                        self.retract_fishing_rod(t3)
+                        self.retract_fishing_rod()
 
                 else:
                     # 如果钓鱼速度快于3s/条，需要等待到3s, 在出下一次杆.
                     # 上次收杆到下次出杆之间至少需要有3秒间隔
-                    self.retract_fishing_rod(t3)
+                    self.retract_fishing_rod()
                 
-                fishing_time = time.time()
-
             # 检测帧数，太快sleep()，不足输出警告。
             check_perf(t)
 
