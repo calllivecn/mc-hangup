@@ -779,6 +779,7 @@ class AutoFishing:
             """
              检测帧数，太快sleep()，不足输出警告。
             """
+            nonlocal alarm_time
             interval = round(1/fps - t, 4)
             if interval > 0:
                 time.sleep(interval)
