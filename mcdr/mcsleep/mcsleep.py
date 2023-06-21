@@ -212,7 +212,7 @@ async def asyncio_check_exit(server):
 
 
 async def httpmcsleep():
-    server = await asyncio.start_server(recv_handler, "*", 35565, reuse_address=True, reuse_port=True)
+    server = await asyncio.start_server(recv_handler, "*", PORT, reuse_port=True)
 
     # addr, port = server.sockets[0].getsockname()
     # print("client:", addr, file=sys.stderr)
