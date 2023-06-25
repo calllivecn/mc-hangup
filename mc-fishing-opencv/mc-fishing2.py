@@ -181,10 +181,8 @@ class Mouse:
         logger.debug("当前操作系统 linux")
         if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
             logger.info("你的桌面环境是 wayland")
-            if not self.__use_mouse():
-                sys.exit(1)
-            elif not self.__use_xdotool() or not self.__use_pyautogui():
-                sys.exit(1)
+            if self.__use_mouse():
+                pass
             else:
                 logger.error(f"没有支持鼠标方案")
                 sys.exit(1)
@@ -210,7 +208,7 @@ class Mouse:
         成功返回True, 失败返回False
         """
         try:
-            import mouse
+            from keyboardmouse import mouse
         except ModuleNotFoundError:
             logger.error(f"需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
             return False
@@ -681,6 +679,8 @@ class AutoFishing:
             # 显示窗口
             # self.top.deiconify()
             self.game_resolution.deiconify()
+            self.game_resolution.update()
+            self.game_resolution.attributes('-alpha', 0.5)
 
             logger.info(f"stoping... {self.th.name}")
 

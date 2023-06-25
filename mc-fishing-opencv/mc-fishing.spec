@@ -1,5 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+from pathlib import Path
+
+def build_mouse_files():
+	from keyboardmouse import mouse
+	m = Path(mouse.__file__)
+	mouse_parent = m.parent
+	return [(mouse_parent, "keyboardmouse")]
+	
+
+datas_files = [("images/", "images/"), ("usage.txt", ".")]
+
+#datas_files += build_mouse_files()
+print("datas_files:", datas_files)
+
 
 block_cipher = None
 
@@ -8,12 +23,13 @@ a = Analysis(
     ['mc-fishing2.py'],
     pathex=[],
     binaries=[],
-    datas=[("images/", "images/"), ("usage.txt", ".")],
-    hiddenimports=[],
+    datas=datas_files,
+    hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["pip", "setuptools", "wheel"],
+    excludes=[],
+    #excludes=["pip", "setuptools", "wheel"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
