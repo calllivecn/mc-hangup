@@ -8,3 +8,7 @@ data.json
 
 __pycache__/
 .vscode/
+
+build/
+dist/
+
