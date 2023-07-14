@@ -3,7 +3,6 @@
 # date 2021-08-31 00:15:13
 # author calllivecn <c-all@qq.com>
 
-import math
 
 import cv2
 import numpy as np
@@ -19,9 +18,11 @@ def cv2plt_gray(img):
     c = np.expand_dims(img, axis=2)
     return np.concatenate((a, b, c), axis=-1)
 
-def imgshow(imgs, gray_imgs=[]):
-    s = len(imgs) + len(gray_imgs)
-    n = math.sqrt(s)
+
+def imgshow(imgs, gray=False):
+    s = len(imgs)
+    print(f"共{s}张图片")
+    n = np.sqrt(s)
     if n > int(n):
         m = int(n) + 1
     else:
@@ -40,17 +41,16 @@ def imgshow(imgs, gray_imgs=[]):
     plt.Figure()
     for i, img in enumerate(imgs):
         print(i, "shape:", img.shape) 
+        if gray:
+            img = cv2plt_gray(img)
+
         plt.subplot(n, m, i+1)
         plt.imshow(img)
-        #plt.axis("off")
-
-    for j, gray in enumerate(gray_imgs):
-        img = cv2plt_gray(gray)
-        plt.subplot(n, m, j+i+1)
-        plt.imshow(img)
-        #plt.axis("off")
+        plt.axis("off")
 
     plt.show()
+
+
 
 def search_picture(target, temp, threshold=0.7):
 
