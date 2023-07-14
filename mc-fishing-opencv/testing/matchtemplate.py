@@ -1,4 +1,5 @@
 
+import copy
 import time
 
 import cv2
@@ -8,50 +9,10 @@ import matplotlib.pyplot as plt
 
 import math
 
-def cv2plt_gray(img):
-    """
-    把单通道灰度图转换成3通道灰度图 plt 才能正常显示。
-    """
-    a = np.expand_dims(img, axis=2)
-    b = np.expand_dims(img, axis=2)
-    c = np.expand_dims(img, axis=2)
-    return np.concatenate((a, b, c), axis=-1)
+from funcs import imgshow
 
-def imgshow(imgs, gray_imgs=[]):
-    s = len(imgs) + len(gray_imgs)
-    print(f"共{s}张图片")
-    n = math.sqrt(s)
-    if n > int(n):
-        m = int(n) + 1
-    else:
-        m = int(n)
-    n = int(n)
 
-    t = True
-    while (n * m) < s:
-        if t:
-            n += 1
-            t = False
-        else:
-            m +=1
-            t = True
-
-    plt.Figure()
-    for i, img in enumerate(imgs):
-        print(i, "shape:", img.shape) 
-        plt.subplot(n, m, i+1)
-        plt.imshow(img)
-        plt.axis("off")
-
-    for j, gray in enumerate(gray_imgs):
-        img = cv2plt_gray(gray)
-        plt.subplot(n, m, j+i+2)
-        plt.imshow(img)
-        plt.axis("off")
-
-    plt.show()
-
-def search_picture(target, temp, threshold=0.7):
+def search_picture(target, temp, target_src, threshold=0.7):
 
     # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
     # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
@@ -60,6 +21,7 @@ def search_picture(target, temp, threshold=0.7):
     temp_size = temp.shape
 
     img_gray = target
+    print(f"{temp.shape=}  {target.shape=}")
     #img_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
 
     result = cv2.matchTemplate(img_gray, temp, cv2.TM_CCOEFF_NORMED)
@@ -68,12 +30,12 @@ def search_picture(target, temp, threshold=0.7):
 
     loc = np.where(result >= threshold)
 
-    # 使用灰度图像中的坐标对原始RGB图像进行标记
+    # 使用灰度图像中的坐标对原始RGB图像进行标记(把找到的位置用矩形框出来)
     point = ()
     # for pt in zip(*loc[::-1]):
     for w, h in zip(*loc[::-1]):
-        cv2.rectangle(img_gray, (w, h), (w + temp_size[1], w + temp_size[0]), (7, 249, 151), 1)
-        point = pt
+        cv2.rectangle(target_src, (w, h), (w + temp_size[1], h + temp_size[0]), color=(7, 249, 151), thickness=2)
+        point = (w, h)
 
     if point==():
         return None,None,None
@@ -97,15 +59,8 @@ def search_picture(target, temp, threshold=0.7):
 5. 把 2步 3步交换下顺序
 """
 
-temp = cv2.imread("temp-big.png")
-target = cv2.imread("target-small.png")
-
-temp_w = 320
-target_w = 96
-
-scale = target_w / temp_w 
-
-temp = cv2.resize(temp, (0, 0), fx=scale, fy=scale)
+temp = cv2.imread("images/mc-fishing_1920x1080.png")
+target = cv2.imread("images/target_1920x1080.png")
 
 temp_gray = cv2.cvtColor(temp, cv2.COLOR_BGR2GRAY)
 target_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
@@ -119,15 +74,16 @@ target_canny = cv2.Canny(target_gray, 50, 200)
 
 grays=[temp_gray, target_gray, temp_canny, target_canny]
 
-img, x, y = search_picture(temp_canny, target_canny, 0.5)
+img, x, y = search_picture(target_gray, temp_gray, target, 0.7)
 
 if img is None:
     print("没有匹配到")
 else:
     print("找到目标")
-    grays.append(img)
 
-imgshow([temp, target], gray_imgs=grays)
+imgshow([temp, cv2.cvtColor(target, cv2.COLOR_BGR2RGB)])
+imgshow(grays, True)
+
 exit(0)
 
 #temp = cv2.cvtColor(temp, cv2.COLOR_BGR2RGB)
