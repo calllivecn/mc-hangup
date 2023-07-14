@@ -14,9 +14,6 @@ from funcs import imgshow
 
 def search_picture(target, temp, target_src, threshold=0.7):
 
-    # self.target_img = cv2.imread('1630232776674203196.jpg')#要找的大图
-    # img = cv2.resize(img, (0, 0), fx=self.scale, fy=self.scale)
-
     #temp_size = temp.shape[::2]
     temp_size = temp.shape
 
@@ -59,6 +56,7 @@ def search_picture(target, temp, target_src, threshold=0.7):
 5. 把 2步 3步交换下顺序
 """
 
+# cv2.imread() 读出来的，是BGR 颜色通道。
 temp = cv2.imread("images/mc-fishing_1920x1080.png")
 target = cv2.imread("images/target_1920x1080.png")
 
