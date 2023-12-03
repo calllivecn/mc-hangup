@@ -1,6 +1,6 @@
 {
-    "replace": false,
-    "values": [
-		"totem:tick"
-    ]
+  "replace": false,
+  "values": [
+    "totem:tick"
+  ]
 }
