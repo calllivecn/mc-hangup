@@ -3,7 +3,7 @@
 - backup: 存档 无感+自动备份+还原工具
 
 - mcsleep: 在服务器没有玩家时，默认15分钟后关闭服务器+远程开关。
-    - 可以配置如: http://<your-domainname|ip 地址>/<token>
+    - 可以配置如: `http://<your-domainname|ip 地址>/<token>`
     - 这种的方式来配置远程开关
     - 使用时，可以在 浏览器/QQ群/微信群 点击打开MC服务器。
 
