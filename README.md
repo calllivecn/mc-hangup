@@ -26,5 +26,5 @@ python3  mc-Dungeon.py` 查看使用方法。
 
 ## 这是以前的脚本工具，只在X11桌面环境下工作
 
-![mc-shell-tools](https://github.com/calllivecn/mc-hangup/mc-shell-tools/README.md)
+[mc-shell-tools](mc-shell-tools/README.md)
 
