@@ -32,7 +32,7 @@ mc-mouse.pyz --help
 
 ## mc-fishing 这是自动钓鱼工具
 
-[自动钓鱼工具](mc-fishing-opencv/README.md)
+[自动钓鱼工具](mc-fishing-opencv/)
 
 ## 这是 mcdreforged 的插件：
 
@@ -41,5 +41,5 @@ mc-mouse.pyz --help
 
 ## 这是之前的脚本工具，只在X11桌面环境下工作
 
-[mc-shell-tools](mc-shell-tools/README.md)
+[mc-shell-tools](mc-shell-tools/)
 
