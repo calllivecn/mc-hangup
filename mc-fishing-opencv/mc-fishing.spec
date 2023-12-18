@@ -3,33 +3,20 @@
 import sys
 from pathlib import Path
 
-def build_mouse_files():
-	from keyboardmouse import mouse
-	m = Path(mouse.__file__)
-	mouse_parent = m.parent
-	return [(mouse_parent, "keyboardmouse")]
-	
-
-datas_files = [("images/", "images/"), ("usage.txt", ".")]
-
-#datas_files += build_mouse_files()
-print("datas_files:", datas_files)
-
 
 block_cipher = None
-
 
 a = Analysis(
     ['mc-fishing2.py'],
     pathex=[],
     binaries=[],
-    datas=datas_files,
+    datas=[],
     hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
-    #excludes=["pip", "setuptools", "wheel"],
+    #excludes=[],
+    excludes=["pip", "setuptools", "wheel"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -64,3 +51,26 @@ coll = COLLECT(
     upx_exclude=[],
     name='mc-fishing',
 )
+
+
+
+# 查看全局变量的值
+print("="*20, "这是全局变量名和值：", "="*20)
+print(f"{DISTPATH=}\n{HOMEPATH=}\n{SPEC=}\n{SPECPATH=}\n{workpath=}")
+print(f"{exe.name=}, {coll.name=}")
+
+import shutil
+
+datas_files = [("images/", "images/"), ("usage.txt", "usage.txt")]
+#print("datas_files:", datas_files)
+
+p_coll = Path(coll.name)
+for src, dst in datas_files:
+
+	p_src = Path(src)
+
+	if p_src.is_file():
+		shutil.copyfile(src, p_coll / dst)
+	else:
+		shutil.copytree(src, p_coll / dst, symlinks=True)
+
