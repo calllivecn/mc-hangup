@@ -16,7 +16,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_gunpowder"
+      "myitem:zx_gunpowder"
     ]
   },
   "requirements": [

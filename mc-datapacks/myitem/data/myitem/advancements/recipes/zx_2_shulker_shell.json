@@ -16,7 +16,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_shulker_shell"
+      "myitem:zx_shulker_shell"
     ]
   },
   "requirements": [

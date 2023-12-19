@@ -22,7 +22,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_iron_horse_armor"
+      "myitem:zx_iron_horse_armor"
     ]
   },
   "requirements": [
