@@ -22,7 +22,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_diamond_horse_armorgold_ingotgold_ingot"
+      "myitem:zx_diamond_horse_armorgold_ingotgold_ingot"
     ]
   },
   "requirements": [

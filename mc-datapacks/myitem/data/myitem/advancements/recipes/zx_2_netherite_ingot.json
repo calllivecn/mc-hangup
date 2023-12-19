@@ -42,7 +42,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_netherite_ingot"
+      "myitem:zx_netherite_ingot"
     ]
   },
   "requirements": [

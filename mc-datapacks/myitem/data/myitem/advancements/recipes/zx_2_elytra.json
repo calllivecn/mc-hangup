@@ -16,7 +16,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_elytra"
+      "myitem:zx_elytra"
     ]
   },
   "requirements": [

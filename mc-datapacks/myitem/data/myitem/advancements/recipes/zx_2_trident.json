@@ -16,7 +16,7 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_trident"
+      "myitem:zx_trident"
     ]
   },
   "requirements": [

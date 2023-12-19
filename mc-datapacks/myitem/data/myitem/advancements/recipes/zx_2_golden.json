@@ -16,10 +16,10 @@
   },
   "rewards":{
     "recipes": [
-      "showhealth:zx_golden_horse_armor",
-      "showhealth:zx_totem",
-      "showhealth:zx_enchanted_gold_apple",
-      "showhealth:zx_totem"
+      "myitem:zx_golden_horse_armor",
+      "myitem:zx_totem",
+      "myitem:zx_enchanted_gold_apple",
+      "myitem:zx_totem"
     ]
   },
   "requirements": [
