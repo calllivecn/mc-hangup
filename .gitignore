@@ -4,6 +4,7 @@ libkbm.py
 *.swp
 *.pyz
 *.pyc
+*.zip
 data.json
 
 __pycache__/

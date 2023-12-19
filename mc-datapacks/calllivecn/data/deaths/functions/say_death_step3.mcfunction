@@ -1,3 +1,3 @@
 
 tag @s remove im_death
-return
+return 1
