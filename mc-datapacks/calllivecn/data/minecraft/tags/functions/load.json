@@ -4,6 +4,7 @@
         "showhealth:init",
 		"showhealth:showhealth",
 		"totem:init",
-		"totem:seconds"
+		"totem:seconds",
+		"fishing:load"
     ]
 }

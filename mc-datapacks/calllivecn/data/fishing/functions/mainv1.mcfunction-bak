@@ -1,0 +1,26 @@
+
+# test
+#execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] run execute as @e[type=minecraft:fishing_bobber,limit=1] positioned ~ ~ ~ if block ~ ~ ~ minecraft:air run me 检测？
+#execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] run execute as @e[type=minecraft:fishing_bobber,limit=1] positioned ~ ~ ~ unless block ~ ~ ~ minecraft:air run me 有鱼？
+
+
+scoreboard objectives add fish dummy
+
+# ---------------------
+
+# 这个检测 FallDistance
+#execute as @a at @s run data modify storage fishing:falldistance fish set from entity @e[type=minecraft:fishing_bobber,limit=1] FallDistance
+
+# 这个检测 Montion[1]
+#execute as @a at @s run data modify storage fishing:falldistance fish set from entity @e[type=minecraft:fishing_bobber,limit=1] Montion
+
+
+# 这样可以检测到了，就是准确性还需要增加。
+execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] at @e[type=minecraft:fishing_bobber,limit=1] run execute store result score @s fish run data get entity @e[type=minecraft:fishing_bobber,limit=1] FallDistance 10 
+
+execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] run execute as @s if score @s fish matches 2.. run tell @s 有鱼上钩了！
+
+#function fishing:print with storage fishing:falldistance
+
+scoreboard objectives remove fish
+
