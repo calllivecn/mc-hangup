@@ -1,0 +1,11 @@
+{
+  "criteria": {
+    "autofishing": {
+      "trigger": "minecraft:fishing_rod_hooked"
+    }
+  },
+  "rewards": {
+    "function": "fishing:test"
+  }
+}
+

@@ -1,0 +1,16 @@
+{
+  "criteria": {
+    "player_death": {
+      "trigger": "minecraft:entity_hurt_player",
+      "conditions": {
+        "entity": {
+          "type": "player"
+        }
+      }
+    }
+  },
+  "rewards": {
+    "function": "deaths:death_say"
+  }
+}
+
