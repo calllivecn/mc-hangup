@@ -4,8 +4,15 @@
 
 # 在多添加几个数值检测。Motion的。
 # 初妈化 scoreboard objectives add fishX dummy
-function fishing:level2_begin
-function fishing:level2_check_fishxyz
+scoreboard objectives add fish dummy
+scoreboard objectives add fishX dummy
+scoreboard objectives add fishY dummy
+scoreboard objectives add fishZ dummy
+
+# 拿到 fishX fishY fishZ
+execute as @s at @s run execute store result score @s fishX run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[0] 10
+execute as @s at @s run execute store result score @s fishY run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[1] 10
+execute as @s at @s run execute store result score @s fishZ run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[2] 10
 
 
 
@@ -22,4 +29,10 @@ execute as @s[tag=!fishing_ok,scores={fishX=..2,fishY=..2,fishZ=..2}] at @e[type
 execute as @s[tag=fishing_ok] at @s if entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] run function fishing:level2_fishing_ok
 
 
-function fishgin:level2_end
+
+# 清理
+scoreboard objectives remove fish
+scoreboard objectives remove fishX
+scoreboard objectives remove fishY
+scoreboard objectives remove fishZ
+
