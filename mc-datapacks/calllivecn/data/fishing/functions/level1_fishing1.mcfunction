@@ -4,15 +4,16 @@
 
 # 在多添加几个数值检测。Motion的。
 # 初妈化 scoreboard objectives add fishX dummy
-scoreboard objectives add fish dummy
-scoreboard objectives add fishX dummy
-scoreboard objectives add fishY dummy
-scoreboard objectives add fishZ dummy
+scoreboard objectives add fishing.fish dummy
+scoreboard objectives add fishing.fishX dummy
+scoreboard objectives add fishing.fishY dummy
+scoreboard objectives add fishing.fishZ dummy
+
 
 # 拿到 fishX fishY fishZ
-execute as @s at @s run execute store result score @s fishX run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[0] 10
-execute as @s at @s run execute store result score @s fishY run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[1] 10
-execute as @s at @s run execute store result score @s fishZ run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[2] 10
+execute as @s at @s run execute store result score @s fishing.fishX run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[0] 10
+execute as @s at @s run execute store result score @s fishing.fishY run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[1] 10
+execute as @s at @s run execute store result score @s fishing.fishZ run data get entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] Motion[2] 10
 
 
 
@@ -21,18 +22,17 @@ execute as @s at @s run execute store result score @s fishZ run data get entity 
 
 
 # 这样ok, 上面的升级版。
-# 鱼钩到水面后平稳后(移动范围小于0.2), 打上平稳(fishing_ok)标签
-execute as @s[tag=!fishing_ok,scores={fishX=..2,fishY=..2,fishZ=..2}] at @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] positioned ~ ~ ~ if block ~ ~ ~ minecraft:water run function fishing:level2_fishing_ok_tag
+# 鱼钩到水面后平稳后(移动范围小于0.2), 打上平稳(fishing.bobber)标签
+execute as @s[tag=!fishing.bobber,scores={fishing.fishX=..2,fishing.fishY=..2,fishing.fishZ=..2}] at @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] positioned ~ ~ ~ if block ~ ~ ~ minecraft:water run function fishing:level2_fishing_ok_tag
 
 
 # 鱼钩到水面平稳后，处理有没有鱼上钩。
-execute as @s[tag=fishing_ok] at @s if entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] run function fishing:level2_fishing_ok
-
+execute as @s[tag=fishing.bobber] at @s if entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] run function fishing:level2_fishing_ok
 
 
 # 清理
-scoreboard objectives remove fish
-scoreboard objectives remove fishX
-scoreboard objectives remove fishY
-scoreboard objectives remove fishZ
+scoreboard objectives remove fishing.fish
+scoreboard objectives remove fishing.fishX
+scoreboard objectives remove fishing.fishY
+scoreboard objectives remove fishing.fishZ
 
