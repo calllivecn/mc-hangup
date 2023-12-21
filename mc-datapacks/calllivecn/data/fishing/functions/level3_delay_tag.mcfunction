@@ -1,5 +1,4 @@
 
-tag @a[tag=fishing_ok] add fishing_delay
+execute as @a[tag=fishing.bobber] at @s if entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] run tag @s add fishing.delay
 
-tell @a[tag=fishing_ok] Debug: 打上延迟标签
-
+execute as @a[tag=fishing.bobber] at @s if entity @e[type=minecraft:fishing_bobber,distance=..30,sort=nearest,limit=1] run tell @s Debug: 打上延迟标签
