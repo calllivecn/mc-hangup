@@ -1,5 +1,2 @@
 matplotlib==3.4.3
-opencv-python==4.5.3.56
 pyscreenshot==3.0
-mss==9.0.1
-PyAutoGUI==0.9.53
