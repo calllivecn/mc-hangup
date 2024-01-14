@@ -32,4 +32,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mc-fishing-ubuntu-22.04.zip
-          path: mc-fishing.zip
+          path: mc-fishing-opencv/dist/mc-fishing.zip
+
+          
