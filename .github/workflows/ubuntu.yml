@@ -1,0 +1,36 @@
+name: ubuntu 打包工作流
+
+on:
+  # push:
+    # branches:
+      # - devel
+  workflow_dispatch:
+
+jobs:
+  mc_fishing_opencv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: 跑起来~
+        run: |
+          cd mc-fishing-opencv/
+          python -m pip install -U pip
+          pip install pyinstaller>=6.3
+          pip install -r requirements.txt
+          echo "==================="
+          pyinstaller mc-fishing.spec
+          echo "==================="
+          (cd dist/;zip -r ../mc-fishing.zip mc-fishing/)
+          #(cd dist;python -m zipfile -c ../mc-fishing.zip mc-fishing/)
+          
+      - name: 保存到工件
+        uses: actions/upload-artifact@v4
+        with:
+          name: mc-fishing-ubuntu-22.04.zip
+          path: mc-fishing-opencv/mc-fishing.zip
+
+
