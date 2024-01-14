@@ -1,9 +1,10 @@
 name: ubuntu 打包工作流
 
 on:
-  # push:
-    # branches:
-      # - devel
+  push:
+    branches:
+      - workflow
+  # 要想手动触发，必须要在默认分支中。
   workflow_dispatch:
 
 jobs:
