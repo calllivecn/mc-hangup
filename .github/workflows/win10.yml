@@ -25,12 +25,12 @@ jobs:
           echo "==================="
           pyinstaller mc-fishing.spec
           echo "==================="
-          #(cd dist/;zip -r ../mc-fishing.zip mc-fishing/)
-          (cd dist;python -m zipfile -c ../mc-fishing.zip mc-fishing/)
+          cd dist
+          python -m zipfile -c ../mc-fishing.zip mc-fishing/
           
       - name: 保存到工件
         uses: actions/upload-artifact@v4
         with:
-          name: mc-fishing-ubuntu-22.04.zip
+          name: mc-fishing-windows.zip
           path: mc-fishing-opencv/mc-fishing.zip
 
