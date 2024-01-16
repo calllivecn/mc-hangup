@@ -55,7 +55,8 @@ coll = COLLECT(
 
 
 # 查看全局变量的值
-print("="*20, "这是全局变量名和值：", "="*20)
+# 在 windows 里不能用中文？
+print("="*20, "All varibles:", "="*20)
 print(f"{DISTPATH=}\n{HOMEPATH=}\n{SPEC=}\n{SPECPATH=}\n{workpath=}")
 print(f"{exe.name=}, {coll.name=}")
 
