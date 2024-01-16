@@ -26,6 +26,7 @@ jobs:
           pip install pyinstaller>=6.3
 
           cd mc-fishing-opencv/
+
           pip install -r requirements-windows.txt
           echo "==================="
           pyinstaller mc-fishing.spec
