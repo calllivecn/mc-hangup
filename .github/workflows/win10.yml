@@ -32,5 +32,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mc-fishing-windows
-          path: mc-fishing-opencv/dist/mc-fishing
+          path: mc-fishing-opencv/dist/mc-fishing/
 
