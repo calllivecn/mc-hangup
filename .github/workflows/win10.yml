@@ -22,7 +22,7 @@ jobs:
 
           python -m pip install -U pip virtualenv
           virtualenv .venv/
-          source .venv/Scripts/activate
+          .venv/Scripts/activate
           pip install pyinstaller>=6.3
 
           cd mc-fishing-opencv/
