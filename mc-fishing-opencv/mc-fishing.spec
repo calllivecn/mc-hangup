@@ -3,6 +3,22 @@
 import sys
 from pathlib import Path
 
+# 路径不太对
+# datas_files = [("images", "images"), ("usage.txt", "usage.txt")]
+
+imports = []
+if sys.platform == "win32":
+    imports += ["pyautogui"]
+elif sys.platform == "linux":
+    imports += ["keyboardmouse", "libevdev"],
+else:
+    print("当前操作系统没有测试")
+    while (yesno := input("是否继续？[Y/n]")) not in ("Y", "y", "n"):
+        pass
+    
+    if yesno not in ("y", "Y"):
+        sys.exit(0)
+
 
 block_cipher = None
 
@@ -10,6 +26,7 @@ a = Analysis(
     ['mc-fishing2.py'],
     pathex=[],
     binaries=[],
+    #datas=datas_files,
     datas=[],
     hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
     hookspath=[],
