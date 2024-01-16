@@ -6,7 +6,7 @@ from pathlib import Path
 # 路径不太对
 # datas_files = [("images", "images"), ("usage.txt", "usage.txt")]
 
-imports = []
+imports = ["opencv-python"]
 if sys.platform == "win32":
     imports += ["pyautogui"]
 elif sys.platform == "linux":
