@@ -6,6 +6,7 @@ from pathlib import Path
 # 路径不太对
 # datas_files = [("images", "images"), ("usage.txt", "usage.txt")]
 
+"""
 imports = ["opencv-python"]
 if sys.platform == "win32":
     imports += ["pyautogui"]
@@ -19,6 +20,7 @@ else:
     if yesno not in ("y", "Y"):
         sys.exit(0)
 
+"""
 
 block_cipher = None
 
@@ -26,9 +28,9 @@ a = Analysis(
     ['mc-fishing2.py'],
     pathex=[],
     binaries=[],
-    #datas=datas_files,
     datas=[],
-    hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
+    #hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
