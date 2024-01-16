@@ -18,9 +18,11 @@ jobs:
       
       - name: 跑起来~
         run: |
-          python -m pip install -U pip virtualenv
+          python -m pip install -U virtualenv
           virtualenv .venv/
           source .venv/bin/activate
+
+          python -m pip install -U pip
 
           pip install pyinstaller>=6.3
           pip install -r requirements-linux.txt
@@ -29,8 +31,9 @@ jobs:
           echo "==================="
           pyinstaller mc-fishing.spec
           echo "==================="
+
+          #  upload-artifact 会自动打包成zip
           #(cd dist/;zip -r ../mc-fishing.zip mc-fishing/)
-          #(cd dist;python -m zipfile -c ../mc-fishing.zip mc-fishing/)
           
       - name: 保存到工件
         uses: actions/upload-artifact@v4
