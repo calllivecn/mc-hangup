@@ -24,10 +24,11 @@ jobs:
 
           python -m pip install -U pip
 
+          cd mc-fishing-opencv/
+
           pip install pyinstaller>=6.3
           pip install -r requirements-linux.txt
 
-          cd mc-fishing-opencv/
           echo "==================="
           pyinstaller mc-fishing.spec
           echo "==================="
