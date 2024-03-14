@@ -1,0 +1,8 @@
+[Unit]
+Description=ten mc backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash rsync+ssh.sh
+WorkingDirectory=/mnt/data/mc-bak
+

@@ -1,0 +1,10 @@
+[Unit]
+Description=ten mc backup
+
+
+[Timer]
+OnBootSec=15m
+OnUnitActiveSec=3h
+
+[Install]
+WantedBy=default.target
