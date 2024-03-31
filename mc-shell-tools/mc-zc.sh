@@ -1,6 +1,6 @@
 #!/bin/bash
 # date 2021-01-23 16:37:09
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 
 #. "$(dirname ${0})"/libmc.sh

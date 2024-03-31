@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 # date 2023-04-24 00:49:12
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 template="""\
 execute at @s if entity @s[tag=!zxmc.totem_find,nbt={{Inventory:[{{Slot:{0}b, id:"minecraft:totem_of_undying"}}]}}] run tag @s add zxmc.totem_find_{0}

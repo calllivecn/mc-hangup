@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 # date 2023-07-11 12:29:28
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 """
 在 OpenCV 的 matchTemplate 函数中，各种匹配方法（如 cv2.TM_SQDIFF、cv2.TM_CCORR、cv2.TM_CCOEFF 等）可以用于匹配彩色图像，而不仅限于灰度图像。

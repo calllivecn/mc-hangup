@@ -1,6 +1,6 @@
 #!/bin/bash
 # date 2019-07-02 16:14:39
-# author calllivecn <c-all@qq.com>
+# author calllivecn <calllivecn@outlook.com>
 
 
 if [ -d ~/bin ];then
