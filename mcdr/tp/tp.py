@@ -122,9 +122,9 @@ def check_level(server, info):
     l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
 
     server.logger.debug(f"玩家 {info.player} 等级： {l}")
-
-    if int(l) < 10:
-        server.reply(info, RText("经验不足，至少需要10级", RColor.red))
+    level_threshold = 7
+    if int(l) < level_threshold:
+        server.reply(info, RText(f"经验不足，至少需要{level_threshold}级", RColor.red))
         return False
     else:
         # 扣掉1级
@@ -222,7 +222,8 @@ def add(src, ctx):
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
-    position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+    cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
+    position = re.search(cmd, rcon_result)
     x, y, z = position.group(1), position.group(2), position.group(3)
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
@@ -265,7 +266,7 @@ def update(src, ctx):
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
-    position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+    position = re.search(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
     x, y, z = position.group(1), position.group(2), position.group(3)
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
