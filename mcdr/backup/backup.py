@@ -259,6 +259,10 @@ class BackInfo:
         for bak in baks[BACKUP_COUNT-1:]:
             shutil.rmtree(BACKUP_DIR / bak[0])
 
+            filename = Path(str(bak) + ".msg")
+            if filename.exists():
+                os.remove(filename)
+
 
     def __readmsg(self, filename: Path):
         if filename.is_file():
