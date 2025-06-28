@@ -2,7 +2,7 @@
     "id": "flow",
     "version": "0.1",
     "name": "flow",
-    "description": "",
+    "description": "1.21.6之后不在需要，原版已经有这个功能。",
     "author": [
         "calllivecn"
     ],

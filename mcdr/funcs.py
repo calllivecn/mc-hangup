@@ -5,7 +5,6 @@
 
 import re
 import time
-import contextvars
 import configparser
 from pathlib import Path
 
@@ -29,6 +28,8 @@ from mcdreforged.command.builder.nodes.basic import Literal
 from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float
 
 from mcdreforged.permission.permission_level import PermissionLevel
+
+from mcdreforged.api.types import PluginServerInterface, Info
 
 
 CMDPREFIX="."

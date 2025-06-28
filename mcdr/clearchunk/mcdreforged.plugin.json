@@ -1,0 +1,14 @@
+{
+    "id": "clearchunk", 
+    "version": "0.1.0",
+    "name": "一步步清空指定区域",
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
+
+
