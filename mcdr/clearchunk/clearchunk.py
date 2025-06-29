@@ -17,6 +17,9 @@ from funcs import (
     RColor,
     Literal,
     Integer,
+    ArgumentNode,
+    ParseResult,
+    CommandSyntaxError,
     new_thread,
     timestamp,
     permission,
@@ -24,6 +27,8 @@ from funcs import (
     PluginServerInterface,
     Info,
 )
+
+from mcdreforged.command.builder import command_builder_utils
 
 ID_NAME = "clearchunk"
 PLUGIN_NAME = "一步步清空指定区域"
@@ -70,21 +75,23 @@ def connected_blocks(x, y, z) -> list[tuple[int, int, int]]:
 
 def clear_fluid(x0, y0, z0, fluid: str = "water") -> None:
     # 清理流体，这里主要是 水源或熔岩源
+    fluid_name = "水源" if fluid == "water" else "熔岩源"
 
-    water_found = set((x0, y0, z0))  # 用集合来存储找到的水源方块
+    water_found = set()  # 用集合来存储找到的水源方块
+    water_found.add((x0, y0, z0))
 
     water_found_next = set()  # 用来存储下一个循环中找到的水源方块
 
     water_count = 0  # 计数器，记录找到的水源方块数量
 
+
     while len(water_found) > 0:
 
         # 取出一个水源方块
-        for x, y, z in water_found:
+        for x1, y1, z1 in water_found:
 
             # 把相连的水流方块添加进去
-            Pos = connected_blocks(x, y, z)
-            for x, y, z in Pos:
+            for x, y, z in connected_blocks(x1, y1, z1):
                 # 是水源。不区分会更好。
                 # rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:{fluid}[level=0]")
                 rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:{fluid}")
@@ -95,11 +102,18 @@ def clear_fluid(x0, y0, z0, fluid: str = "water") -> None:
         for x, y, z in water_found:
             server.rcon_query(f"setblock {x} {y} {z} minecraft:air strict")
         
+
+        server.reply(info, RText(f"本次小轮清理 {fluid_name}: {len(water_found)} 个", RColor.green))
+
+        # 把上一轮已经检测过的去掉
+        for pos in water_found:
+            water_found_next.discard(pos)
+        
         # 清理完当前找到的水源方块后，更新 water_found
         water_found = water_found_next
         water_found_next = set()  # 清空下一个循环的集合
 
-    server.reply(info, RText(f"清理: {len(water_found)} 个数的水流", RColor.green))
+    server.reply(info, RText(f"本次大轮总共清理 {fluid_name}: {water_count} 个", RColor.green))
 
 
 def check_destroy_block(x, y, z) -> bool:
@@ -111,7 +125,7 @@ def check_destroy_block(x, y, z) -> bool:
 
     elif rcon_result == "That position is not loaded":
         server.reply(info, RText(f"位置 {x} {y} {z} 未加载，请先加载该区域。", RColor.red))
-        return False
+        return True
 
     # 检测是水源
     # rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:water[level=0]")
@@ -148,29 +162,58 @@ def check_destroy_block(x, y, z) -> bool:
 @new_thread("clerchunk")
 def run(pos1, pos2, pos3, unique_id):
 
+    # 掉落物的收取区域增加3格
+    r = 3
+
     x1, y1, z1 = pos1
+
+    item_count = 0  # 掉落物计数器
 
     # 从上向下清理？
     for y in range(pos2[1], y1-1, -1):
         for x in range(x1, pos2[0] + 1):
             for z in range(z1, pos2[2] + 1):
-                if not check_destroy_block(x, y, z):
+                try:
+                    check_destroy_block(x, y, z)
+                    item_count += 1
+                except Exception as e:
+                    server.reply(info, RText("异常退出。", RColor.red))
+                    server.logger.error(f"清理区域时发生异常: {e}")
                     return
-                # 每清理10格就回收一次掉落物
-                server.rcon_query(f"execute as @e[type=item,x={x1},y={y1},z={z1},dx={pos2[0]-x1},dy={pos2[1]-y1},dz={pos2[2]-z1}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+
+                if item_count % 20 == 0:
+                    # 每清理10格就回收一次掉落物
+                    time.sleep(1)
+                    server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
 
+    time.sleep(1)
+    server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
     server.reply(info, RText("清理区域完成执行完成", RColor.green))
 
 
-@permission
+# @permission
 def main(src, ctx):
+    global server, info
+    server, info = __get(src)
+
+    # 检测权限
+    perm = server.get_permission_level(info)
+    if perm < PermissionLevel.USER:
+        server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
+        return
+
+
+    server.say(RText("开始清理区域...", RColor.green))
 
     unique_id = time.monotonic_ns()
 
-    pos1 = (int(ctx.get("x1")), int(ctx.get("y1")), int(ctx.get("y1")))
-    pos2 = (int(ctx.get("x2")), int(ctx.get("y2")), int(ctx.get("y2")))
-    pos3 = (int(ctx.get("x3")), int(ctx.get("y3")), int(ctx.get("y3")))
+    args = ctx["pos"]
+    # print(f"{args=}")
+
+    pos1 = tuple(map(int, args[0].split(",")))
+    pos2 = tuple(map(int, args[1].split(",")))
+    pos3 = tuple(map(int, args[2].split(",")))
 
     if pos1[0] > pos2[0] or pos1[1] > pos2[1] or pos1[2] > pos2[2]:
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
@@ -195,14 +238,17 @@ def main(src, ctx):
     run(pos1, pos2, pos3, unique_id)
 
 
-def help():
+def help(src):
+    global server, info
+    server, info = __get(src)
+
     msg=[f"{'='*10} 使用说明 {'='*10}",
-    "x1 y1 z1          起点位置坐标",
-    "x2 y2 z2          手动触发创建备份",
-    "x3 y3 z2          掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)"
+    "x1,y1,z1          起点位置坐标",
+    "x2,y2,z2          手动触发创建备份",
+    "x3,y3,z3          掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
     f"{'='*10} 使用方法 {'='*10}",
     f"{CMD}                   查看使用方法",
-    f"{CMD} x1 y1 z1 x2 y2 z2 x3 y3 z2",
+    f"{CMD} x1,y1,z1 x2,y2,z2 x3,y3,z3",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -210,12 +256,90 @@ def help():
 # def on_user_info(server_src, player, info_src):
     # pass
 
+class Invaild(CommandSyntaxError):
+    def __init__(self, char_read: int):
+        super().__init__("无效参数", char_read)
+
+class Incomplete(CommandSyntaxError):
+    def __init__(self, char_read: int):
+        super().__init__('不完整', char_read)
+
+class PointArgument(ArgumentNode):
+    def parse(self, text: str) -> ParseResult:
+        total_read = 0
+        coords = []
+        for i in range(6):
+            total_read += len(text[total_read:]) - len(command_builder_utils.remove_divider_prefix(text[total_read:]))
+            value, read = command_builder_utils.get_float(text[total_read:])
+            if read == 0:
+                raise Invaild(total_read)
+
+            total_read += read
+
+            if value is None:
+                raise Incomplete(total_read)
+
+            coords.append(value)
+        return ParseResult(coords, total_read)
+
+
+class PosArgument(ArgumentNode):
+    def parse(self, text: str) -> ParseResult:
+        total_read = 0
+        coords = []
+        print(f"{text=}")
+        for i in range(3):
+            total_read += len(text[total_read:]) - len(command_builder_utils.remove_divider_prefix(text[total_read:]))
+
+            arg = command_builder_utils.get_element(text[total_read:])
+            try:
+                value = str(arg)
+            except ValueError:
+                value = None
+
+            value, read = value, len(arg)
+
+            if read == 0:
+                raise Invaild(total_read)
+
+            total_read += read
+            if value is None:
+                raise Incomplete(total_read)
+
+            coords.append(value)
+        return ParseResult(coords, total_read)
+
 
 def build_command():
-    c = Literal(CMD).runs(lambda src: help())
+    # c = Literal(CMD).runs(help)
     # c.then(Literal("start").runs(lambda src, ctx: main(src, ctx)))
     # c.then(Literal("backup").runs(lambda src, ctx: backup(src, ctx)))
 
+    """
+    c = c.then(Integer("x1"), 
+                Integer("y1"), 
+                Integer("z1"), 
+                Integer("x2"), 
+                Integer("y2"), 
+                Integer("z2"), 
+                Integer("x3"), 
+                Integer("y3"), 
+                Integer("z3").runs(lambda src, ctx: main(src, ctx)))
+    """
+    """
+    c.then(Integer("x1")
+    .then(Integer("y1"))
+    .then(Integer("z1"))
+    .then(Integer("x2"))
+    .then(Integer("y2"))
+    .then(Integer("z2"))
+    .then(Integer("x3"))
+    .then(Integer("y3"))
+    .then(Integer("z3"))
+    .runs(lambda src, ctx: main(src, ctx)))
+    """
+
+    """
     c.then(Integer("x1"))
     c.then(Integer("y1"))
     c.then(Integer("z1"))
@@ -225,19 +349,20 @@ def build_command():
     c.then(Integer("x3"))
     c.then(Integer("y3"))
     c.then(Integer("z3"))
-    c.runs(lambda src, ctx: main(src, ctx))
-
-    # c.then(Literal("rollback").then(Integer("number").runs(lambda src, ctx: rollback(src, ctx))))
+    c.runs(main)
+    """
+    
+    # c = Literal(CMD).then(PointArgument("pos").runs(main))
+    c = Literal(CMD).then(PosArgument("pos").runs(main))
     return c
 
 
-
 def on_load(server_src, old_plugin):
-    global server, info
-    server, info = __get(server_src)
 
     server_src.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
     server_src.register_command(build_command())
 
+    server_src.say(RText(f"{PLUGIN_NAME} 插件加载成功", RColor.green))
+
     if old_plugin is not None:
-        CLEARCHUNK_PROGRESS = old_plugin.CHEARCHUNK_PROGRESS
+        CLEARCHUNK_PROGRESS = old_plugin.CLEARCHUNK_PROGRESS
