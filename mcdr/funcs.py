@@ -23,8 +23,11 @@ from mcdreforged.api.rtext import (
 
 # mcdr_v1.x
 # from mcdreforged.command.builder.command_node import Literal, QuotableText, Text, GreedyText, Integer
+
 # mcdr_v2.x
-from mcdreforged.command.builder.nodes.basic import Literal
+from mcdreforged.command.builder.nodes.basic import Literal, ArgumentNode
+from mcdreforged.command.builder.common import ParseResult
+from mcdreforged.command.builder.exception import CommandSyntaxError
 from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float
 
 from mcdreforged.permission.permission_level import PermissionLevel
