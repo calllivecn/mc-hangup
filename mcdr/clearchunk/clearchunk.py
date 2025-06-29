@@ -60,135 +60,116 @@ def set_progress_info(player, progress):
     with open(j, "w+") as f:
         return json.dump(progress, f, ensure_ascii=False, indent=4)
 
-def connected_blocks(x, y, z) -> list[tuple[int, int, int]]:
-    # 相连六面的方块坐标
-    pos = [
-        (x, y, z-1),  # 前
-        (x, y, z+1),  # 后
-        (x-1, y, z),  # 左
-        (x+1, y, z),  # 右
-        (x, y+1, z),  # 上
-        (x, y-1, z),  # 下
-    ]
-    return pos
-
-
-def clear_fluid(x0, y0, z0, fluid: str = "water") -> None:
-    # 清理流体，这里主要是 水源或熔岩源
-    fluid_name = "水源" if fluid == "water" else "熔岩源"
-
-    water_found = set()  # 用集合来存储找到的水源方块
-    water_found.add((x0, y0, z0))
-
-    water_found_next = set()  # 用来存储下一个循环中找到的水源方块
-
-    water_count = 0  # 计数器，记录找到的水源方块数量
-
-
-    while len(water_found) > 0:
-
-        # 取出一个水源方块
-        for x1, y1, z1 in water_found:
-
-            # 把相连的水流方块添加进去
-            for x, y, z in connected_blocks(x1, y1, z1):
-                # 是水源。不区分会更好。
-                # rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:{fluid}[level=0]")
-                rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:{fluid}")
-                if rcon_result == "Test passed":
-                    water_found_next.add((x, y, z))
-            
-        water_count += len(water_found)
-        for x, y, z in water_found:
-            server.rcon_query(f"setblock {x} {y} {z} minecraft:air strict")
-        
-
-        server.reply(info, RText(f"本次小轮清理 {fluid_name}: {len(water_found)} 个", RColor.green))
-
-        # 把上一轮已经检测过的去掉
-        for pos in water_found:
-            water_found_next.discard(pos)
-        
-        # 清理完当前找到的水源方块后，更新 water_found
-        water_found = water_found_next
-        water_found_next = set()  # 清空下一个循环的集合
-
-    server.reply(info, RText(f"本次大轮总共清理 {fluid_name}: {water_count} 个", RColor.green))
-
-
-def check_destroy_block(x, y, z) -> bool:
-    # 检测是不是空气。
-    rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:air")
-    if rcon_result == "Test passed": # or rcon_result == "Test failed":
-        # server.tell(info.player, RText(f"位置 {x} {y} {z} 已经是空气了。", RColor.red))
-        return True
-
-    elif rcon_result == "That position is not loaded":
-        server.reply(info, RText(f"位置 {x} {y} {z} 未加载，请先加载该区域。", RColor.red))
-        return True
-
-    # 检测是水源
-    # rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:water[level=0]")
-    rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:water")
-    if rcon_result == "Test passed":
-        #尝试清理所有相连的水(一个方块的六个相连的方块)
-        clear_fluid(x, y, z, "water")
-        return True
-
-    # 检测是熔岩源
-    # rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:lava[level=0]")
-    rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:lava")
-    if rcon_result == "Test passed":
-        #尝试清理所有相连的熔岩(一个方块的六个相连的方块)
-        clear_fluid(x, y, z, "lava")
-        return True
-
-    # 检测是基岩跳过
-    rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:bedrock")
-    if rcon_result == "Test passed":
-        return True
-
-    rcon_result = server.rcon_query(f"setblock {x} {y} {z} minecraft:air destroy")
-    if rcon_result == "Could not set the block":
-        #说明原本就是空气
-        pass
-    elif rcon_result.startswith("Changed the block at"): # Changed the block at 1051, 117, 1014  
-        #说明清理成功
-        pass
-
-    return True
-
 
 @new_thread("clerchunk")
 def run(pos1, pos2, pos3, unique_id):
 
+    rcon_result = server.rcon_query(f"data get entity {info.player} Dimension")
+    if rcon_result is None:
+        server.reply(info, RText("无法获取玩家维度信息，rcon返回None。", RColor.red))
+        server.logger.error("rcon_query returned None when getting player dimension.")
+        return
+
+    match = re.match(fr'{info.player} has the following entity data: "(.*)"', rcon_result)
+    if not match:
+        server.reply(info, RText("无法解析玩家维度信息。", RColor.red))
+        server.logger.error(f"Failed to match dimension info from rcon_result: {rcon_result}")
+        return
+
+    world = match.group(1)
+
     # 掉落物的收取区域增加3格
     r = 3
 
+    step_r = 30
+
+    scale_r = 16
+
     x1, y1, z1 = pos1
 
-    item_count = 0  # 掉落物计数器
 
-    # 从上向下清理？
-    for y in range(pos2[1], y1-1, -1):
-        for x in range(x1, pos2[0] + 1):
-            for z in range(z1, pos2[2] + 1):
-                try:
-                    check_destroy_block(x, y, z)
-                    item_count += 1
-                except Exception as e:
-                    server.reply(info, RText("异常退出。", RColor.red))
-                    server.logger.error(f"清理区域时发生异常: {e}")
+    block_cmd_suffix_list = (
+        (("灵魂沙", "minecraft:soul_sand destroy"), ("岩浆块", "minecraft:magma_block destroy")),
+        (("水草", "minecraft:seagrass strict"), ("水草", "minecraft:tall_seagrass strict")),
+        (("海带", "minecraft:kelp_plant destroy"), ("海带", "minecraft:kelp destroy")),
+        (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
+    )
+
+    y_up = 319 # 上边界
+    y_down = -63 # 上下边界
+
+    if world == "minecraft:overworld":
+        pass
+
+    elif world == "minecraft:the_nether":
+        block_cmd_suffix_list =("岩浆", "minecraft:lava destroy")
+        y_up = 124
+        y_down = 1 # 上下边界
+    
+    elif world == "minecraft:the_end":
+        block_cmd_suffix_list = tuple()
+        y_up = 255
+        y_down = 0 # 上下边界
+
+    y1 = y1 if y1 < y_down else y_down
+    y1 = y1 if y1 > y_up else y_up
+
+    pos2[1] = pos2[1] if pos2[1] < y_down else y_down
+    pos2[1] = pos2[1] if pos2[1] > y_up else y_up
+
+
+    for block_cmd_suffix in block_cmd_suffix_list:
+        server.reply(info, RText(f"现在清理 {block_cmd_suffix[0][0]} 和 {block_cmd_suffix[1][0]} 。", RColor.green))
+
+        # 预清理整个区域的灵魂沙和岩浆块。 清水区域，要比指定区域边界大8.
+        for y in range(pos2[1]+scale_r, y1-scale_r-1, -step_r):
+            for x in range(x1-scale_r, pos2[0]+scale_r+1, step_r):
+                for z in range(z1-scale_r, pos2[2]+scale_r+1, step_r):
+
+                    y2 = (y - step_r) if y - step_r > y1 - scale_r else y1 - scale_r
+                    x2 = (x + step_r) if x + step_r < pos2[0] + scale_r else pos2[0] + scale_r
+                    z2 = (z + step_r) if z + step_r < pos2[2] + scale_r else pos2[2] + scale_r
+
+
+                    server.reply(info, RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2}", RColor.yellow))
+
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[0][1]}")
+                    if result is None:
+                        err = f"清理区域 {block_cmd_suffix[0][0]} 时发生异常退出。"
+                        server.reply(info, RText(err, RColor.red))
+                        server.logger.error(err)
+                        return
+
+                    result = server.rcon_query(f"fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[1][1]}")
+                    if result is None:
+                        err = f"清理区域 {block_cmd_suffix[1][0]} 时发生异常退出。"
+                        server.reply(info, RText(err, RColor.red))
+                        server.logger.error(err)
+                        return
+
+                server.rcon_query(f"execute as @e[type=item,x={x1-r-8},y={y1-r-scale_r},z={z1-r-scale_r},dx={pos2[0]-x1+r+scale_r},dy={pos2[1]-y1+r+scale_r},dz={pos2[2]-z1+r+scale_r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+
+
+    # 正式清理整个区域的方块。 这里步长不能30，只能10。
+    step_r = 10
+    for y in range(pos2[1], y1-1, -step_r):
+        for x in range(x1, pos2[0]+1, step_r):
+            for z in range(z1, pos2[2]+1, step_r):
+
+                y2 = y - step_r if y - step_r > y1 else y1
+                x2 = x + step_r if x + step_r < pos2[0] else pos2[0]
+                z2 = z + step_r if z + step_r < pos2[2] else pos2[2]
+
+                result = server.rcon_query(f"fill {x} {y2} {z} {x2} {y} {z2} minecraft:air destroy")
+                if result is None:
+                    server.reply(info, RText("清理区域 方块 时发生异常退出。", RColor.red))
+                    server.logger.error("清理区域 方块 时发生异常")
                     return
 
-                if item_count % 20 == 0:
-                    # 每清理10格就回收一次掉落物
-                    time.sleep(1)
-                    server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                time.sleep(0.3)
+                server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                server.rcon_query(f"execute as @e[type=minecraft:experience_orb,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
-
-    time.sleep(1)
-    server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
     server.reply(info, RText("清理区域完成执行完成", RColor.green))
 
 
