@@ -11,6 +11,9 @@ from urllib import request
 from pprint import pprint
 
 
+import httpx
+
+
 URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
 
 def download(url=URL):
@@ -19,6 +22,12 @@ def download(url=URL):
     utf8str = data.decode()
     js = json.loads(utf8str)
     return js
+
+
+def download2(url=URL) -> dict:
+    with httpx.Client(http2=True) as client:
+        r = client.get(url)
+        return r.json()
 
 def getjsonurl(versions_obj, release_y=True, count=10):
     c = 0
@@ -47,7 +56,7 @@ def getjsonurl(versions_obj, release_y=True, count=10):
 def getversionjson(version_json_url):
     for j in version_json_url:
 
-        json_obj = download(j["url"])
+        json_obj = download2(j["url"])
         
         try:
             number = json_obj["minimumLauncherVersion"]
@@ -81,7 +90,7 @@ if __name__ == "__main__":
     args = parse.parse_args()
     #print(args)
 
-    json_data = download()
+    json_data = download2()
 
     if args.snapshot:
         RELEASE = False

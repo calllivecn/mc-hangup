@@ -8,8 +8,9 @@ import sys
 import json
 import argparse
 from os import path
-from urllib import request
+#from urllib import request
 
+import httpx
 
 URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
 
@@ -129,9 +130,9 @@ class Save:
 
 def head_check(save, url=URL):
     # head http 请求
-    req = request.Request(url, method="HEAD")
-    result = request.urlopen(req)
-    Etag = result.getheader("Etag")
+    with httpx.Client(http2=True) as client:
+        r = client.head(url)
+        Etag = r.headers.get("Etag", "")
 
     if Etag == save.etag:
         return False
@@ -140,9 +141,10 @@ def head_check(save, url=URL):
         return True
 
 def download(url=URL):
-    html = request.urlopen(url)
-    data = html.read()
-    return data.decode()
+    with httpx.Client(http2=True) as client:
+        r = client.get(url)
+
+    return r.text
 
 def get_release(data):
     json_data = json.loads(data)
