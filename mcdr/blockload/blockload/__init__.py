@@ -142,13 +142,13 @@ def add(src, ctx):
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
-    position = re.search(rf"{info.player} has the following entity data: [(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d]", rcon_result)
+    position = re.search(f"{info.player}" + r" has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9\.]+)d, (-?[0-9\.]+)d\]", rcon_result)
     x, y, z = position.group(1), position.group(2), position.group(3)
     x, y, z = round(float(x)), round(float(y)), round(float(z))
 
 
     rcon_result = server.rcon_query(f"forceload add {x} {z}")
-    load = re.match(f"Marked chunk [(-?[0-9]+), (-?[0-9]+)] in (.*) to be force loaded", rcon_result)
+    load = re.match(r"Marked chunk \[(-?[0-9]+), (-?[0-9]+)\] in (.*) to be force loaded", rcon_result)
 
     if load is None:
         check = re.match("No chunks were marked for force loading", rcon_result)
@@ -205,7 +205,7 @@ def remove(src, ctx):
 
         #
         rcon_result = server.rcon_query(f"execute in {world} run forceload remove {x} {z}")
-        unload = re.match(f"Unmarked chunk [(-?[0-9]+), (-?[0-9]+)] in (.*) for force loading", rcon_result)
+        unload = re.match(r"Unmarked chunk \[(-?[0-9]+), (-?[0-9]+)\] in (.*) for force loading", rcon_result)
 
         if unload is None:
             server.reply(info, RText(f"未知错误，请报告服主。", RColor.red))
