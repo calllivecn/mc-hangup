@@ -5,7 +5,7 @@
 
 import re
 
-from funcs import (
+from xps.funcs import (
     CMDPREFIX,
     __get,
     RText,

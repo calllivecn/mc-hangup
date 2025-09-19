@@ -2,7 +2,7 @@
     "id": "blockload", 
     "version": "0.1.0",
     "name": "使用forceload命令加载区块",
-	"description": "1.21.6之后不在需要，加载了只要没有玩家在线就没有用？",
+	"description": "1.21.6不行，加载了只要没有玩家在线就没有用。1.21.8之后又可以了...",
     "author": [
         "calllivecn"
    ],

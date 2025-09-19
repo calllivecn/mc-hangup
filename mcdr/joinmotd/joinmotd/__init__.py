@@ -2,7 +2,7 @@
 
 from re import match
 
-from funcs import (
+from joinmotd.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

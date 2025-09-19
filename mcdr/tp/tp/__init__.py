@@ -9,7 +9,7 @@ import time
 import json
 import copy
 
-from funcs import (
+from tp.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

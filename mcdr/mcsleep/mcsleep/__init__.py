@@ -10,7 +10,7 @@ import asyncio
 from threading import Lock
 from pathlib import Path
 
-from funcs import (
+from mcsleep.funcs import (
     CMDPREFIX,
     new_thread,
     PermissionLevel,

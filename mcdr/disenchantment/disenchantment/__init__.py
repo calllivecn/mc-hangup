@@ -8,7 +8,7 @@ import time
 import json
 
 
-from funcs import (
+from disenchantment.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

@@ -11,10 +11,7 @@ import subprocess
 from pathlib import Path
 from threading import Lock
 
-# from mcdreforged import config
-# from mcdreforged.api.decorator import new_thread
-
-from funcs import (
+from backup.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

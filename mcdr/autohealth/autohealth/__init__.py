@@ -8,7 +8,7 @@ import re
 import time
 import copy
 
-from funcs import (
+from autohealth.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

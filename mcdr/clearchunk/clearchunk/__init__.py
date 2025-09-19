@@ -9,7 +9,7 @@ import time
 import json
 
 
-from funcs import (
+from clearchunk.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,

@@ -10,7 +10,7 @@ import time
 import json
 
 
-from funcs import (
+from soul.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,
@@ -180,7 +180,7 @@ def soul(src, ctx):
 
         # 查询坐标
         rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
-        position = re.search(f"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+        position = re.search(rf"{info.player} has the following entity data: [(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d]", rcon_result)
         x, y, z = position.group(1), position.group(2), position.group(3)
 
         #x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
