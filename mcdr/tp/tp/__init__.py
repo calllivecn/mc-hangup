@@ -14,6 +14,7 @@ from tp.funcs import (
     CONFIG_DIR,
     __get,
     RText,
+    match,
     RColor,
     RAction,
     RStyle,
@@ -76,7 +77,7 @@ def player_save(player, data):
 
 def click_invite(player1, player2):
     r = RText(f"{player1} 邀请你tp TA.", RColor.green)
-    r.set_hover_text(RText(f"点击向玩家 {player1} 传送,或者输入 {CMD} accept {player1}", RColor.green))
+    r.set_hover_text(RText(f"点击向玩家 {player1} 传送,或者输入 {CMD} accept {player2}", RColor.green))
     r.set_click_event(RAction.run_command, f"{CMD} accept {player1}")
     return r
 
@@ -119,11 +120,11 @@ def check_level(server, info):
     # 查看玩家的等级够不够
     level = server.rcon_query(f"experience query {info.player} levels")
 
-    l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
+    lvl = match(f"{info.player} has ([0-9]+) experience levels", level, (1,))[0]
 
-    server.logger.debug(f"玩家 {info.player} 等级： {l}")
+    server.logger.debug(f"玩家 {info.player} 等级： {lvl}")
     level_threshold = 7
-    if int(l) < level_threshold:
+    if int(lvl) < level_threshold:
         server.reply(info, RText(f"经验不足，至少需要{level_threshold}级", RColor.red))
         return False
     else:
@@ -218,13 +219,12 @@ def add(src, ctx):
         server.logger.warning(prompt)
         server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
-    world = re.match('{} has the following entity data: "(.*)"'.format(info.player), rcon_result).group(1)
+    world = match(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
     cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
-    position = re.search(cmd, rcon_result)
-    x, y, z = position.group(1), position.group(2), position.group(3)
+    x, y, z = match(cmd, rcon_result, (1, 2, 3))
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
     u = USERTP.get(info.player)
@@ -262,16 +262,19 @@ def update(src, ctx):
         server.logger.warning(prompt)
         server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
-    world = re.match('{} has the following entity data: "(.*)"'.format(info.player), rcon_result).group(1)
+    world = match(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
-    position = re.search(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
-    x, y, z = position.group(1), position.group(2), position.group(3)
+
+    # position = re.search(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
+    # x, y, z = position.group(1), position.group(2), position.group(3)
+
+    x, y, z = match(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result, (1,2,3))
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
     if u is None:
-        server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
+        server.tell(info.player, RText("当前没有收藏点.", RColor.red))
     else:
 
         number = ctx.get("number")
@@ -298,7 +301,7 @@ def remove(src, ctx):
     u = USERTP.get(info.player)
 
     if u is None:
-        server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
+        server.tell(info.player, RText("当前没有收藏点.", RColor.red))
     else:
         number = ctx.get("number")
         label_name = number2key(server, info, u, number)
@@ -326,25 +329,25 @@ def rename(src, ctx):
     server, info = __get(src)
 
     if USERTP.get(info.player) is None:
-        server.tell(info.player, RText(f"当前没有收藏点.", RColor.red))
+        server.tell(info.player, RText("当前没有收藏点.", RColor.red))
     else:
         u = USERTP.get(info.player)
+        if u:
+            number = ctx.get("number")
+            label_name = number2key(server, info, u, number)
+            if label_name is False:
+                return
 
-        number = ctx.get("number")
-        label_name = number2key(server, info, u, number)
-        if label_name is False:
-            return
+            label = u.get(label_name)
 
-        label = u.get(label_name)
-
-        if label is None:
-            server.reply(info, RText(f"没有 {label_name} 收藏点", RColor.red))
-        else:
-            v = u.pop(label_name)
-            u[ctx["label_name2"]] = v
-            player_save(info.player, u)
-            playsound(server, info.player)
-            server.reply(info, RText("修改名称成功", RColor.green))
+            if label is None:
+                server.reply(info, RText(f"没有 {label_name} 收藏点", RColor.red))
+            else:
+                v = u.pop(label_name)
+                u[ctx["label_name2"]] = v
+                player_save(info.player, u)
+                playsound(server, info.player)
+                server.reply(info, RText("修改名称成功", RColor.green))
 
     server.logger.debug(f"rename ctx -------------->\n{ctx}")
 
@@ -473,10 +476,6 @@ def on_load(server, old_plugin):
     server.register_help_message(CMD, '玩家收藏点，和传玩家到收藏点.', PermissionLevel.USER)
     server.register_command(build_command())
 
-
-# 有下面两种用法??
-#def on_player_joined(server, player):
-    #pass
 
 def on_player_joined(server, player, info):
 

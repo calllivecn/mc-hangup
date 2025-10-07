@@ -1,0 +1,13 @@
+{
+    "id": "tpem",
+    "version": "0.1",
+    "name": "使用UUID记录实体对象，方便操作",
+    "description": "比如: 1.把宠物(悦灵，猫，狗等)tp当前玩家位置。2.把宠物转移给别一个玩家。3.修改乐魂移动速度等等。",
+    "author": [
+        "calllivecn"
+    ],
+    "link": "https://github.com/github/mc-hangup/mcdr/tpem",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
