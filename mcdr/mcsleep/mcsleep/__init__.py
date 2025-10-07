@@ -3,8 +3,6 @@
 # date 2021-02-19 16:11:15
 # author calllivecn <calllivecn@outlook.com>
 
-import re
-import sys
 import time
 import asyncio
 from threading import Lock
@@ -12,8 +10,11 @@ from pathlib import Path
 
 from mcsleep.funcs import (
     CMDPREFIX,
+    match,
     new_thread,
     PermissionLevel,
+    PluginServerInterface,
+    Info,
     readcfg,
 )
 
@@ -126,7 +127,7 @@ async def handler(reader, writer):
     print("client: ", addr)
 
     try:
-        data = await asyncio.wait_for(reader.read(1024), timeout=5)
+        data = await asyncio.wait_for(reader.read(8192), timeout=5)
     except asyncio.exceptions.TimeoutError:
         await return_ip(writer, addr[0])
         return
@@ -155,25 +156,21 @@ async def handler(reader, writer):
             # check_mc_server_is_running
             if STATE.state == STATE.NOTPLAYERS or STATE.state == STATE.SERVER_UP:
                 writer.write(httpResponse("服务器启动完成，没有玩家，倒计时关闭中..."))
-                await writer.drain()
 
             elif STATE.state == STATE.HAVE_PLAYER:
                 writer.write(httpResponse_players(STATE.PLAYERS))
-                await writer.drain()
 
             elif STATE.state == STATE.SERVER_DOWN:
                 writer.write(httpResponse("正在启动服务器...请稍等..."))
-                await writer.drain()
                 STATE.state = STATE.SERVER_STARTING
 
             elif STATE.state == STATE.SERVER_STARTING:
                 writer.write(httpResponse("服务器启动中...请稍等..."))
-                await writer.drain()
 
             else:
                 writer.write(httpResponse("未知状态..."))
-                await writer.drain()
 
+            await writer.drain()
             writer.close()
             await writer.wait_closed()
         else:
@@ -200,7 +197,7 @@ async def asyncio_check_exit(server):
             await server.wait_closed()
 
             # 清理还未执行完成的 task
-            tasks = asyncio.Task.all_tasks()
+            tasks = asyncio.all_tasks()
             tasks_len = len(tasks)
             if tasks_len:
                 print("asyncio.Task.all_tasks() --> ", tasks_len)
@@ -313,9 +310,7 @@ def players(server):
             result = server.rcon_query("list")
             # server.logger.info(f"players() server.rcon_query() --> {result}")
 
-            match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-            count = int(match.group(1))
-            players = match.group(3)
+            count, players = match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result, (1, 3))
             # 去除空格
             players = list(map(lambda x: x.strip(), players.split(",")))
 
@@ -331,19 +326,6 @@ def players(server):
                 return
             else:
                 time.sleep(1)
-
-
-
-def permission(func):
-
-    def warp(*args, **kwargs):
-        server = args[0].get_server()
-        info = args[0].get_info()
-        perm = server.get_permission_level(info)
-        if perm >= PermissionLevel.ADMIN:
-            func(*args, **kwargs)
- 
-    return warp
 
 
 def on_info(server, info):
@@ -375,7 +357,7 @@ def on_load(server, old_plugin):
         execute(server)
 
     if server.is_server_startup():
-        server.logger.info(f"server is up")
+        server.logger.info("服务器已启动")
         STATE.state = STATE.NOTPLAYERS
 
 def on_unload(server):
@@ -383,20 +365,21 @@ def on_unload(server):
 
 
 # def on_server_startup(server, info):
-def on_server_startup(server):
+def on_server_startup(server: PluginServerInterface, info: Info):
     server.logger.info("on_server_startup() 我监听服务器启动成功！")
     STATE.state = STATE.SERVER_UP
 
-#def on_server_stop(server):
-#    server.logger.info("on_server_stop()")
-#    STATE.state = STATE.SERVER_DOWN
-
+def on_server_stop(server: PluginServerInterface, server_return_code: int):
+    if server_return_code != 0:
+        server.logger.info('服务端crash?')
+    server.logger.info("on_server_stop()")
+    STATE.state = STATE.SERVER_DOWN
 
 # def on_player_left(server, player):
 #     pass
 # 
 
-def on_player_joined(server, player, info):
+def on_player_joined(server: PluginServerInterface, player: str, info: Info):
     if STATE.state == STATE.NOTPLAYERS:
         server.logger.info(f"玩家 {player} 加入游戏，中断 waitsleep")
         STATE.state = STATE.HAVE_PLAYER

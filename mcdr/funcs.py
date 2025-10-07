@@ -32,7 +32,7 @@ from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, Gree
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, Info
+from mcdreforged.api.types import PluginServerInterface, Info, PlayerCommandSource
 
 
 CMDPREFIX="."

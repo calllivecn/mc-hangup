@@ -32,7 +32,7 @@ from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, Gree
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, Info
+from mcdreforged.api.types import PluginServerInterface, Info, PlayerCommandSource
 
 
 CMDPREFIX="."
@@ -90,22 +90,22 @@ def permission_admin(func):
     return warp
 
 
-def match(re_str, s_str, group=0):
-
+def match(re_str, s_str, groups=(0,)) -> tuple:
+    lg = []
     result = re.match(re_str, s_str)
     if result:
-        return result.group(group)
-    else:
-        return None
+        for i in groups:
+            lg.append(result.group(i))
 
+    return tuple(lg)
 
 def check_rcon(server):
 
-    rcon_result = server.rcon_query(f"list")
+    rcon_result = server.rcon_query("list")
     if rcon_result is None:
         prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
         server.logger.warning(prompt)
-        server.say(RText(f"RCON 没有配置成功，请联系服主。", RColor.red))
+        server.say(RText("RCON 没有配置成功，请联系服主。", RColor.red))
         return False
 
 
@@ -117,15 +117,12 @@ def get_players(server):
     result = server.rcon_query("list")
     server.logger.debug(f"result = server.rcon_query('list') -->\n{result}")
 
-    match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-
-    if match.group(1) == "0":
+    players, playernames = match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result, (1, 3))
+    if players == "0":
         return []
 
-    ls = match.group(3) 
-
     players = []
-    for s in ls.split(","):
+    for s in playernames.split(","):
         players.append(s.strip())
     
     return players
@@ -145,12 +142,20 @@ def player_online(server, player):
 def check_level(server, info):
     # 查看玩家的等级够不够
     level = server.rcon_query(f"experience query {info.player} levels")
+    if not level:
+        server.reply(info, RText("无法查询到你的经验，请联系服主。", RColor.red))
+        return False
 
-    l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
+    lvl = re.match(f"{info.player} has ([0-9]+) experience levels", level)
+    if not lvl:
+        server.reply(info, RText("无法查询到你的经验，请联系服主。", RColor.red))
+        return False
 
-    server.logger.debug(f"玩家 {info.player} 等级： {l}")
+    level_value = lvl.group(1)
 
-    if int(l) < 1:
+    server.logger.debug(f"玩家 {info.player} 等级： {level_value}")
+
+    if int(level_value) < 1:
         server.reply(info, RText("经验不足，至少需要1级", RColor.red))
         return False
     else:
