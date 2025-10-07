@@ -372,6 +372,7 @@ def on_server_startup(server: PluginServerInterface, info: Info):
 def on_server_stop(server: PluginServerInterface, server_return_code: int):
     if server_return_code != 0:
         server.logger.info('服务端crash?')
+
     server.logger.info("on_server_stop()")
     STATE.state = STATE.SERVER_DOWN
 

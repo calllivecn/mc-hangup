@@ -21,6 +21,8 @@ from backup.funcs import (
     Literal,
     QuotableText,
     Integer,
+    PluginServerInterface,
+    Info,
     new_thread,
     permission,
     PermissionLevel,
@@ -464,6 +466,7 @@ def build_command():
 def on_info(server, info):
     pass
 
+
 def on_load(server, old_plugin):
     server.register_help_message(CMD, PLUGIN_NAME, PermissionLevel.ADMIN)
     server.register_command(build_command())
@@ -476,13 +479,23 @@ def on_load(server, old_plugin):
         old_plugin.PLUGIN_RELOAD = True
         B.value = old_plugin.B.value
 
+
 def on_unload(server):
     global PLUGIN_RELOAD
     PLUGIN_RELOAD = True
+
+
+def on_server_stop(server: PluginServerInterface, server_return_code: int):
+    if server_return_code != 0:
+        server.logger.info('服务端crash?')
+
+    server.logger.info("服务端关闭")
+
 
 def on_player_joined(server, player, info):
     pass
 
 def on_player_left(server, player):
     pass
+
 
