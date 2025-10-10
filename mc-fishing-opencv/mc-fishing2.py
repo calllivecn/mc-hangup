@@ -53,7 +53,7 @@ def runtime(func):
 
 # 使用说明
 try:
-    with open("usage.txt") as f:
+    with open("usage.txt", "r", encoding="utf8") as f:
         HELP_INFO=f.read()
 except FileNotFoundError:
     logger.error("是不是删除了数据文件: usage.txt")
@@ -107,7 +107,7 @@ class Conf:
     def load(self):
 
         try:
-            with open(self.savefile, "r") as f:
+            with open(self.savefile, "r", encoding="utf8") as f:
                 self._d = json.load(f)
         except Exception:
             return False
@@ -123,7 +123,7 @@ class Conf:
 
     def save(self):
         
-        with open(self.savefile, "w") as f:
+        with open(self.savefile, "w", encoding="utf8") as f:
             json.dump(self._d, f)
         
         return True
