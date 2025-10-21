@@ -5,9 +5,9 @@
 ## mc-Dungeon.py:
 
 ```
-这个工具使用三角定位法找地牢。
+使用三角定位法找地牢。
 由于鼠标对角会有一些误差，所以一般使用两次连续定位，就能准确定位了。
-python3  mc-Dungeon.py` 查看使用方法。
+python3 mc-Dungeon.py 查看使用方法。
 ```
 
 ## mc-checkupdate.py:
@@ -30,16 +30,16 @@ python3  mc-Dungeon.py` 查看使用方法。
 mc-mouse.pyz --help
 ```
 
-## mc-fishing 这是自动钓鱼工具
+## mc-fishing 自动钓鱼工具
 
 [自动钓鱼工具](mc-fishing-opencv/)
 
-## 这是 mcdreforged 的插件：
+## mcdreforged 的插件：
 
 [mcdreforged](mcdr)
 
 
-## 这是之前的脚本工具，只在X11桌面环境下工作
+## 之前的脚本工具，只在X11桌面环境下工作
 
 [mc-shell-tools](mc-shell-tools/)
 
