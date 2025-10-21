@@ -8,3 +8,13 @@ scoreboard objectives add fishing.fishZ dummy
 #scoreboard objectives remove fishing.fishY
 #scoreboard objectives remove fishing.fishZ
 
+
+
+scoreboard objectives add fishing.uuid3 dummy
+
+#scoreboard objectives remove fishing.uuid3
+
+
+
+
+
