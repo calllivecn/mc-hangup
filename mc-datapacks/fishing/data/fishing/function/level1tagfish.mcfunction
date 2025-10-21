@@ -14,5 +14,3 @@ execute as @s at @s run execute store result score @s fishing.fishZ run data get
 # 打tag
 execute as @e[scores={fishing.fishX=-10..10,fishing.fishY=-10..10,fishing.fishZ=-10..10}] at @s run tag @s add fishing
 
-execute as @e[scores={fishing.fishX=-10..10,fishing.fishY=-10..10,fishing.fishZ=-10..10}] at @s run me 打tag成功
-
