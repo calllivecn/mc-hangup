@@ -29,7 +29,7 @@ execute as @e[type=minecraft:fishing_bobber,tag=!fishing] at @s if block ~ ~ ~ m
 #execute as @e[type=minecraft:fishing_bobber,tag=!fishing] store result storage autofish:player motion2 float 1 run data get entity @s Motion[2] 100
 #function fishing:test with storage autofish:player
 
-# 这个可以(1.21.10)
+# 检测是否有鱼上钩 这个可以(1.21.10)
 #execute as @e[type=minecraft:fishing_bobber,tag=fishing] at @s if block ~ ~ ~ minecraft:water if block ~ ~1 ~ minecraft:water run tell @e[type=minecraft:player,sort=nearest,limit=1] 上钩了
 execute as @e[type=minecraft:fishing_bobber,tag=fishing] at @s if block ~ ~ ~ minecraft:water if block ~ ~1 ~ minecraft:air run function fishing:level1fishing
 

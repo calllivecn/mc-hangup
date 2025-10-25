@@ -1,0 +1,12 @@
+{
+    "id": "fishing", 
+    "version": "0.1",
+    "name": "自动钓鱼收杆(和fishing数据包配合使用)" ,
+    "author": [
+        "calllivecn"
+   ],
+    "link": "https://github.com/calllivecn/mc-hangup/",
+    "dependencies": {
+        "mcdreforged": ">=2.1.4"
+    }
+}
