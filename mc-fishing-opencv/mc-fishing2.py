@@ -75,11 +75,11 @@ class Conf:
     2. update() 时，自己对比，看看是否需要更新文件。
     """
 
-    def __init__(self, savefile="data.json"):
-        if savefile != Path:
-            self.savefile = Path(savefile)
-        else:
+    def __init__(self, savefile=Path("data.json")):
+        if isinstance(savefile, Path):
             self.savefile = savefile
+        else:
+            self.savefile = Path(savefile)
         
         # 如果没有，则初始化。
         if self.savefile.exists():
@@ -165,7 +165,7 @@ class Mouse:
             self.check_in_windows()
 
         else:
-            logger.error("你的系统还没支持哦～")
+            logger.error("当前系统还没支持!")
             sys.exit(1)
 
 
@@ -179,20 +179,32 @@ class Mouse:
     # 平台检测+依赖检查
     def check_in_linux(self):
         logger.debug("当前操作系统 linux")
-        if "wayland" in os.getenv("XDG_SESSION_TYPE").lower():
-            logger.info("你的桌面环境是 wayland")
+        TYPE = os.getenv("XDG_SESSION_TYPE")
+        if TYPE:
+            if "wayland" in TYPE.lower():
+                logger.info("你的桌面环境是 wayland")
+                if self.__use_mouse():
+                    pass
+                else:
+                    logger.error("没有支持鼠标方案")
+                    sys.exit(1)
+
+            else:
+                logger.info("你的桌面环境是 X11 的")
+                if self.__use_mouse():
+                    pass
+                elif self.__use_pyautogui() or self.__use_xdotool():
+                    pass
+                else:
+                    logger.error("没有支持鼠标方案")
+                    sys.exit(1)
+
+        else:
+            logger.warning("无法检测到 XDG_SESSION_TYPE 环境变量，默认使用 xdotool 方案")
             if self.__use_mouse():
                 pass
             else:
-                logger.error(f"没有支持鼠标方案")
-                sys.exit(1)
-
-        else:
-            logger.info("你的桌面环境是 X11 的~")
-            if self.__use_pyautogui() or self.__use_xdotool():
-                pass
-            else:
-                logger.error(f"没有支持鼠标方案")
+                logger.error("没有支持鼠标方案")
                 sys.exit(1)
 
 
@@ -210,7 +222,7 @@ class Mouse:
         try:
             from keyboardmouse import mouse
         except ModuleNotFoundError:
-            logger.error(f"需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
+            logger.error("需要安装keyboardmouse模块,地址：https://github.com/calllivecn/keyboardmouse")
             return False
     
         logger.info("使用 mouse.py 方案")
@@ -251,9 +263,8 @@ class Mouse:
             self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
             logger.info("使用 xdotool 方案")
             return True
-        except Exception as e:
+        except Exception:
             logger.warning("没有找到 xdotool 需要安装。")
-            # raise e
             return False
 
 
@@ -287,6 +298,9 @@ class BaitFish:
 
         #图中的小图
         self.template = cv2.imread(img_template)
+        if self.template is None:
+            logger.error(f"{img_template}: 读取模板图片失败。。。。")
+            sys.exit(2)
 
         # 找到的图像的像素值和, init
         self.img_light = np.sum(self.template)
@@ -457,11 +471,11 @@ class AutoFishing:
         # game_resoultion
         # label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
         label = ttk.Label(self.game_resolution, background="#1122cc", borderwidth=5)
-        label.pack(fill=tk.BOTH, expand="yes")
+        label.pack(fill=tk.BOTH, expand=True)
         # label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
 
         label2 = ttk.Label(label, borderwidth=5)
-        label2.pack(fill=tk.BOTH, expand="yes", padx=5, pady=5)
+        label2.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
         # label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
 
@@ -509,7 +523,7 @@ class AutoFishing:
         label_fps.grid(row=0, column=0)
 
         self.label_fps = ttk.Entry(fps_frame, width=4, validate="key", validatecommand=(validate_cmd, "%P"))
-        self.label_fps.insert(0, FPS)
+        self.label_fps.insert(0, str(FPS))
         self.label_fps.grid(row=0, column=1)
 
         # 使用说明
@@ -538,7 +552,7 @@ class AutoFishing:
         btn1.pack()
     
     def clear_fishingcount_func(self):
-        logger.debug(f"重置计数")
+        logger.debug("重置计数")
         with self.reset_fishingcount:
             self.fishcount = 0
             self.fishingspeed = 0
@@ -765,7 +779,7 @@ class AutoFishing:
         def super_acceleration() -> bool:
             nonlocal img_light
             BF.compute_temp_light()
-            cmp = (BF.img_light / (img_light + 1))
+            cmp = float(BF.img_light / (img_light + 1))
             truefalse = cmp > 1.1
             logger.log(DEBUG2, f"打到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
             # 更新
@@ -799,7 +813,7 @@ class AutoFishing:
             # 如果超过60s 还没有收杆，可能是钩到水里的实体了。需要先收一下杆。
             if (start - self.fishing_last) > 60:
                 self.fishing_last = start
-                logger.debug(f"超1分钟没有上钩了，收一下杆。")
+                logger.debug("超1分钟没有上钩了，收一下杆。")
                 self.mouse.click_right()
                 time.sleep(0.5)
                 self.mouse.click_right()
