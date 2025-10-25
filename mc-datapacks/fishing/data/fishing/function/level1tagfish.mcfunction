@@ -12,5 +12,5 @@ execute as @s at @s run execute store result score @s fishing.fishY run data get
 execute as @s at @s run execute store result score @s fishing.fishZ run data get entity @s Motion[2] 100
 
 # 打tag
-execute as @e[scores={fishing.fishX=-10..10,fishing.fishY=-10..10,fishing.fishZ=-10..10}] at @s run tag @s add fishing
+execute as @e[type=minecraft:fishing_bobber,scores={fishing.fishX=-10..10,fishing.fishY=-10..10,fishing.fishZ=-10..10}] at @s run tag @s add fishing
 

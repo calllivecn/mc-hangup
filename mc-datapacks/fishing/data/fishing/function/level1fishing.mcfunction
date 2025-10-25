@@ -11,4 +11,3 @@ execute store result score @s fishing.fishY run data get entity @s Motion[1] 100
 
 execute as @s[scores={fishing.fishY=..-10},tag=fishing,tag=owned] at @s run execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] if score @s uuid3 = @e[type=minecraft:fishing_bobber,tag=fishing,tag=owned,sort=nearest,limit=1] uuid3 run function fishing:player with storage fishing:player
 
-

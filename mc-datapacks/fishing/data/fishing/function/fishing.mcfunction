@@ -10,11 +10,11 @@ schedule function fishing:fishing 2t
 execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] run execute store result score @s uuid3 run data get entity @s UUID[3]
 
 # 把玩家附近最近且未绑定的 bobber（距离 3 区块内）当作它的 bobber
-# 把玩家的 uuidPart 复制到那个 bobber 的 bobberOwner 上，并给 bobber 加个标记防止重复
+# 把玩家的 uuid3 复制到那个 bobber 的 uuid3 上，并给 bobber 加个标记防止重复
 execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] at @s run scoreboard players operation @e[type=minecraft:fishing_bobber,limit=1,sort=nearest,tag=!owned,distance=..3] uuid3 = @s uuid3
 execute as @a[nbt={SelectedItem:{id:"minecraft:fishing_rod"}}] at @s run tag @e[type=minecraft:fishing_bobber,limit=1,sort=nearest,tag=!owned,distance=..3] add owned
 
-# 运行在 bobber 上下文：对于每个已绑定的 bobber，寻找拥有相同 uuidPart 的玩家并以该玩家执行命令(在我这里已经移动到level1fishing)
+# 运行在 bobber 上下文：对于每个已绑定的 bobber，寻找拥有相同 uuid3 的玩家并以该玩家执行命令(在我这里已经移动到level1fishing)
 #execute as @e[type=minecraft:fishing_bobber,tag=owned] at @s run execute as @a if score @s uuid3 = @e[type=minecraft:fishing_bobber,limit=1,sort=nearest,tag=owned] uuid3 run function fishlink:owner_action
 
 
@@ -36,5 +36,6 @@ execute as @e[type=minecraft:fishing_bobber,tag=fishing] at @s if block ~ ~ ~ mi
 # carpet 模组命令
 #execute as @e[type=minecraft:fishing_bobber,tag=fishing] at @s if block ~ ~ ~ minecraft:water if block ~ ~1 ~ minecraft:water run execute as @e[type=minecraft:player,sort=nearest,limit=1] run function fishing:player with storage autofish:player
 
+# 浮标离开水面时，不需要移除 tag fishing。每次丢出的鱼钩都一个新的实体。
 #execute as @e[type=minecraft:fishing_bobber,tag=fishing] at @s if block ~ ~ ~ minecraft:water if block ~ ~1 ~ minecraft:water run tag @s remove fishing
 
