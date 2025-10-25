@@ -3,7 +3,6 @@
 # date 2021-02-05 20:18:15
 # author calllivecn <calllivecn@outlook.com>
 
-import re
 import os
 import time
 import json
@@ -358,7 +357,7 @@ def pop_invite(k):
         pass
 
 @new_thread(f"{CMD} 清理过期的邀请")
-def clear_expire_invite(server):
+def clear_expire_invite():
     while True:
 
         if PLUGIN_RELOAD:
@@ -464,7 +463,7 @@ def on_load(server, old_plugin):
             server.logger.info("is_rcon_running()")
             user_tp_store_init(server)
 
-        clear_expire_invite(server)
+        clear_expire_invite()
 
     else:
         server.logger.info("非第一次启动")

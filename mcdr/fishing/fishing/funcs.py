@@ -32,7 +32,7 @@ from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, Gree
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, Info, PlayerCommandSource
+from mcdreforged.api.types import PluginServerInterface, Info, PlayerCommandSource, CommandSource
 
 
 CMDPREFIX="."
@@ -127,7 +127,10 @@ def get_players(server):
     
     return players
 
-def player_online(server, player):
+def player_online(server, player) -> bool:
+    """
+    检测玩家是否在线
+    """
 
     #result = server.rcon_query(f"data get entity {player} Name")
     result = server.rcon_query(f"experience query {player} points")
@@ -234,7 +237,7 @@ def item_body(result):
 
 # 配合 showhealth 数据包检测玩家死亡事件
 def event_player_death(server, info):
-    result = re.match(rf"\* (.*) 死了", info)
+    result = re.match(r"\* (.*) 死了", info)
     if result:
         # player 死亡
         player = result.group(1)
