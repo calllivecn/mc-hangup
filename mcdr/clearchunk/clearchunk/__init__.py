@@ -140,10 +140,10 @@ def start(pos1, pos2, pos3=None, unique_id=0):
 
                     result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[0][1]}")
 
-                    msg = []
-                    msg.append(RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2} ", RColor.yellow))
-                    msg.append(RText(result, RColor.yellow))
-                    server.reply(info, RTextList(*msg))
+                    # msg = []
+                    # msg.append(RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2} ", RColor.yellow))
+                    # msg.append(RText(result, RColor.yellow))
+                    # server.reply(info, RTextList(*msg))
 
                     if result is None:
                         err = f"清理区域 {block_cmd_suffix[0][0]} 时发生异常退出。"
@@ -321,47 +321,6 @@ class PosArgument(ArgumentNode):
 
 
 def build_command():
-    # c = Literal(CMD).runs(help)
-    # c.then(Literal("start").runs(lambda src, ctx: main(src, ctx)))
-    # c.then(Literal("backup").runs(lambda src, ctx: backup(src, ctx)))
-
-    """
-    c = c.then(Integer("x1"), 
-                Integer("y1"), 
-                Integer("z1"), 
-                Integer("x2"), 
-                Integer("y2"), 
-                Integer("z2"), 
-                Integer("x3"), 
-                Integer("y3"), 
-                Integer("z3").runs(lambda src, ctx: main(src, ctx)))
-    """
-    """
-    c.then(Integer("x1")
-    .then(Integer("y1"))
-    .then(Integer("z1"))
-    .then(Integer("x2"))
-    .then(Integer("y2"))
-    .then(Integer("z2"))
-    .then(Integer("x3"))
-    .then(Integer("y3"))
-    .then(Integer("z3"))
-    .runs(lambda src, ctx: main(src, ctx)))
-    """
-
-    """
-    c.then(Integer("x1"))
-    c.then(Integer("y1"))
-    c.then(Integer("z1"))
-    c.then(Integer("x2"))
-    c.then(Integer("y2"))
-    c.then(Integer("z2"))
-    c.then(Integer("x3"))
-    c.then(Integer("y3"))
-    c.then(Integer("z3"))
-    c.runs(main)
-    """
-
     # c = Literal(CMD).then(PointArgument("pos").runs(main))
 
     c = Literal(CMD).runs(help)
