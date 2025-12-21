@@ -114,6 +114,14 @@ def start(pos1, pos2, unique_id=0):
 
     world = r[0]
 
+    # 确保 pos1 是 min，pos2 是 max
+    #x_min = min(pos1[0], pos2[0])
+    #x_max = max(pos1[0], pos2[0])
+    #y_min = min(pos1[1], pos2[1])
+    #y_max = max(pos1[1], pos2[1])
+    #z_min = min(pos1[2], pos2[2])
+    #z_max = max(pos1[2], pos2[2])
+
     # 掉落物的收取区域增加3格
     r = 3
 
@@ -151,11 +159,11 @@ def start(pos1, pos2, unique_id=0):
         server.logger.error(f"不支持的维度。: {world}")
         return
 
-    y1 = y1 if y1 > y_down else y_down
-    y1 = y1 if y1 < y_up else y_up
+    y1 = min(y1, y_up)
+    y1 = max(y1, y_down)
 
-    pos2[1] = pos2[1] if pos2[1] > y_down else y_down
-    pos2[1] = pos2[1] if pos2[1] < y_up else y_up
+    pos2[1] = min(pos2[1], y_up)
+    pos2[1] = max(pos2[1], y_down)
 
 
     for block_cmd_suffix in block_cmd_suffix_list:
@@ -163,18 +171,18 @@ def start(pos1, pos2, unique_id=0):
 
         # 计算预清理区域的边界
         y1_max_scale_r = pos2[1] + scale_r
-        y1_max_scale_r = y1_max_scale_r if y1_max_scale_r < y_up else y_up
+        y1_max_scale_r = min(y1_max_scale_r, y_up)
         y1_min_scale_r = y1 - scale_r
-        y1_min_scale_r = y1_min_scale_r if y1_min_scale_r > y_down else y_down
+        y1_min_scale_r = max(y1_min_scale_r, y_down)
 
         # 预清理整个区域的灵魂沙和岩浆块。清水区域，要比指定区域边界大8。
         for y in range(y1_max_scale_r, y1_min_scale_r - 1, -step_r):
             for x in range(x1 - scale_r, pos2[0] + scale_r + 1, step_r):
                 for z in range(z1 - scale_r, pos2[2] + scale_r + 1, step_r):
 
-                    y2 = (y - step_r) if y - step_r > y1 - scale_r else y1 - scale_r
-                    x2 = (x + step_r) if x + step_r < pos2[0] + scale_r else pos2[0] + scale_r
-                    z2 = (z + step_r) if z + step_r < pos2[2] + scale_r else pos2[2] + scale_r
+                    y2 = max(y - step_r, y1_min_scale_r)
+                    x2 = min(x + step_r, pos2[0] + scale_r)
+                    z2 = min(z + step_r, pos2[2] + scale_r)
 
                     result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[0][1]}")
 
@@ -206,9 +214,9 @@ def start(pos1, pos2, unique_id=0):
         for x in range(x1, pos2[0] + 1, step_r):
             for z in range(z1, pos2[2] + 1, step_r):
 
-                y2 = y - step_r if y - step_r > y1 else y1
-                x2 = x + step_r if x + step_r < pos2[0] else pos2[0]
-                z2 = z + step_r if z + step_r < pos2[2] else pos2[2]
+                y2 = max(y - step_r, y1)
+                x2 = min(x + step_r, pos2[0])
+                z2 = min(z + step_r, pos2[2])
 
                 if pos3 is None:
                     result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace")
@@ -233,13 +241,6 @@ def main(src, ctx):
     global server, info
     server, info = __get(src)
 
-    # 检测权限
-    #perm = server.get_permission_level(info)
-    #if perm < PermissionLevel.USER:
-    #    server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
-    #    return
-
-
     unique_id = time.monotonic_ns()
 
     args = ctx["args"].split()
@@ -257,7 +258,6 @@ def main(src, ctx):
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
         return
 
-
     msg = []
     msg.append(RText(f"开始清理区域: {pos1} -> {pos2}，掉落物回收位置: {pos3}", RColor.green))
     msg.append("\n")
@@ -272,12 +272,6 @@ def main(src, ctx):
 def center(src: CommandSource, ctx: dict):
     global server, info
     server, info = __get(src)
-
-    # 检测权限
-    #perm = server.get_permission_level(info)
-    #if perm < PermissionLevel.USER:
-    #    server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
-    #    return
 
     # print(f"{ctx=}")
     # x, z 正方形半径
