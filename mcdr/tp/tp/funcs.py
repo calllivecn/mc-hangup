@@ -28,11 +28,11 @@ from mcdreforged.api.rtext import (
 from mcdreforged.command.builder.nodes.basic import Literal, ArgumentNode
 from mcdreforged.command.builder.common import ParseResult
 from mcdreforged.command.builder.exception import CommandSyntaxError
-from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float
+from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float, Number
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, Info, PlayerCommandSource
+from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource
 
 
 CMDPREFIX="."
@@ -66,31 +66,41 @@ def timestamp():
     return int(time.time())
 
 def permission(func):
+    """
+    在使用时，必须在 .runs(lambda src, crx: func(src, crx)) 这样使用
+    """
+
     def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        # print(f"*args {args}  **kwargs {kwargs}")
         server, info = __get(args[0])
         perm = server.get_permission_level(info)
 
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        # print(f"warp(): {args} {kwargs}")
         if perm >= PermissionLevel.USER:
             func(*args, **kwargs)
+        else:
+            server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
  
     return warp
 
 def permission_admin(func):
     def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        # print(f"*args {args}  **kwargs {kwargs}")
         server, info = __get(args[0])
         perm = server.get_permission_level(info)
 
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        # print(f"warp(): {args} {kwargs}")
         if perm >= PermissionLevel.ADMIN:
             func(*args, **kwargs)
+        else:
+            server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
  
     return warp
 
 
+# 这是关键字，不要用作函数名
 def match(re_str, s_str, groups=(0,)) -> tuple:
+    print("这是旧的函数名称，不要用作函数名。 请使用 rematch() 函数。")
     lg = []
     result = re.match(re_str, s_str)
     if result:
@@ -98,6 +108,16 @@ def match(re_str, s_str, groups=(0,)) -> tuple:
             lg.append(result.group(i))
 
     return tuple(lg)
+
+def rematch(re_str, s_str, groups=(0,)) -> tuple:
+    lg = []
+    result = re.match(re_str, s_str)
+    if result:
+        for i in groups:
+            lg.append(result.group(i))
+
+    return tuple(lg)
+
 
 def check_rcon(server):
 
@@ -127,7 +147,10 @@ def get_players(server):
     
     return players
 
-def player_online(server, player):
+def player_online(server, player) -> bool:
+    """
+    检测玩家是否在线
+    """
 
     #result = server.rcon_query(f"data get entity {player} Name")
     result = server.rcon_query(f"experience query {player} points")
@@ -234,7 +257,7 @@ def item_body(result):
 
 # 配合 showhealth 数据包检测玩家死亡事件
 def event_player_death(server, info):
-    result = re.match(rf"\* (.*) 死了", info)
+    result = re.match(r"\* (.*) 死了", info)
     if result:
         # player 死亡
         player = result.group(1)

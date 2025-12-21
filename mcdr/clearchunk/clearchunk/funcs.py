@@ -28,11 +28,11 @@ from mcdreforged.api.rtext import (
 from mcdreforged.command.builder.nodes.basic import Literal, ArgumentNode
 from mcdreforged.command.builder.common import ParseResult
 from mcdreforged.command.builder.exception import CommandSyntaxError
-from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float
+from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, GreedyText, Integer, Float, Number
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, Info
+from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource
 
 
 CMDPREFIX="."
@@ -66,46 +66,66 @@ def timestamp():
     return int(time.time())
 
 def permission(func):
+    """
+    在使用时，必须在 .runs(lambda src, crx: func(src, crx)) 这样使用
+    """
+
     def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        # print(f"*args {args}  **kwargs {kwargs}")
         server, info = __get(args[0])
         perm = server.get_permission_level(info)
 
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        # print(f"warp(): {args} {kwargs}")
         if perm >= PermissionLevel.USER:
             func(*args, **kwargs)
+        else:
+            server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
  
     return warp
 
 def permission_admin(func):
     def warp(*args, **kwargs):
-        # print(f"*args {args}  **kwargs {kwargs}", file=sys.stdout)
+        # print(f"*args {args}  **kwargs {kwargs}")
         server, info = __get(args[0])
         perm = server.get_permission_level(info)
 
-        # print(f"warp(): {args} {kwargs}", file=sys.stdout)
+        # print(f"warp(): {args} {kwargs}")
         if perm >= PermissionLevel.ADMIN:
             func(*args, **kwargs)
+        else:
+            server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
  
     return warp
 
 
-def match(re_str, s_str, group=0):
-
+# 这是关键字，不要用作函数名
+def match(re_str, s_str, groups=(0,)) -> tuple:
+    print("这是旧的函数名称，不要用作函数名。 请使用 rematch() 函数。")
+    lg = []
     result = re.match(re_str, s_str)
     if result:
-        return result.group(group)
-    else:
-        return None
+        for i in groups:
+            lg.append(result.group(i))
+
+    return tuple(lg)
+
+def rematch(re_str, s_str, groups=(0,)) -> tuple:
+    lg = []
+    result = re.match(re_str, s_str)
+    if result:
+        for i in groups:
+            lg.append(result.group(i))
+
+    return tuple(lg)
 
 
 def check_rcon(server):
 
-    rcon_result = server.rcon_query(f"list")
+    rcon_result = server.rcon_query("list")
     if rcon_result is None:
         prompt = RText("rcon 没有开启, 请分别server.properties, MCDR/config.yml 开启。", RColor.red)
         server.logger.warning(prompt)
-        server.say(RText(f"RCON 没有配置成功，请联系服主。", RColor.red))
+        server.say(RText("RCON 没有配置成功，请联系服主。", RColor.red))
         return False
 
 
@@ -117,20 +137,20 @@ def get_players(server):
     result = server.rcon_query("list")
     server.logger.debug(f"result = server.rcon_query('list') -->\n{result}")
 
-    match = re.match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result)
-
-    if match.group(1) == "0":
+    players, playernames = match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result, (1, 3))
+    if players == "0":
         return []
 
-    ls = match.group(3) 
-
     players = []
-    for s in ls.split(","):
+    for s in playernames.split(","):
         players.append(s.strip())
     
     return players
 
-def player_online(server, player):
+def player_online(server, player) -> bool:
+    """
+    检测玩家是否在线
+    """
 
     #result = server.rcon_query(f"data get entity {player} Name")
     result = server.rcon_query(f"experience query {player} points")
@@ -145,12 +165,20 @@ def player_online(server, player):
 def check_level(server, info):
     # 查看玩家的等级够不够
     level = server.rcon_query(f"experience query {info.player} levels")
+    if not level:
+        server.reply(info, RText("无法查询到你的经验，请联系服主。", RColor.red))
+        return False
 
-    l = re.match(f"{info.player} has ([0-9]+) experience levels", level).group(1)
+    lvl = re.match(f"{info.player} has ([0-9]+) experience levels", level)
+    if not lvl:
+        server.reply(info, RText("无法查询到你的经验，请联系服主。", RColor.red))
+        return False
 
-    server.logger.debug(f"玩家 {info.player} 等级： {l}")
+    level_value = lvl.group(1)
 
-    if int(l) < 1:
+    server.logger.debug(f"玩家 {info.player} 等级： {level_value}")
+
+    if int(level_value) < 1:
         server.reply(info, RText("经验不足，至少需要1级", RColor.red))
         return False
     else:
@@ -229,7 +257,7 @@ def item_body(result):
 
 # 配合 showhealth 数据包检测玩家死亡事件
 def event_player_death(server, info):
-    result = re.match(rf"\* (.*) 死了", info)
+    result = re.match(r"\* (.*) 死了", info)
     if result:
         # player 死亡
         player = result.group(1)

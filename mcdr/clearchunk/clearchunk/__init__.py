@@ -13,21 +13,28 @@ from clearchunk.funcs import (
     CMDPREFIX,
     CONFIG_DIR,
     __get,
+    rematch,
     RText,
     RTextList,
     RColor,
     Literal,
+    Text,
+    QuotableText,
     GreedyText,
     Integer,
+    Number,
     ArgumentNode,
     ParseResult,
     CommandSyntaxError,
     new_thread,
     timestamp,
     permission,
+    permission_admin,
     PermissionLevel,
     PluginServerInterface,
+    ServerInterface,
     Info,
+    CommandSource,
 )
 
 from mcdreforged.command.builder import command_builder_utils
@@ -42,43 +49,70 @@ CLEARCHUNK_DIR = CONFIG_DIR / ID_NAME
 CLEARCHUNK_PROGRESS = {}
 
 
-server: PluginServerInterface
+# server: PluginServerInterface
+server: ServerInterface
 info: Info
 
 
 if not CLEARCHUNK_DIR.exists():
     os.makedirs(CLEARCHUNK_DIR)
 
-def get_progress_info(player):
-    j = CLEARCHUNK_DIR / (player + ".json")
+def get_progress_info():
+    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
     if j.exists():
         with open(j) as f:
             return json.load(f)
     else:
         return {}
 
-def set_progress_info(player, progress):
-    j = CLEARCHUNK_DIR / (player + ".json")
+def set_progress_info(data: dict):
+    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
     with open(j, "w+") as f:
-        return json.dump(progress, f, ensure_ascii=False, indent=4)
+        return json.dump(data, f, ensure_ascii=False, indent=4)
+
+def del_progress_info():
+    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
+    if j.exists():
+        os.remove(j)
 
 
 @new_thread("clearchunk")
-def start(pos1, pos2, pos3=None, unique_id=0):
+def start(pos1, pos2, unique_id=0):
 
+    js = get_progress_info()
+
+    if js and "收集坐标点" in js:
+        pos3 = [ js["收集坐标点"]["x"], js["收集坐标点"]["y"], js["收集坐标点"]["z"] ]
+    else:
+        pos3 = None
+
+    """
+    result = server.rcon_query("data get storage minecraft:clearchunk 收集坐标点")
+
+    r_result = rematch(r"Found no elements matching (.*)", result)
+    if r_result:
+        # server.reply(info, RText("没有配置收集点, 不做自动收集。", RColor.red))
+        pos3 = None
+    
+    r_result = rematch(r"Storage minecraft:clearchunk has the following contents: (.*)", result, (1,))
+    if r_result:
+        pos3 = json.loads(r_result[0])
+    """
+
+    
     rcon_result = server.rcon_query(f"data get entity {info.player} Dimension")
     if rcon_result is None:
         server.reply(info, RText("无法获取玩家维度信息，rcon返回None。", RColor.red))
         server.logger.error("rcon_query returned None when getting player dimension.")
         return
 
-    match = re.match(fr'{info.player} has the following entity data: "(.*)"', rcon_result)
-    if not match:
+    r = rematch(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))
+    if not r:
         server.reply(info, RText("无法解析玩家维度信息。", RColor.red))
         server.logger.error(f"Failed to match dimension info from rcon_result: {rcon_result}")
         return
 
-    world = match.group(1)
+    world = r[0]
 
     # 掉落物的收取区域增加3格
     r = 3
@@ -97,11 +131,10 @@ def start(pos1, pos2, pos3=None, unique_id=0):
         (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
     )
 
-    y_up = 319 # 上边界
-    y_down = -63 # 上下边界
 
     if world == "minecraft:overworld":
-        pass
+        y_up = 319 # 上边界
+        y_down = -63 # 上下边界
 
     elif world == "minecraft:the_nether":
         block_cmd_suffix_list =("岩浆", "minecraft:lava destroy")
@@ -112,6 +145,11 @@ def start(pos1, pos2, pos3=None, unique_id=0):
         block_cmd_suffix_list = tuple()
         y_up = 255
         y_down = 0 # 上下边界
+    
+    else:
+        server.reply(info, RText("不支持的维度。", RColor.red))
+        server.logger.error(f"不支持的维度。: {world}")
+        return
 
     y1 = y1 if y1 > y_down else y_down
     y1 = y1 if y1 < y_up else y_up
@@ -162,8 +200,8 @@ def start(pos1, pos2, pos3=None, unique_id=0):
                     server.rcon_query(f"execute in {world} as @e[type=item,x={x1-r-8},y={y1-r-scale_r},z={z1-r-scale_r},dx={pos2[0]-x1+r+scale_r},dy={pos2[1]-y1+r+scale_r},dz={pos2[2]-z1+r+scale_r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
 
-    # 正式清理整个区域的方块。 这里步长不能30，只能10。
-    step_r = 10
+    # 正式清理整个区域的方块。 这里步长不能30太大。
+    step_r = 8
     for y in range(pos2[1], y1 - 1, -step_r):
         for x in range(x1, pos2[0] + 1, step_r):
             for z in range(z1, pos2[2] + 1, step_r):
@@ -190,25 +228,25 @@ def start(pos1, pos2, pos3=None, unique_id=0):
     server.reply(info, RText("清理区域完成执行完成", RColor.green))
 
 
-# @permission
+@permission
 def main(src, ctx):
     global server, info
     server, info = __get(src)
 
     # 检测权限
-    perm = server.get_permission_level(info)
-    if perm < PermissionLevel.USER:
-        server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
-        return
+    #perm = server.get_permission_level(info)
+    #if perm < PermissionLevel.USER:
+    #    server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
+    #    return
 
 
     unique_id = time.monotonic_ns()
 
-    args = ctx["pos"].split()
+    args = ctx["args"].split()
     # print(f"{args=}")
 
-    pos1 = list(map(int, args[0].split(",")))
-    pos2 = list(map(int, args[1].split(",")))
+    pos1 = [ int(float(i)) for i in args[0].split(",") ]
+    pos2 = [ int(float(i)) for i in args[1].split(",") ]
 
     if len(args) < 3:
         pos3 = None
@@ -219,23 +257,6 @@ def main(src, ctx):
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
         return
 
-    if pos3 is not None:
-        # 检测回收坐标是否是空气
-        rcon_result = server.rcon_query(f"execute if block {pos3[0]} {pos3[1]} {pos3[2]} minecraft:air")
-        if rcon_result == "Test passed": # or rcon_result == "Test failed":
-            pass
-
-        elif rcon_result == "Test failed":
-            server.reply(info, RText(f"回收位置 {pos3} 不是空气，请检查坐标是否正确。", RColor.red))
-            return
-
-        elif rcon_result == "That position is not loaded":
-            server.reply(info, RText(f"回收位置 {pos3} 未加载，请先加载该区域。", RColor.red))
-            return
-
-        else:
-            server.reply(info, RText(f"无法检测回收位置 {pos3} 是否为空气，rcon命令返回: {rcon_result}", RColor.red))
-            return
 
     msg = []
     msg.append(RText(f"开始清理区域: {pos1} -> {pos2}，掉落物回收位置: {pos3}", RColor.green))
@@ -244,21 +265,131 @@ def main(src, ctx):
 
     server.reply(info, RTextList(*msg))
 
-    start(pos1, pos2, pos3, unique_id)
+    start(pos1, pos2)
 
 
-def help(src):
+@permission
+def center(src: CommandSource, ctx: dict):
+    global server, info
+    server, info = __get(src)
+
+    # 检测权限
+    #perm = server.get_permission_level(info)
+    #if perm < PermissionLevel.USER:
+    #    server.reply(info, RText(f"你没有权限执行此命令. 当前权限：{perm=}", RColor.red))
+    #    return
+
+    # print(f"{ctx=}")
+    # x, z 正方形半径
+    R = int(ctx["R"])
+    y_up = int(ctx["y_up"]) # 上边界
+    y_down = int(ctx["y_down"]) # 下边界
+
+
+    # 玩家当前坐标
+    rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
+    # calllivecn has the following entity data: [399.0120798914333d, 97.55602869034644d, 214.32347470479664d]
+    cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
+    x, y, z = rematch(cmd, rcon_result, (1, 2, 3))
+
+    x1, y1, z1 = int(float(x)) - R, y_down, int(float(z)) - R
+    x2, y2, z2 = int(float(x)) + R, y_up, int(float(z)) + R
+
+    start([x1, y1, z1], [x2, y2, z2])
+
+
+@permission
+def collection_point(src: CommandSource, ctx: dict):
+    """
+    配置参数：x1,y1,z1 做为收集掉落物的位置 
+    """
+    global server, info
+    server, info = __get(src)
+
+    # print(f"{ctx=}")
+
+    if ctx is None:
+        # 配置当前玩家位置为收集点
+        rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
+        cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
+        x, y, z = rematch(cmd, rcon_result, (1, 2, 3))
+        x, y, z = int(float(x)), int(float(y)), int(float(z))
+
+    
+    else:
+        # x, y, z = int(float(args[1])), int(float(args[2])), int(float(args[3]))
+        x, y, z = int(float(ctx["x"])), int(float(ctx["y"])), int(float(ctx["z"]))
+    
+
+    config = {
+        "x": x,
+        "y": y,
+        "z": z,
+    }
+
+
+    # 检测回收坐标是否是空气
+    rcon_result = server.rcon_query(f"execute if block {x} {y} {z} minecraft:air")
+    # print(f"{rcon_result=} {config=} {json.dumps(config)=}")
+
+    if rcon_result == "Test passed": # or rcon_result == "Test failed":
+        # server.rcon_query(f"data modify storage minecraft:clearchunk 收集坐标点 set value {json.dumps(config)}")
+
+        set_progress_info({"收集坐标点": config})
+
+        server.reply(info, RText(f"配置回收坐标点：[{x}, {y}, {z}] ", RColor.green))
+
+    elif rcon_result == "Test failed":
+        server.reply(info, RText(f"回收位置 [{x}, {y}, {z}] 不是空气，请检查坐标是否正确。", RColor.red))
+
+    elif rcon_result == "That position is not loaded":
+        server.reply(info, RText(f"回收位置 [{x}, {y}, {z}] 未加载，请先加载该区域。", RColor.red))
+
+    else:
+        server.reply(info, RText(f"无法检测回收位置 [{x}, {y}, {z}] 是否为空气，rcon命令返回: {rcon_result}", RColor.red))
+
+
+@permission
+def collection_point_get(src: CommandSource, ctx: dict):
+    global server, info
+    server, info = __get(src)
+
+    js = get_progress_info()
+
+    if js and "收集坐标点" in js:
+        pos3 = js["收集坐标点"]
+        server.reply(info, RText(f"当前回收坐标点：[{pos3['x']}, {pos3['y']}, {pos3['z']}] ", RColor.green))
+    else:
+        server.reply(info, RText("未配置回收坐标点。", RColor.red))
+
+@permission
+def collection_point_clear(src: CommandSource):
+    global server, info
+    server, info = __get(src)
+
+    # server.rcon_query("data remove storage minecraft:clearchunk 收集坐标点")
+    del_progress_info()
+    server.reply(info, RText("移除收集点", RColor.green))
+
+
+
+def help(src: CommandSource):
     global server, info
     server, info = __get(src)
 
     msg=[
         f"{'='*10} 使用方法 {'='*10}",
-        f"{CMD}                   查看使用方法",
-        f"{CMD} x1,y1,z1 x2,y2,z2 x3,y3,z3",
+        f"{CMD} center R y_up y_down    以玩家当前位置为中心，清理半径R的正方形区域，y_up为上边界，y_down为下边界",
+        f"{'='*10} 使用方法 {'='*10}",
+        f"{CMD} setcfg x y z    配置掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
+        f"{CMD} getcfg    查看掉落物回收位置",
+        f"{CMD} delcfg    删除掉落物回收位置(不产生掉落物+不收集掉落物)",
+        f"{'='*10} 使用方法 {'='*10}",
+        f"{CMD}    查看使用方法",
+        f"{CMD} pos x1,y1,z1 x2,y2,z2 x3,y3,z3",
         f"{'='*10} 使用说明 {'='*10}",
-        "x1,y1,z1       起点位置坐标",
-        "x2,y2,z2       手动触发创建备份",
-        "x3,y3,z3       掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
+        "x1,y1,z1    起点位置坐标",
+        "x2,y2,z2    结束位置坐标",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -324,22 +455,51 @@ def build_command():
     # c = Literal(CMD).then(PointArgument("pos").runs(main))
 
     c = Literal(CMD).runs(help)
-    c.then(GreedyText("pos").runs(main))
+    c.then(
+        Literal("setcfg").runs(lambda src: collection_point(src, None))
+        .then(
+            Number("x").then(
+                Number("y").then(
+                    Number("z").runs(lambda src, ctx: collection_point(src, ctx))
+                )
+            )
+        )
+    )
+    c.then(
+        Literal("getcfg").runs(lambda src, ctx: collection_point_get(src, ctx))
+    )
+    c.then(
+        Literal("delcfg").runs(lambda src: collection_point_clear(src))
+    )
+
+    c.then(
+        Literal("center")
+        .then(
+            Number("R")
+            .then(
+                Number("y_up")
+                .then(
+                    Number("y_down").runs(lambda src, ctx: center(src, ctx)))
+            )
+        )
+    )
+    c.then(
+        Literal("pos").then(
+            GreedyText("args").runs(lambda src, ctx: main(src, ctx))
+        )
+    )
     return c
 
 
-def on_load(server_src, old_plugin):
-
-    server_src.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
-    server_src.register_command(build_command())
-
-    # server_src.say(RText(f"{PLUGIN_NAME} 插件加载成功", RColor.green))
+def on_load(server: PluginServerInterface, old_plugin):
+    server.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
+    server.register_command(build_command())
 
     global CLEARCHUNK_PROGRESS
     if old_plugin is not None:
         CLEARCHUNK_PROGRESS = old_plugin.CLEARCHUNK_PROGRESS
 
 
-def on_unload(server_src):
+def on_unload(server: PluginServerInterface):
     # server_src.unregister_help_message(CMD)
-    server_src.logger.info(RText(f"{PLUGIN_NAME} 插件卸载成功", RColor.green))
+    server.logger.info(RText(f"{PLUGIN_NAME} 插件卸载成功", RColor.green))
