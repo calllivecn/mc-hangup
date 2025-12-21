@@ -14,8 +14,10 @@ from clearchunk.funcs import (
     CONFIG_DIR,
     __get,
     RText,
+    RTextList,
     RColor,
     Literal,
+    GreedyText,
     Integer,
     ArgumentNode,
     ParseResult,
@@ -61,8 +63,8 @@ def set_progress_info(player, progress):
         return json.dump(progress, f, ensure_ascii=False, indent=4)
 
 
-@new_thread("clerchunk")
-def run(pos1, pos2, pos3, unique_id):
+@new_thread("clearchunk")
+def start(pos1, pos2, pos3=None, unique_id=0):
 
     rcon_result = server.rcon_query(f"data get entity {info.player} Dimension")
     if rcon_result is None:
@@ -91,7 +93,7 @@ def run(pos1, pos2, pos3, unique_id):
     block_cmd_suffix_list = (
         (("灵魂沙", "minecraft:soul_sand destroy"), ("岩浆块", "minecraft:magma_block destroy")),
         (("水草", "minecraft:seagrass strict"), ("水草", "minecraft:tall_seagrass strict")),
-        (("海带", "minecraft:kelp_plant destroy"), ("海带", "minecraft:kelp destroy")),
+        (("海带", "minecraft:kelp_plant destroy"), ("海带头", "minecraft:kelp destroy")),
         (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
     )
 
@@ -111,64 +113,79 @@ def run(pos1, pos2, pos3, unique_id):
         y_up = 255
         y_down = 0 # 上下边界
 
-    y1 = y1 if y1 < y_down else y_down
-    y1 = y1 if y1 > y_up else y_up
+    y1 = y1 if y1 > y_down else y_down
+    y1 = y1 if y1 < y_up else y_up
 
-    pos2[1] = pos2[1] if pos2[1] < y_down else y_down
-    pos2[1] = pos2[1] if pos2[1] > y_up else y_up
+    pos2[1] = pos2[1] if pos2[1] > y_down else y_down
+    pos2[1] = pos2[1] if pos2[1] < y_up else y_up
 
 
     for block_cmd_suffix in block_cmd_suffix_list:
         server.reply(info, RText(f"现在清理 {block_cmd_suffix[0][0]} 和 {block_cmd_suffix[1][0]} 。", RColor.green))
 
-        # 预清理整个区域的灵魂沙和岩浆块。 清水区域，要比指定区域边界大8.
-        for y in range(pos2[1]+scale_r, y1-scale_r-1, -step_r):
-            for x in range(x1-scale_r, pos2[0]+scale_r+1, step_r):
-                for z in range(z1-scale_r, pos2[2]+scale_r+1, step_r):
+        # 计算预清理区域的边界
+        y1_max_scale_r = pos2[1] + scale_r
+        y1_max_scale_r = y1_max_scale_r if y1_max_scale_r < y_up else y_up
+        y1_min_scale_r = y1 - scale_r
+        y1_min_scale_r = y1_min_scale_r if y1_min_scale_r > y_down else y_down
+
+        # 预清理整个区域的灵魂沙和岩浆块。清水区域，要比指定区域边界大8。
+        for y in range(y1_max_scale_r, y1_min_scale_r - 1, -step_r):
+            for x in range(x1 - scale_r, pos2[0] + scale_r + 1, step_r):
+                for z in range(z1 - scale_r, pos2[2] + scale_r + 1, step_r):
 
                     y2 = (y - step_r) if y - step_r > y1 - scale_r else y1 - scale_r
                     x2 = (x + step_r) if x + step_r < pos2[0] + scale_r else pos2[0] + scale_r
                     z2 = (z + step_r) if z + step_r < pos2[2] + scale_r else pos2[2] + scale_r
 
-
-                    server.reply(info, RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2}", RColor.yellow))
-
                     result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[0][1]}")
+
+                    msg = []
+                    msg.append(RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2} ", RColor.yellow))
+                    msg.append(RText(result, RColor.yellow))
+                    server.reply(info, RTextList(*msg))
+
                     if result is None:
                         err = f"清理区域 {block_cmd_suffix[0][0]} 时发生异常退出。"
                         server.reply(info, RText(err, RColor.red))
                         server.logger.error(err)
                         return
 
-                    result = server.rcon_query(f"fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[1][1]}")
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[1][1]}")
                     if result is None:
                         err = f"清理区域 {block_cmd_suffix[1][0]} 时发生异常退出。"
                         server.reply(info, RText(err, RColor.red))
                         server.logger.error(err)
                         return
 
-                server.rcon_query(f"execute as @e[type=item,x={x1-r-8},y={y1-r-scale_r},z={z1-r-scale_r},dx={pos2[0]-x1+r+scale_r},dy={pos2[1]-y1+r+scale_r},dz={pos2[2]-z1+r+scale_r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                if pos3 is not None:
+                    server.rcon_query(f"execute in {world} as @e[type=item,x={x1-r-8},y={y1-r-scale_r},z={z1-r-scale_r},dx={pos2[0]-x1+r+scale_r},dy={pos2[1]-y1+r+scale_r},dz={pos2[2]-z1+r+scale_r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
 
     # 正式清理整个区域的方块。 这里步长不能30，只能10。
     step_r = 10
-    for y in range(pos2[1], y1-1, -step_r):
-        for x in range(x1, pos2[0]+1, step_r):
-            for z in range(z1, pos2[2]+1, step_r):
+    for y in range(pos2[1], y1 - 1, -step_r):
+        for x in range(x1, pos2[0] + 1, step_r):
+            for z in range(z1, pos2[2] + 1, step_r):
 
                 y2 = y - step_r if y - step_r > y1 else y1
                 x2 = x + step_r if x + step_r < pos2[0] else pos2[0]
                 z2 = z + step_r if z + step_r < pos2[2] else pos2[2]
 
-                result = server.rcon_query(f"fill {x} {y2} {z} {x2} {y} {z2} minecraft:air destroy")
+                if pos3 is None:
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace")
+                else:
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air destroy")
+
                 if result is None:
                     server.reply(info, RText("清理区域 方块 时发生异常退出。", RColor.red))
                     server.logger.error("清理区域 方块 时发生异常")
                     return
 
-                time.sleep(0.3)
-                server.rcon_query(f"execute as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
-                server.rcon_query(f"execute as @e[type=minecraft:experience_orb,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                if pos3 is not None:
+                    time.sleep(0.2)
+                    server.rcon_query(f"execute in {world} as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                    server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
     server.reply(info, RText("清理区域完成执行完成", RColor.green))
 
@@ -185,51 +202,63 @@ def main(src, ctx):
         return
 
 
-    server.say(RText("开始清理区域...", RColor.green))
-
     unique_id = time.monotonic_ns()
 
-    args = ctx["pos"]
+    args = ctx["pos"].split()
     # print(f"{args=}")
 
-    pos1 = tuple(map(int, args[0].split(",")))
-    pos2 = tuple(map(int, args[1].split(",")))
-    pos3 = tuple(map(int, args[2].split(",")))
+    pos1 = list(map(int, args[0].split(",")))
+    pos2 = list(map(int, args[1].split(",")))
+
+    if len(args) < 3:
+        pos3 = None
+    else:
+        pos3 = list(map(int, args[2].split(",")))
 
     if pos1[0] > pos2[0] or pos1[1] > pos2[1] or pos1[2] > pos2[2]:
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
         return
 
-    # 检测回收坐标是否是空气
-    rcon_result = server.rcon_query(f"execute if block {pos3[0]} {pos3[1]} {pos3[2]} minecraft:air")
-    if rcon_result == "Test passed": # or rcon_result == "Test failed":
-        pass
+    if pos3 is not None:
+        # 检测回收坐标是否是空气
+        rcon_result = server.rcon_query(f"execute if block {pos3[0]} {pos3[1]} {pos3[2]} minecraft:air")
+        if rcon_result == "Test passed": # or rcon_result == "Test failed":
+            pass
 
-    elif rcon_result == "Test failed":
-        server.reply(info, RText(f"回收位置 {pos3} 不是空气，请检查坐标是否正确。", RColor.red))
-        return
+        elif rcon_result == "Test failed":
+            server.reply(info, RText(f"回收位置 {pos3} 不是空气，请检查坐标是否正确。", RColor.red))
+            return
 
-    elif rcon_result == "That position is not loaded":
-        server.reply(info, RText(f"回收位置 {pos3} 未加载，请先加载该区域。", RColor.red))
-        return
+        elif rcon_result == "That position is not loaded":
+            server.reply(info, RText(f"回收位置 {pos3} 未加载，请先加载该区域。", RColor.red))
+            return
 
-    server.reply(info, RText(f"开始清理区域: {pos1} -> {pos2}，掉落物回收位置: {pos3}", RColor.green))
-    server.reply(info, RText(f"清理任务ID: {unique_id}", RColor.yellow))
+        else:
+            server.reply(info, RText(f"无法检测回收位置 {pos3} 是否为空气，rcon命令返回: {rcon_result}", RColor.red))
+            return
 
-    run(pos1, pos2, pos3, unique_id)
+    msg = []
+    msg.append(RText(f"开始清理区域: {pos1} -> {pos2}，掉落物回收位置: {pos3}", RColor.green))
+    msg.append("\n")
+    msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
+
+    server.reply(info, RTextList(*msg))
+
+    start(pos1, pos2, pos3, unique_id)
 
 
 def help(src):
     global server, info
     server, info = __get(src)
 
-    msg=[f"{'='*10} 使用说明 {'='*10}",
-    "x1,y1,z1          起点位置坐标",
-    "x2,y2,z2          手动触发创建备份",
-    "x3,y3,z3          掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
-    f"{'='*10} 使用方法 {'='*10}",
-    f"{CMD}                   查看使用方法",
-    f"{CMD} x1,y1,z1 x2,y2,z2 x3,y3,z3",
+    msg=[
+        f"{'='*10} 使用方法 {'='*10}",
+        f"{CMD}                   查看使用方法",
+        f"{CMD} x1,y1,z1 x2,y2,z2 x3,y3,z3",
+        f"{'='*10} 使用说明 {'='*10}",
+        "x1,y1,z1       起点位置坐标",
+        "x2,y2,z2       手动触发创建备份",
+        "x3,y3,z3       掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -332,9 +361,11 @@ def build_command():
     c.then(Integer("z3"))
     c.runs(main)
     """
-    
+
     # c = Literal(CMD).then(PointArgument("pos").runs(main))
-    c = Literal(CMD).then(PosArgument("pos").runs(main))
+
+    c = Literal(CMD).runs(help)
+    c.then(GreedyText("pos").runs(main))
     return c
 
 
@@ -343,7 +374,13 @@ def on_load(server_src, old_plugin):
     server_src.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
     server_src.register_command(build_command())
 
-    server_src.say(RText(f"{PLUGIN_NAME} 插件加载成功", RColor.green))
+    # server_src.say(RText(f"{PLUGIN_NAME} 插件加载成功", RColor.green))
 
+    global CLEARCHUNK_PROGRESS
     if old_plugin is not None:
         CLEARCHUNK_PROGRESS = old_plugin.CLEARCHUNK_PROGRESS
+
+
+def on_unload(server_src):
+    # server_src.unregister_help_message(CMD)
+    server_src.logger.info(RText(f"{PLUGIN_NAME} 插件卸载成功", RColor.green))
