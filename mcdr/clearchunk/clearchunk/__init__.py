@@ -3,10 +3,10 @@
 # date 2025-06-28 21:25:17
 # author calllivecn <calllivecn@outlook.com>
 
-import re
 import os
 import time
 import json
+from math import floor
 
 
 from clearchunk.funcs import (
@@ -76,6 +76,25 @@ def del_progress_info():
         os.remove(j)
 
 
+def inclusive_range(start, stop, step):
+    if step == 0:
+        raise ValueError("step must not be zero")
+    
+    current = start
+    if step > 0:
+        while current < stop:
+            yield current
+            current += step
+        if current != stop:
+            yield stop
+    else:  # step < 0
+        while current > stop:
+            yield current
+            current += step  # step 是负数，所以实际是减
+        if current != stop:
+            yield stop
+
+
 @new_thread("clearchunk")
 def start(pos1, pos2, unique_id=0):
 
@@ -114,24 +133,6 @@ def start(pos1, pos2, unique_id=0):
 
     world = r[0]
 
-    # 确保 pos1 是 min，pos2 是 max
-    #x_min = min(pos1[0], pos2[0])
-    #x_max = max(pos1[0], pos2[0])
-    #y_min = min(pos1[1], pos2[1])
-    #y_max = max(pos1[1], pos2[1])
-    #z_min = min(pos1[2], pos2[2])
-    #z_max = max(pos1[2], pos2[2])
-
-    # 掉落物的收取区域增加3格
-    r = 3
-
-    step_r = 30
-
-    scale_r = 16
-
-    x1, y1, z1 = pos1
-
-
     block_cmd_suffix_list = (
         (("灵魂沙", "minecraft:soul_sand destroy"), ("岩浆块", "minecraft:magma_block destroy")),
         (("水草", "minecraft:seagrass strict"), ("水草", "minecraft:tall_seagrass strict")),
@@ -139,99 +140,207 @@ def start(pos1, pos2, unique_id=0):
         (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
     )
 
+    x1, y1, z1 = pos1
+    x2, y2, z2 = pos2
+
+    x6, y6, z6 = x1-1, y1-1, z1-1
+    x7, y7, z7 = x2+1, y2+1, z2+1
+
+    # 外扩后的边界
+    # 定义六个面（每个面是一个 (x1,y1,z1, x2,y2,z2) 元组）
+    # faces = [
+    #     # Y+
+    #     (x6, y7+1, z6, x7, y7+1, z7),
+    #     # Y-
+    #     (x6, y6-1, z6, x7, y6-1, z7),
+    #     # X+
+    #     (x7+1, y6, z6, x7+1, y7, z7),
+    #     # X-
+    #     (x6-1, y6, z6, x6-1, y7, z7),
+    #     # Z+
+    #     (x6, y6, z7+1, x7, y7, z7+1),
+    #     # Z-
+    #     (x6, y6, z6-1, x7, y7, z6-1),
+    # ]
+
+    faces = [
+        # Y+
+        (x6, y7, z6, x7, y7, z7),
+        # Y-
+        (x6, y6, z6, x7, y6, z7),
+        # X+
+        (x7, y6, z6, x7, y7, z7),
+        # X-
+        (x6, y6, z6, x6, y7, z7),
+        # Z+
+        (x6, y6, z7, x7, y7, z7),
+        # Z-
+        (x6, y6, z6, x7, y7, z6),
+    ]
+
+    print(f"{pos1=} {pos2=}")
+    for f in faces:
+        print(f"{f}")
+
 
     if world == "minecraft:overworld":
-        y_up = 319 # 上边界
-        y_down = -63 # 上下边界
+        y_world_up = 319 # 上边界
+        y_world_down = -63 # 上下边界
 
     elif world == "minecraft:the_nether":
         block_cmd_suffix_list =("岩浆", "minecraft:lava destroy")
-        y_up = 124
-        y_down = 1 # 上下边界
+        y_world_up = 124
+        y_world_down = 1 # 上下边界
     
     elif world == "minecraft:the_end":
         block_cmd_suffix_list = tuple()
-        y_up = 255
-        y_down = 0 # 上下边界
+        y_world_up = 255
+        y_world_down = 0 # 上下边界
     
     else:
         server.reply(info, RText("不支持的维度。", RColor.red))
         server.logger.error(f"不支持的维度。: {world}")
         return
 
-    y1 = min(y1, y_up)
-    y1 = max(y1, y_down)
 
-    pos2[1] = min(pos2[1], y_up)
-    pos2[1] = max(pos2[1], y_down)
+    # 掉落物的收取区域增加3格
+    r = 3
+    step_r = 8
+
+    # for block_cmd_suffix in block_cmd_suffix_list:
+        # server.reply(info, RText(f"现在清理 {block_cmd_suffix[0][0]} 和 {block_cmd_suffix[1][0]} 。", RColor.green))
+    
+    # for x1f, y1f, z1f, x2f, y2f, z2f in faces:
+    #     y1f = min(y1f, y_world_up)
+    #     y1f = max(y1f, y_world_down)
+
+    #     y2f = min(y2f, y_world_up)
+    #     y2f = max(y2f, y_world_down)
+
+        # # 测试用，填充玻璃
+        # result = server.rcon_query(f"execute in {world} run fill {x1f} {y1f} {z1f} {x2f} {y2f} {z2f} minecraft:glass")
+        # server.reply(info, RText(f"现在清理 面 坐标范围: [{x1f},{y1f},{z1f}] [{x2f},{y2f},{z2f}] ", RColor.yellow))
+        # server.reply(info, RText(result, RColor.yellow))
+        # time.sleep(3)
+        # continue
+
+    x1f, y1f, z1f = x6, max(y6, y_world_down), z6
+    x2f, y2f, z2f = x7, min(y7, y_world_up), z7
+    # 预清理整个区域的水和岩浆。清水区域，要比指定区域边界大8。
+    for y in inclusive_range(y2f, y1f, -step_r):
+        if y - step_r > y1f:
+            y2_t = y - step_r
+        else:
+            y2_t = y1f
+                
+        for z in inclusive_range(z1f, z2f, step_r):
+            if z + step_r < z2f:
+                z2_t = z + step_r
+            else:
+                z2_t = z2f
+
+            for x in inclusive_range(x1f, x2f, step_r):
+                if x + step_r < x2f:
+                    x2_t = x + step_r
+                else:
+                    x2_t = x2f
+                
+                server.reply(info, RText("有执行吗？", RColor.yellow))
+
+                result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:lava")
+                if result is None:
+                    err = "清理区域 岩浆 时发生异常退出。"
+                    server.reply(info, RText(err, RColor.red))
+                    server.logger.error(err)
+                    return
+                msg = []
+                msg.append(RText(f"现在清理 岩浆 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                msg.append(RText(result, RColor.yellow))
+                server.reply(info, RTextList(*msg))
 
 
-    for block_cmd_suffix in block_cmd_suffix_list:
-        server.reply(info, RText(f"现在清理 {block_cmd_suffix[0][0]} 和 {block_cmd_suffix[1][0]} 。", RColor.green))
+                result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:water")
+                if result is None:
+                    err = "清理区域 水 时发生异常退出。"
+                    server.reply(info, RText(err, RColor.red))
+                    server.logger.error(err)
+                    return
+                msg = []
+                msg.append(RText(f"现在清理 水 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                msg.append(RText(result, RColor.yellow))
+                server.reply(info, RTextList(*msg))
+                
+                # time.sleep(1)
 
-        # 计算预清理区域的边界
-        y1_max_scale_r = pos2[1] + scale_r
-        y1_max_scale_r = min(y1_max_scale_r, y_up)
-        y1_min_scale_r = y1 - scale_r
-        y1_min_scale_r = max(y1_min_scale_r, y_down)
-
-        # 预清理整个区域的灵魂沙和岩浆块。清水区域，要比指定区域边界大8。
-        for y in range(y1_max_scale_r, y1_min_scale_r - 1, -step_r):
-            for x in range(x1 - scale_r, pos2[0] + scale_r + 1, step_r):
-                for z in range(z1 - scale_r, pos2[2] + scale_r + 1, step_r):
-
-                    y2 = max(y - step_r, y1_min_scale_r)
-                    x2 = min(x + step_r, pos2[0] + scale_r)
-                    z2 = min(z + step_r, pos2[2] + scale_r)
-
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[0][1]}")
-
-                    # msg = []
-                    # msg.append(RText(f"现在清理坐标范围: {x} {y2} {z} {x2} {y} {z2} ", RColor.yellow))
-                    # msg.append(RText(result, RColor.yellow))
-                    # server.reply(info, RTextList(*msg))
-
-                    if result is None:
-                        err = f"清理区域 {block_cmd_suffix[0][0]} 时发生异常退出。"
-                        server.reply(info, RText(err, RColor.red))
-                        server.logger.error(err)
-                        return
-
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace {block_cmd_suffix[1][1]}")
-                    if result is None:
-                        err = f"清理区域 {block_cmd_suffix[1][0]} 时发生异常退出。"
-                        server.reply(info, RText(err, RColor.red))
-                        server.logger.error(err)
-                        return
-
-                if pos3 is not None:
-                    server.rcon_query(f"execute in {world} as @e[type=item,x={x1-r-8},y={y1-r-scale_r},z={z1-r-scale_r},dx={pos2[0]-x1+r+scale_r},dy={pos2[1]-y1+r+scale_r},dz={pos2[2]-z1+r+scale_r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                if x2_t == x2f:
+                    break
+            if z2_t == z2f:
+                break
+        if y2_t == y1f:
+            break
 
 
+    y1_down = max(y1, y_world_down)
+    y2_up = min(y2, y_world_up)
     # 正式清理整个区域的方块。 这里步长不能30太大。
     step_r = 8
-    for y in range(pos2[1], y1 - 1, -step_r):
-        for x in range(x1, pos2[0] + 1, step_r):
-            for z in range(z1, pos2[2] + 1, step_r):
+    for y in inclusive_range(y2_up, y1_down, -step_r):
+        if y - step_r > y1_down:
+            y2_t = y - step_r
+        else:
+            y2_t = y1_down
+                
+        for z in inclusive_range(z1, z2, step_r):
+            if z + step_r < z2:
+                z2_t = z + step_r
+            else:
+                z2_t = z2
+            
+            if pos3 is None:
+                xr = (x2 - x1) // 2
+                yr = (y2 - y1) // 2
+                zr = (z2 - z1) // 2
+                # 不收集的情况下，清理其他item
+                result = server.rcon_query(f"execute in {world} run kill @e[type=item,x={x1+xr},y={y1+yr},z={z1+zr},dx={xr},dy={yr},dz={zr}]")
+                if result:
+                    server.reply(info, RText(f"清理物品: {result}", RColor.green))
 
-                y2 = max(y - step_r, y1)
-                x2 = min(x + step_r, pos2[0])
-                z2 = min(z + step_r, pos2[2])
+            for x in inclusive_range(x1, x2, step_r):
 
-                if pos3 is None:
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air replace")
+                if x + step_r < x2:
+                    x2_t = x + step_r
                 else:
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2} {z} {x2} {y} {z2} minecraft:air destroy")
+                    x2_t = x2
+                
+                if pos3 is None:
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air replace")
+                else:
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air destroy")
 
                 if result is None:
                     server.reply(info, RText("清理区域 方块 时发生异常退出。", RColor.red))
                     server.logger.error("清理区域 方块 时发生异常")
                     return
 
+                msg = []
+                msg.append(RText(f"现在清理 方块 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                msg.append(RText(result, RColor.yellow))
+                server.reply(info, RTextList(*msg))
+
+
                 if pos3 is not None:
                     time.sleep(0.2)
                     server.rcon_query(f"execute in {world} as @e[type=item,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
                     server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1-r},y={y1-r},z={z1-r},dx={pos2[0]-x1+r},dy={pos2[1]-y1+r},dz={pos2[2]-z1+r}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                
+                # time.sleep(1)
+
+                if x2_t == x2:
+                    break
+            if z2_t == z2:
+                break
+        if y2_t == y1_down:
+            break
 
     server.reply(info, RText("清理区域完成执行完成", RColor.green))
 
@@ -246,8 +355,8 @@ def main(src, ctx):
     args = ctx["args"].split()
     # print(f"{args=}")
 
-    pos1 = [ int(float(i)) for i in args[0].split(",") ]
-    pos2 = [ int(float(i)) for i in args[1].split(",") ]
+    pos1 = [ floor(float(i)) for i in args[0].split(",") ]
+    pos2 = [ floor(float(i)) for i in args[1].split(",") ]
 
     if len(args) < 3:
         pos3 = None
@@ -279,17 +388,16 @@ def center(src: CommandSource, ctx: dict):
     y_up = int(ctx["y_up"]) # 上边界
     y_down = int(ctx["y_down"]) # 下边界
 
-
     # 玩家当前坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
     # calllivecn has the following entity data: [399.0120798914333d, 97.55602869034644d, 214.32347470479664d]
     cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
     x, y, z = rematch(cmd, rcon_result, (1, 2, 3))
 
-    x1, y1, z1 = int(float(x)) - R, y_down, int(float(z)) - R
-    x2, y2, z2 = int(float(x)) + R, y_up, int(float(z)) + R
+    x1, y1, z1 = floor(float(x)) - R, y_down, floor(float(z)) - R
+    x2, y2, z2 = floor(float(x)) + R, y_up, floor(float(z)) + R
 
-    start([x1, y1, z1], [x2, y2, z2])
+    start([x1, y_down, z1], [x2, y_up, z2])
 
 
 @permission
@@ -307,12 +415,11 @@ def collection_point(src: CommandSource, ctx: dict):
         rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
         cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
         x, y, z = rematch(cmd, rcon_result, (1, 2, 3))
-        x, y, z = int(float(x)), int(float(y)), int(float(z))
+        x, y, z = floor(float(x)), floor(float(y)), floor(float(z))
 
     
     else:
-        # x, y, z = int(float(args[1])), int(float(args[2])), int(float(args[3]))
-        x, y, z = int(float(ctx["x"])), int(float(ctx["y"])), int(float(ctx["z"]))
+        x, y, z = floor(float(ctx["x"])), floor(float(ctx["y"])), floor(float(ctx["z"]))
     
 
     config = {
