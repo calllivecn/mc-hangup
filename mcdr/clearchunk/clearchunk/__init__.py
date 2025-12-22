@@ -50,6 +50,7 @@ CLEARCHUNK_DIR = CONFIG_DIR / ID_NAME
 
 CLEARCHUNK_PROGRESS = {}
 
+EXIT = False
 
 # server: PluginServerInterface
 server: ServerInterface
@@ -97,8 +98,27 @@ def inclusive_range(start, stop, step):
             yield stop
 
 
+class Sleep:
+    def __init__(self):
+
+        js = get_progress_info()
+        self.sleep_time = js.get("sleep_time")
+
+    def sleep_if_needed(self):
+        if self.sleep_time is not None:
+            time.sleep(self.sleep_time)
+
+
 @new_thread("clearchunk")
 def start(pos1, pos2, unique_id=0):
+
+    msg = []
+    msg.append(RText(f"开始清理区域: {pos1} -> {pos2}", RColor.green))
+    msg.append("\n")
+    msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
+    server.reply(info, RTextList(*msg))
+
+    st = Sleep()
 
     js = get_progress_info()
 
@@ -162,6 +182,11 @@ def start(pos1, pos2, unique_id=0):
                 z2_t = z2f
 
             for x in inclusive_range(x1f, x2f, step_r):
+
+                if EXIT:
+                    server.reply(info, RText("清理任务被中止。", RColor.red))
+                    return
+
                 if x + step_r < x2f:
                     x2_t = x + step_r
                 else:
@@ -190,7 +215,7 @@ def start(pos1, pos2, unique_id=0):
                 # msg.append(RText(result, RColor.yellow))
                 # server.reply(info, RTextList(*msg))
                 
-                # time.sleep(1)
+                st.sleep_if_needed()
 
                 if x2_t == x2f:
                     break
@@ -228,6 +253,10 @@ def start(pos1, pos2, unique_id=0):
 
             for x in inclusive_range(x1, x2, step_r):
 
+                if EXIT:
+                    server.reply(info, RText("清理任务被中止。", RColor.red))
+                    return
+
                 if x + step_r < x2:
                     x2_t = x + step_r
                 else:
@@ -250,11 +279,12 @@ def start(pos1, pos2, unique_id=0):
 
 
                 if pos3 is not None:
-                    time.sleep(0.2)
+                    # time.sleep(0.2)
+                    st.sleep_if_needed()
                     server.rcon_query(f"execute in {world} as @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
                     server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
                 
-                # time.sleep(1)
+                st.sleep_if_needed()
 
                 if x2_t == x2:
                     break
@@ -283,12 +313,6 @@ def pos(src, ctx):
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
         return
     
-    # msg = []
-    # msg.append(RText(f"开始清理区域: {pos1} -> {pos2}", RColor.green))
-    # msg.append("\n")
-    # msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
-    # server.reply(info, RTextList(*msg))
-
     start(pos1, pos2)
 
 
@@ -379,9 +403,44 @@ def collection_point_clear(src: CommandSource):
     global server, info
     server, info = __get(src)
 
-    del_progress_info()
+    js = get_progress_info()
+    if js.get("收集坐标点"):
+        js.pop("收集坐标点")
+        set_progress_info(js)
+
     server.reply(info, RText("移除收集点", RColor.green))
 
+
+@permission
+def sleep_set(src: CommandSource, ctx: dict):
+    global server, info
+    server, info = __get(src)
+
+    # print(f"{ctx=}")
+
+    sleep_time = float(ctx["time"])
+
+    js = get_progress_info()
+
+    js["sleep_time"] = sleep_time
+
+    set_progress_info(js)
+
+    server.reply(info, RText(f"设置每次清理后休眠时间为 {sleep_time} 秒", RColor.green))
+
+
+@permission
+def sleep_clear(src: CommandSource, ctx: dict):
+    global server, info
+    server, info = __get(src)
+
+    js = get_progress_info()
+
+    if js.get("sleep_time"):
+        js.pop("sleep_time")
+        set_progress_info(js)
+
+    server.reply(info, RText("清除每次清理后休眠时间设置", RColor.green))
 
 
 def help(src: CommandSource):
@@ -389,16 +448,18 @@ def help(src: CommandSource):
     server, info = __get(src)
 
     msg=[
-        f"{'='*10} 使用方法 {'='*10}",
+        f"{CMD}    查看使用方法",
+        f"{'='*10} center 使用方法 {'='*10}",
         f"{CMD} center R y_up y_down    以玩家当前位置为中心，清理半径R的正方形区域，y_up为上边界，y_down为下边界",
-        f"{'='*10} 使用方法 {'='*10}",
+        f"{'='*10} 设置收集点 {'='*10}",
         f"{CMD} setcfg x y z    配置掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
         f"{CMD} getcfg    查看掉落物回收位置",
         f"{CMD} delcfg    删除掉落物回收位置(不产生掉落物+不收集掉落物)",
-        f"{'='*10} 使用方法 {'='*10}",
-        f"{CMD}    查看使用方法",
+        f"{'='*10} 设置sleep {'='*10}",
+        f"{CMD} setsleep float    设置每次sleep时间，单位秒",
+        f"{CMD} delsleep    清理sleep",
+        f"{'='*10} 使用绝对坐标位置 {'='*10}",
         f"{CMD} pos x1,y1,z1 x2,y2,z2",
-        f"{'='*10} 使用说明 {'='*10}",
         "x1,y1,z1    起点位置坐标",
         "x2,y2,z2    结束位置坐标",
     ]
@@ -482,7 +543,15 @@ def build_command():
     c.then(
         Literal("delcfg").runs(lambda src: collection_point_clear(src))
     )
-
+    c.then(
+        Literal("setsleep")
+        .then(
+            Number("time").runs(lambda src, ctx: sleep_set(src, ctx))
+        )
+    )
+    c.then(
+        Literal("delsleep").runs(lambda src, ctx: sleep_clear(src, ctx))
+    )
     c.then(
         Literal("center")
         .then(
@@ -512,5 +581,8 @@ def on_load(server: PluginServerInterface, old_plugin):
 
 
 def on_unload(server: PluginServerInterface):
+    global EXIT
+    EXIT = True
     # server_src.unregister_help_message(CMD)
     server.logger.info(RText(f"{PLUGIN_NAME} 插件卸载成功", RColor.green))
+
