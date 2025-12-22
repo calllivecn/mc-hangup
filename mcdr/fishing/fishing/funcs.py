@@ -152,11 +152,9 @@ def player_online(server, player) -> bool:
     检测玩家是否在线
     """
 
-    #result = server.rcon_query(f"data get entity {player} Name")
     result = server.rcon_query(f"experience query {player} points")
 
-    #if re.search("No entity was found", result).group():
-    if re.search(f"{player} has ([0-9]+) experience points", result):
+    if rematch(f"{player} has ([0-9]+) experience points", result):
         return True
     else:
         return False
@@ -271,3 +269,36 @@ def event_player_death(server, info):
                 return player
     
     return None
+
+
+def player_dimension(server: ServerInterface, info: Info) -> str|None:
+    rcon_result = server.rcon_query(f"data get entity {info.player} Dimension")
+    if rcon_result is None:
+        server.reply(info, RText("无法获取玩家维度信息，rcon返回None。", RColor.red))
+        server.logger.error("rcon_query returned None when getting player dimension.")
+        return
+
+    r = rematch(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))
+    if not r:
+        server.reply(info, RText("无法解析玩家维度信息。", RColor.red))
+        server.logger.error(f"Failed to match dimension info from rcon_result: {rcon_result}")
+        return
+
+    return r[0]
+
+
+def player_pos(server: PluginServerInterface, info: Info) -> tuple[float,float,float]|None:
+    rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
+    if rcon_result is None:
+        server.reply(info, RText("无法获取玩家坐标信息，rcon返回None。", RColor.red))
+        server.logger.error("rcon_query returned None when getting player position.")
+        return
+
+    cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
+    r = rematch(cmd, rcon_result, (1,2,3))
+    if not r:
+        server.reply(info, RText("无法解析玩家坐标信息。", RColor.red))
+        server.logger.error(f"Failed to match position info from rcon_result: {rcon_result}")
+        return
+
+    return (float(r[0]), float(r[1]), float(r[2]))
