@@ -9,7 +9,7 @@ from fishing.funcs import (
     time,
     __get,
     CMDPREFIX,
-    match,
+    rematch,
     player_online,
     PluginServerInterface,
     Info,
@@ -57,7 +57,7 @@ def on_info(server: PluginServerInterface, info: Info):
     if info.source == 0:
         # * calllivecn 🐠 
         # [Not Secure] * calllivecn 🐠
-        player = match(r"\[(.*)\] \* (.*) 🐠", info.content, groups=(1,2))
+        player = rematch(r"\[(.*)\] \* (.*) 🐠", info.content, groups=(1,2))
         if player:
             p = player[1]
             server.execute(f"player {p} use once")
