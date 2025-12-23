@@ -21,7 +21,9 @@ from backup.funcs import (
     Literal,
     QuotableText,
     Integer,
+    ServerInterface,
     PluginServerInterface,
+    CommandSource,
     Info,
     new_thread,
     permission,
@@ -129,11 +131,11 @@ def backup2current(latest: Path, source: Path, target: Path):
 
 class BackInfo:
 
-    def __init__(self, server):
+    def __init__(self, server: ServerInterface):
 
         self.server = server
 
-        self.cur_timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+        self.cur_timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
         self.cur = BACKUP_DIR / self.cur_timestamp
 
         self.backup_list = os.listdir(BACKUP_DIR)
@@ -244,9 +246,8 @@ class BackInfo:
 
         bak = BACKUP_DIR / tm
         shutil.rmtree(bak)
-        filename = Path(str(bak) + ".msg")
-        if filename.exists():
-            os.remove(filename)
+
+        self.__if_exists_msg(bak)
         
         # 如果删除最新的备份，需要把latest 指向倒数第2个
         if number == 0 and len(baks) > 2:
@@ -258,9 +259,8 @@ class BackInfo:
         for bak in baks[BACKUP_COUNT-1:]:
             shutil.rmtree(BACKUP_DIR / bak[0])
 
-            filename = Path(str(bak) + ".msg")
-            if filename.exists():
-                os.remove(filename)
+            print(f"删除备份msg: {bak} {BACKUP_DIR / bak[0]=}")
+            self.__if_exists_msg(BACKUP_DIR / bak[0])
 
 
     def __readmsg(self, filename: Path):
@@ -277,8 +277,15 @@ class BackInfo:
             f.write(msg)
 
 
+    def __if_exists_msg(self, bak: Path):
+        filename = Path(str(bak) + ".msg")
+        if filename.is_file():
+            self.server.logger.info(f"删除备份msg: {filename}")
+            os.remove(filename)
+
+
 @new_thread("backup auto backup")
-def autobackup_lock(server):
+def autobackup_lock(server: ServerInterface):
 
     if backing.locked():
         server.say(RText("备份的太频繁... 等会吧", RColor.red))
@@ -292,7 +299,7 @@ def autobackup_lock(server):
         B.value = 0
 
 @new_thread("bakcup manual backup")
-def manual_backup_lock(server, msg):
+def manual_backup_lock(server: ServerInterface, msg):
 
     if backing.locked():
         server.say(RText("备份的太频繁... 等会吧", RColor.red))
@@ -307,7 +314,7 @@ def manual_backup_lock(server, msg):
 
 
 @new_thread("backup rollback")
-def rollback_lock(server, number):
+def rollback_lock(server: ServerInterface, number):
 
     if backing.locked():
         server.say(RText("有备份在进行中... 等会吧", RColor.red))
@@ -337,7 +344,7 @@ def player_online(server):
 
 
 @new_thread("backup Timer")
-def wait30minute(server):
+def wait30minute(server: ServerInterface):
 
     while True:
 
@@ -366,7 +373,7 @@ def wait30minute(server):
 
 ## 定义指令函数
 @permission
-def help(src):
+def help(src: CommandSource, ctx: dict):
     server, info = __get(src)
 
     msg=[f"{'='*10} 使用说明 {'='*10}",
@@ -382,9 +389,9 @@ def help(src):
     server.reply(info, "\n".join(msg))
 
 @permission
-def ls(src, ctx):
-    server = src.get_server()
-    info = src.get_info()
+def ls(src: CommandSource, ctx: dict):
+
+    server, info = __get(src)
     
     msg=[f"{'='*10} 当前存档 {'='*10}"]
 
@@ -420,9 +427,8 @@ def backup_msg(src, ctx):
 
 
 @permission
-def rollback(src, ctx):
-    server = src.get_server()
-    info = src.get_info()
+def rollback(src: CommandSource, ctx: dict):
+    server, info = __get(src)
 
     number = int(ctx.get("number"))
     server.reply(info, f"{number}")
@@ -462,12 +468,11 @@ def build_command():
     return c
 
 
-# rcon_query("save-all") 的输出不会到这来。
 def on_info(server, info):
     pass
 
 
-def on_load(server, old_plugin):
+def on_load(server: PluginServerInterface, old_plugin):
     server.register_help_message(CMD, PLUGIN_NAME, PermissionLevel.ADMIN)
     server.register_command(build_command())
 

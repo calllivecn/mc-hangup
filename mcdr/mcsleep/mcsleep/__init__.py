@@ -10,9 +10,11 @@ from pathlib import Path
 
 from mcsleep.funcs import (
     CMDPREFIX,
-    match,
+    rematch,
+    get_players,
     new_thread,
     PermissionLevel,
+    ServerInterface,
     PluginServerInterface,
     Info,
     readcfg,
@@ -285,34 +287,19 @@ def execute(server):
                 continue
         
 
-def waitrcon(server):
-    # server刚启动时，等待rcon
-    while True:
-
-        if server.is_rcon_running():
-            # server.logger.info("rcon is running")
-            break
-        # else:
-            # server.logger.info("wait rcon is running")
-        
-        time.sleep(5)
-
-
 @new_thread("检查在线玩家数")
-def players(server):
+def players(server: PluginServerInterface, sleep: int=60):
 
     while True:
 
         if server.is_server_startup():
 
-            waitrcon(server)
+            # 等待服务器启动完成
+            while not server.is_server_running():
+                time.sleep(5)
 
-            result = server.rcon_query("list")
-            # server.logger.info(f"players() server.rcon_query() --> {result}")
-
-            count, players = match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result, (1, 3))
-            # 去除空格
-            players = list(map(lambda x: x.strip(), players.split(",")))
+            players = get_players(server)
+            count = len(players)
 
             if count == 0:
                 STATE.state = STATE.NOTPLAYERS
@@ -321,14 +308,14 @@ def players(server):
                 STATE.PLAYERS = players
 
         # 每秒check退出标志
-        for _ in range(30):
+        for _ in range(sleep):
             if PLUGIN_RELOAD:
                 return
             else:
                 time.sleep(1)
 
 
-def on_info(server, info):
+def on_info(server: ServerInterface, info: Info):
     if info.source == 1 and info.content == cmdprefix + " wakeup":
         server.logger.info("mc sleep 启动服务器中...")
         STATE.state = STATE.SERVER_STARTING
@@ -337,12 +324,11 @@ def on_info(server, info):
         STATE.state = STATE.SERVER_DOWN
 
 
-def on_load(server, old_plugin):
+def on_load(server: PluginServerInterface, old_plugin):
     server.register_help_message(cmdprefix, '没有玩家时，休眠服务器。', PermissionLevel.ADMIN)
 
     # 启动http开关
     if old_plugin is None:
-        # start_httpmcsleep(server)
         start_httpmcsleep()
         players(server)
         execute(server)
@@ -351,7 +337,6 @@ def on_load(server, old_plugin):
         STATE.state = old_plugin.STATE.state
         time.sleep(3)
 
-        # start_httpmcsleep(server)
         start_httpmcsleep()
         players(server)
         execute(server)
@@ -360,11 +345,11 @@ def on_load(server, old_plugin):
         server.logger.info("服务器已启动")
         STATE.state = STATE.NOTPLAYERS
 
-def on_unload(server):
+
+def on_unload(server: PluginServerInterface):
     pass
 
 
-# def on_server_startup(server, info):
 def on_server_startup(server: PluginServerInterface, info: Info):
     server.logger.info("on_server_startup() 我监听服务器启动成功！")
     STATE.state = STATE.SERVER_UP
@@ -376,9 +361,10 @@ def on_server_stop(server: PluginServerInterface, server_return_code: int):
     server.logger.info("on_server_stop()")
     STATE.state = STATE.SERVER_DOWN
 
-# def on_player_left(server, player):
-#     pass
-# 
+
+def on_player_left(server, player):
+    pass
+
 
 def on_player_joined(server: PluginServerInterface, player: str, info: Info):
     if STATE.state == STATE.NOTPLAYERS:
