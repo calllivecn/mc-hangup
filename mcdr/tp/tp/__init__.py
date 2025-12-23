@@ -13,7 +13,7 @@ from tp.funcs import (
     CONFIG_DIR,
     __get,
     RText,
-    match,
+    rematch,
     RColor,
     RAction,
     RStyle,
@@ -119,7 +119,7 @@ def check_level(server, info):
     # 查看玩家的等级够不够
     level = server.rcon_query(f"experience query {info.player} levels")
 
-    lvl = match(f"{info.player} has ([0-9]+) experience levels", level, (1,))[0]
+    lvl = rematch(f"{info.player} has ([0-9]+) experience levels", level, (1,))[0]
 
     server.logger.debug(f"玩家 {info.player} 等级： {lvl}")
     level_threshold = 7
@@ -218,12 +218,12 @@ def add(src, ctx):
         server.logger.warning(prompt)
         server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
-    world = match(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
+    world = rematch(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
     cmd = fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]"
-    x, y, z = match(cmd, rcon_result, (1, 2, 3))
+    x, y, z = rematch(cmd, rcon_result, (1, 2, 3))
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
     u = USERTP.get(info.player)
@@ -261,7 +261,7 @@ def update(src, ctx):
         server.logger.warning(prompt)
         server.tell(info.player, RText(f"{CMD} 插件没有配置成功，请联系服主。", RColor.red))
 
-    world = match(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
+    world = rematch(fr'{info.player} has the following entity data: "(.*)"', rcon_result, (1,))[0]
 
     # 查询坐标
     rcon_result = server.rcon_query(f"data get entity {info.player} Pos")
@@ -269,7 +269,7 @@ def update(src, ctx):
     # position = re.search(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result)
     # x, y, z = position.group(1), position.group(2), position.group(3)
 
-    x, y, z = match(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result, (1,2,3))
+    x, y, z = rematch(fr"{info.player} has the following entity data: \[(-?[0-9\.]+)d, (-?[0-9.]+)d, (-?[0-9.]+)d\]", rcon_result, (1,2,3))
     x, y, z = round(float(x), 1), round(float(y), 1), round(float(z), 1)
 
     if u is None:
