@@ -32,7 +32,7 @@ from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, Gree
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource
+from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource, InfoCommandSource
 
 
 CMDPREFIX="."
@@ -41,6 +41,16 @@ CMDPREFIX="."
 # mcdr_v2.x
 CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
 #print(f"{CONFIG_DIR=}")
+
+
+"""
+    可以在 def on_load() 中获取插件的元数据
+    meta = server.get_self_metadata()
+    plugin_id = meta.id
+    version = meta.version
+    name = meta.name
+    author = meta.author
+"""
 
 
 def readcfg(filename, init_context=None):
@@ -59,8 +69,8 @@ def readcfg(filename, init_context=None):
             return conf
 
 
-def __get(src):
-    return src.get_server(), src.get_info()
+def __get(src: CommandSource):
+    return src.get_server(), src.get_info() # type: ignore
 
 def timestamp():
     return int(time.time())
@@ -129,15 +139,16 @@ def check_rcon(server):
         return False
 
 
-def playsound(server, player):
+def playsound(server: ServerInterface, player: str):
     server.rcon_query(f"execute at {player} run playsound minecraft:entity.player.levelup player {player}")
 
-def get_players(server):
+
+def get_players(server: ServerInterface) -> list[str]:
     # 获取在线玩家
     result = server.rcon_query("list")
     server.logger.debug(f"result = server.rcon_query('list') -->\n{result}")
 
-    players, playernames = match("There are ([0-9]+) of a max of ([0-9]+) players online:(.*)", result, (1, 3))
+    players, playernames = rematch("There are ([0-9]+) of a max of ([0-9]+) players online: (.*)", result, (1, 3))
     if players == "0":
         return []
 
