@@ -108,6 +108,7 @@ def permission_admin(func):
     return warp
 
 
+"""
 # 这是关键字，不要用作函数名
 def match(re_str, s_str, groups=(0,)) -> tuple:
     print("这是旧的函数名称，不要用作函数名。 请使用 rematch() 函数。")
@@ -118,6 +119,7 @@ def match(re_str, s_str, groups=(0,)) -> tuple:
             lg.append(result.group(i))
 
     return tuple(lg)
+"""
 
 def rematch(re_str, s_str, groups=(0,)) -> tuple:
     lg = []

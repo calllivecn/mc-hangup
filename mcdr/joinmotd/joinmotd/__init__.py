@@ -1,10 +1,7 @@
 # -*- coding: UTF-8 -*-
 
-from re import match
-
 from joinmotd.funcs import (
     CMDPREFIX,
-    CONFIG_DIR,
     __get,
     RText,
     RColor,
@@ -24,7 +21,7 @@ def welcome(server, player):
 
     r = RText(">>> 点击这里，查看可用命令 <<<", RColor.green)
     r.set_hover_text("!!help")
-    r.set_click_event(RAction.run_command, f"!!help")
+    r.set_click_event(RAction.run_command, "!!help")
 
     msg.append(r)
 
