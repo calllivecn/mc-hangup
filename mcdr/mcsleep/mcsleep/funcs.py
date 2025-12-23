@@ -32,7 +32,7 @@ from mcdreforged.command.builder.nodes.arguments import QuotableText, Text, Gree
 
 from mcdreforged.permission.permission_level import PermissionLevel
 
-from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource
+from mcdreforged.api.types import PluginServerInterface, ServerInterface, Info, PlayerCommandSource, CommandSource, InfoCommandSource
 
 
 CMDPREFIX="."
@@ -41,6 +41,16 @@ CMDPREFIX="."
 # mcdr_v2.x
 CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
 #print(f"{CONFIG_DIR=}")
+
+
+"""
+    可以在 def on_load() 中获取插件的元数据
+    meta = server.get_self_metadata()
+    plugin_id = meta.id
+    version = meta.version
+    name = meta.name
+    author = meta.author
+"""
 
 
 def readcfg(filename, init_context=None):
@@ -60,7 +70,7 @@ def readcfg(filename, init_context=None):
 
 
 def __get(src: CommandSource):
-    return src.get_server(), src.get_info()
+    return src.get_server(), src.get_info() # type: ignore
 
 def timestamp():
     return int(time.time())

@@ -6,10 +6,10 @@
 import time
 import asyncio
 from threading import Lock
-from pathlib import Path
 
 from mcsleep.funcs import (
     CMDPREFIX,
+    CONFIG_DIR,
     rematch,
     get_players,
     new_thread,
@@ -22,7 +22,7 @@ from mcsleep.funcs import (
 
 cmdprefix = CMDPREFIX + "mcsleep"
 
-cfg_filename = Path("config") / "mcsleep.conf"
+cfg_filename = CONFIG_DIR / "mcsleep.conf"
 
 cfg_text="""\
 [mcsleep]
@@ -184,16 +184,13 @@ async def recv_handler(r, w):
     except asyncio.exceptions.CancelledError:
         pass
 
-async def asyncio_check_exit(server):
+async def asyncio_check_exit(server: asyncio.Server):
     """
     检查插件是否重载, 是：退出些loop
     """
 
     while True:
         if PLUGIN_RELOAD:
-            # server.logger.info("olg_plugin 执行器退出...")
-            print("old_plugin 执行器退出...")
-
             # close server
             server.close()
             await server.wait_closed()
@@ -211,16 +208,24 @@ async def asyncio_check_exit(server):
 
 
 async def httpmcsleep():
+
     server = await asyncio.start_server(recv_handler, None, PORT, reuse_port=True)
 
     # addr, port = server.sockets[0].getsockname()
     # print("client:", addr, file=sys.stderr)
 
-    await asyncio_check_exit(server)
+    # 创建两个并发任务
+    check_exit_task = asyncio.create_task(asyncio_check_exit(server))
+    serve_task = asyncio.create_task(server.serve_forever())
 
-    async with server:
-        await server.serve_forever()
+    # 等待两个任务完成
+    await asyncio.wait([check_exit_task, serve_task], return_when=asyncio.FIRST_COMPLETED)
 
+    # 如果 asyncio_check_exit 完成，取消 serve_forever
+    if not check_exit_task.done():
+        check_exit_task.cancel()
+    if not serve_task.done():
+        serve_task.cancel()
 
 @new_thread(cmdprefix)
 def start_httpmcsleep():
@@ -325,6 +330,7 @@ def on_info(server: ServerInterface, info: Info):
 
 
 def on_load(server: PluginServerInterface, old_plugin):
+
     server.register_help_message(cmdprefix, '没有玩家时，休眠服务器。', PermissionLevel.ADMIN)
 
     # 启动http开关
