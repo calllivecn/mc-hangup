@@ -7,6 +7,7 @@ import os
 import time
 import json
 from math import floor
+from threading import Lock
 
 
 from clearchunk.funcs import (
@@ -41,12 +42,22 @@ from clearchunk.funcs import (
 
 from mcdreforged.command.builder import command_builder_utils
 
+"""
+    block_cmd_suffix_list = (
+        (("灵魂沙", "minecraft:soul_sand destroy"), ("岩浆块", "minecraft:magma_block destroy")),
+        (("水草", "minecraft:seagrass strict"), ("水草", "minecraft:tall_seagrass strict")),
+        (("海带", "minecraft:kelp_plant destroy"), ("海带头", "minecraft:kelp destroy")),
+        (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
+    )
+
+"""
+
 ID_NAME = "clearchunk"
 PLUGIN_NAME = "一步步清空指定区域"
 
 CMD = CMDPREFIX + ID_NAME
 
-CLEARCHUNK_DIR = CONFIG_DIR / ID_NAME
+CLEARCHUNK = CONFIG_DIR / (ID_NAME + ".json")
 
 CLEARCHUNK_PROGRESS = {}
 
@@ -57,11 +68,8 @@ server: ServerInterface
 info: Info
 
 
-if not CLEARCHUNK_DIR.exists():
-    os.makedirs(CLEARCHUNK_DIR)
-
 def get_progress_info():
-    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
+    j = CLEARCHUNK
     if j.exists():
         with open(j) as f:
             return json.load(f)
@@ -69,12 +77,12 @@ def get_progress_info():
         return {}
 
 def set_progress_info(data: dict):
-    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
+    j = CLEARCHUNK
     with open(j, "w+") as f:
         return json.dump(data, f, ensure_ascii=False, indent=4)
 
 def del_progress_info():
-    j = CLEARCHUNK_DIR / (ID_NAME + ".json")
+    j = CLEARCHUNK
     if j.exists():
         os.remove(j)
 
@@ -101,13 +109,46 @@ def inclusive_range(start, stop, step):
 class Sleep:
     def __init__(self):
 
+        self._sleep_lock = Lock()
+        self._water_lock = Lock()
+
         js = get_progress_info()
-        self.sleep_time = js.get("sleep_time")
+
+        with self._sleep_lock:
+            self.sleep_time = js.get("sleep_time")
+
+        with self._water_lock:
+            self.sleep_water = js.get("sleep_water")
 
     def sleep_if_needed(self):
         if self.sleep_time is not None:
-            time.sleep(self.sleep_time)
+            with self._sleep_lock:
+                time.sleep(self.sleep_time)
+    
+    def modify_sleep(self, sleep_time: float|None=None):
 
+        js = get_progress_info()
+        js["sleep_time"] = sleep_time
+        set_progress_info(js)
+
+        with self._sleep_lock:
+            self.sleep_time = sleep_time
+    
+    def water_sleep_if_needed(self):
+        if self.sleep_water is not None:
+            with self._water_lock:
+                time.sleep(self.sleep_water)
+    
+    def modify_water_sleep(self, sleep_time: float):
+
+        js = get_progress_info()
+        js["sleep_water"] = sleep_time
+        set_progress_info(js)
+
+        with self._water_lock:
+            self.sleep_water = sleep_time
+
+SLEEP = Sleep()
 
 @new_thread("clearchunk")
 def start(pos1, pos2, unique_id=0):
@@ -115,10 +156,8 @@ def start(pos1, pos2, unique_id=0):
     msg = []
     msg.append(RText(f"开始清理区域: {pos1} -> {pos2}", RColor.green))
     msg.append("\n")
-    msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
+    # msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
     server.reply(info, RTextList(*msg))
-
-    st = Sleep()
 
     js = get_progress_info()
 
@@ -130,13 +169,6 @@ def start(pos1, pos2, unique_id=0):
     world = js.get("world")
     if world is None:
         world = player_dimension(server, info)
-
-    block_cmd_suffix_list = (
-        (("灵魂沙", "minecraft:soul_sand destroy"), ("岩浆块", "minecraft:magma_block destroy")),
-        (("水草", "minecraft:seagrass strict"), ("水草", "minecraft:tall_seagrass strict")),
-        (("海带", "minecraft:kelp_plant destroy"), ("海带头", "minecraft:kelp destroy")),
-        (("水", "minecraft:water destroy"), ("岩浆", "minecraft:lava destroy")),
-    )
 
     x1, y1, z1 = pos1
     x2, y2, z2 = pos2
@@ -164,11 +196,10 @@ def start(pos1, pos2, unique_id=0):
         return
 
 
-    step_r = 8
-
     x1f, y1f, z1f = x6, max(y6, y_world_down), z6
     x2f, y2f, z2f = x7, min(y7, y_world_up), z7
     # 预清理整个区域的水和岩浆。清水区域，要比指定区域边界大8。
+    step_r = 8
     for y in inclusive_range(y2f, y1f, -step_r):
         if y - step_r > y1f:
             y2_t = y - step_r
@@ -215,7 +246,7 @@ def start(pos1, pos2, unique_id=0):
                 # msg.append(RText(result, RColor.yellow))
                 # server.reply(info, RTextList(*msg))
                 
-                st.sleep_if_needed()
+                SLEEP.water_sleep_if_needed()
 
                 if x2_t == x2f:
                     break
@@ -279,12 +310,10 @@ def start(pos1, pos2, unique_id=0):
 
 
                 if pos3 is not None:
-                    # time.sleep(0.2)
-                    st.sleep_if_needed()
                     server.rcon_query(f"execute in {world} as @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
                     server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
                 
-                st.sleep_if_needed()
+                SLEEP.sleep_if_needed()
 
                 if x2_t == x2:
                     break
@@ -301,13 +330,12 @@ def pos(src, ctx):
     global server, info
     server, info = __get(src)
 
-    unique_id = time.monotonic_ns()
-
-    args = ctx["args"].split()
+    args = ctx["args"]
+    args2 = ctx["args2"]
     # print(f"{args=}")
 
-    pos1 = [ floor(float(i)) for i in args[0].split(",") ]
-    pos2 = [ floor(float(i)) for i in args[1].split(",") ]
+    pos1 = [ floor(float(i)) for i in args.split(",") ]
+    pos2 = [ floor(float(i)) for i in args2.split(",") ]
 
     if pos1[0] > pos2[0] or pos1[1] > pos2[1] or pos1[2] > pos2[2]:
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
@@ -336,26 +364,21 @@ def center(src: CommandSource, ctx: dict):
     start([x1, y_down, z1], [x2, y_up, z2])
 
 
-@permission
-def collection_point(src: CommandSource, ctx: dict):
+def collection_point(server: ServerInterface, info: Info, xyz: dict=None):
     """
     配置参数：x1,y1,z1 做为收集掉落物的位置 
     """
-    global server, info
-    server, info = __get(src)
-
-    # print(f"{ctx=}")
 
     # 获取玩家所在维度
     world = player_dimension(server, info)
 
-    if ctx is None:
+    if xyz is None:
         # 配置当前玩家位置为收集点
         x, y, z = player_pos(server, info)
         x, y, z = floor(float(x)), floor(float(y)), floor(float(z))
     
     else:
-        x, y, z = floor(float(ctx["x"])), floor(float(ctx["y"])), floor(float(ctx["z"]))
+        x, y, z = floor(float(xyz["x"])), floor(float(xyz["y"])), floor(float(xyz["z"]))
 
     config = {
         "x": x,
@@ -385,10 +408,7 @@ def collection_point(src: CommandSource, ctx: dict):
         server.reply(info, RText(f"无法检测回收位置 [{x}, {y}, {z}] 是否为空气，rcon命令返回: {rcon_result}", RColor.red))
 
 
-@permission
-def collection_point_get(src: CommandSource, ctx: dict):
-    global server, info
-    server, info = __get(src)
+def collection_point_get(server: ServerInterface, info: Info):
 
     js = get_progress_info()
 
@@ -398,49 +418,114 @@ def collection_point_get(src: CommandSource, ctx: dict):
     else:
         server.reply(info, RText("未配置回收坐标点。", RColor.red))
 
-@permission
-def collection_point_clear(src: CommandSource):
-    global server, info
-    server, info = __get(src)
-
-    js = get_progress_info()
-    if js.get("收集坐标点"):
-        js.pop("收集坐标点")
-        set_progress_info(js)
-
-    server.reply(info, RText("移除收集点", RColor.green))
-
 
 @permission
-def sleep_set(src: CommandSource, ctx: dict):
+def config(src: CommandSource, ctx: dict):
     global server, info
     server, info = __get(src)
+    args = ctx["args"].split()
+    server.logger.info(RText(f"当前config 参数：{args}", RColor.green))
 
-    # print(f"{ctx=}")
+    match args[0]:
+        case "set":
+            match args[1]:
+                case "collection":
 
-    sleep_time = float(ctx["time"])
+                    if len(args) == 5:
+                        server.reply(info, RText("参数错误，使用方法：cfg set collection <x y z>", RColor.red))
+                        xyz = {
+                            "x": args[2],
+                            "y": args[3],
+                            "z": args[4],
+                        }
 
-    js = get_progress_info()
+                        collection_point(server, info, xyz)
+                    else:
+                        collection_point(server, info)
 
-    js["sleep_time"] = sleep_time
+                case "sleep":
 
-    set_progress_info(js)
+                    if len(args) != 3:
+                        server.reply(info, RText("参数错误，使用方法：cfg set sleep <float>", RColor.red))
+                        return
 
-    server.reply(info, RText(f"设置每次清理后休眠时间为 {sleep_time} 秒", RColor.green))
+                    sleep_time = float(args[2])
 
+                    SLEEP.modify_sleep(sleep_time)
+                    server.reply(info, RText(f"设置每次清理后休眠时间为 {sleep_time} 秒", RColor.green))
 
-@permission
-def sleep_clear(src: CommandSource, ctx: dict):
-    global server, info
-    server, info = __get(src)
+                case "water_sleep":
+                    if len(args) != 3:
+                        server.reply(info, RText("参数错误，使用方法：cfg set water_sleep <float>", RColor.red))
+                        return
 
-    js = get_progress_info()
+                    sleep_time = float(args[2])
 
-    if js.get("sleep_time"):
-        js.pop("sleep_time")
-        set_progress_info(js)
+                    SLEEP.modify_water_sleep(sleep_time)
+                    server.reply(info, RText(f"设置清理水和岩浆时的休眠时间为 {sleep_time} 秒", RColor.green))
 
-    server.reply(info, RText("清除每次清理后休眠时间设置", RColor.green))
+                case _:
+                    server.reply(info, RText("未知配置项", RColor.red))
+
+        case "get":
+            match args[1]:
+                case "collection":
+                    collection_point_get(server, info)
+
+                case "sleep":
+                    js = get_progress_info()
+                    sleep_time = js.get("sleep_time")
+                    if sleep_time is not None:
+                        server.reply(info, RText(f"当前sleep时间为 {sleep_time} 秒", RColor.green))
+                    else:
+                        server.reply(info, RText("未设置sleep时间", RColor.red))
+                
+                case "water_sleep":
+                    js = get_progress_info()
+                    sleep_time = js.get("sleep_water")
+                    if sleep_time is not None:
+                        server.reply(info, RText(f"当前清理水和岩浆时的sleep时间为 {sleep_time} 秒", RColor.green))
+                    else:
+                        server.reply(info, RText("未设置清理水和岩浆时的sleep时间", RColor.red))
+
+                case _:
+                    server.reply(info, RText("未知配置项", RColor.red))
+
+        case "del":
+            match args[1]:
+                case "collection":
+
+                    js = get_progress_info()
+                    if js.get("收集坐标点"):
+                        js.pop("收集坐标点")
+                        set_progress_info(js)
+
+                    server.reply(info, RText("移除收集点", RColor.green))
+
+                case "sleep":
+                    # 清理sleep
+                    js = get_progress_info()
+                    if js.get("sleep_time"):
+                        js.pop("sleep_time")
+                        set_progress_info(js)
+                        SLEEP.modify_sleep()
+
+                    server.reply(info, RText("清除每次清理后休眠时间设置", RColor.green))
+                
+                case "water_sleep":
+                    js = get_progress_info()
+                    if js.get("sleep_water"):
+                        js.pop("sleep_water")
+                        set_progress_info(js)
+                        SLEEP.modify_sleep()
+
+                    server.reply(info, RText("清除清理水和岩浆时的休眠时间设置", RColor.green))
+
+                case _:
+                    server.reply(info, RText("未知配置项", RColor.red))
+        case _:
+            server.reply(info, RText("未知操作", RColor.red))
+    
 
 
 def help(src: CommandSource):
@@ -451,17 +536,26 @@ def help(src: CommandSource):
         f"{CMD}    查看使用方法",
         f"{'='*10} center 使用方法 {'='*10}",
         f"{CMD} center R y_up y_down    以玩家当前位置为中心，清理半径R的正方形区域，y_up为上边界，y_down为下边界",
-        f"{'='*10} 设置收集点 {'='*10}",
-        f"{CMD} setcfg x y z    配置掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
-        f"{CMD} getcfg    查看掉落物回收位置",
-        f"{CMD} delcfg    删除掉落物回收位置(不产生掉落物+不收集掉落物)",
-        f"{'='*10} 设置sleep {'='*10}",
-        f"{CMD} setsleep float    设置每次sleep时间，单位秒",
-        f"{CMD} delsleep    清理sleep",
         f"{'='*10} 使用绝对坐标位置 {'='*10}",
         f"{CMD} pos x1,y1,z1 x2,y2,z2",
         "x1,y1,z1    起点位置坐标",
         "x2,y2,z2    结束位置坐标",
+        f"{'='*10} 设置收集点(没配置则不收集) {'='*10}",
+        f"{CMD} cfg set collection <x y z>    配置掉落物回收位置(会把掉落物收集到这个位置，一般在漏斗上方。)",
+        f"{CMD} cfg get collection   查看掉落物回收位置",
+        f"{CMD} cfg del collection   删除掉落物回收位置(不再产生掉落物+不收集掉落物,性能好.)",
+        f"{'='*10} 设置清理方块sleep时间 {'='*10}",
+        f"{CMD} cfg set sleep <float>    设置每次sleep时间，单位秒",
+        f"{CMD} cfg get sleep    查看设置的sleep时间",
+        f"{CMD} cfg del sleep    清理sleep",
+        f"{'='*10} 设置清理水和岩浆sleep时间 {'='*10}",
+        f"{CMD} cfg set water_sleep <float>    设置每次sleep时间，单位秒",
+        f"{CMD} cfg get water_sleep    查看设置的sleep时间",
+        f"{CMD} cfg del water_sleep    清理sleep",
+        f"{'='*10} 工作过程简略 {'='*10}",
+        "1. 预清理指定区域外扩8格的水和岩浆",
+        "2. 正式清理指定区域的方块",
+        "3. 如果配置了收集点，则把掉落物和经验球传送到收集点",
     ]
     server.reply(info, "\n".join(msg))
 
@@ -527,9 +621,13 @@ def build_command():
     # c = Literal(CMD).then(PointArgument("pos").runs(main))
 
     c = Literal(CMD).runs(help)
+    """
+    能改为在最后使用QuotableText("args") 来接收所有参数，然后在函数内拆分参数
+    这样就不需要定义很多子命令了
     c.then(
         Literal("setcfg").runs(lambda src: collection_point(src, None))
         .then(
+            Number("x").then(
             Number("x").then(
                 Number("y").then(
                     Number("z").runs(lambda src, ctx: collection_point(src, ctx))
@@ -552,6 +650,7 @@ def build_command():
     c.then(
         Literal("delsleep").runs(lambda src, ctx: sleep_clear(src, ctx))
     )
+    """
     c.then(
         Literal("center")
         .then(
@@ -565,7 +664,14 @@ def build_command():
     )
     c.then(
         Literal("pos").then(
-            GreedyText("args").runs(lambda src, ctx: pos(src, ctx))
+            Text("args").then(
+                Text("args2").runs(lambda src, ctx: pos(src, ctx))
+            )
+        )
+    )
+    c.then(
+        Literal("cfg").then(
+            GreedyText("args").runs(lambda src, ctx: config(src, ctx))
         )
     )
     return c
