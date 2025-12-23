@@ -244,7 +244,7 @@ def start_httpmcsleep():
 #################
 
 @new_thread("mc sleep 执行器")
-def execute(server):
+def execute(server: ServerInterface):
 
     waittime = WAITTIME * 60
     print_count = 60
@@ -356,7 +356,7 @@ def on_unload(server: PluginServerInterface):
     pass
 
 
-def on_server_startup(server: PluginServerInterface, info: Info):
+def on_server_startup(server: PluginServerInterface):
     server.logger.info("on_server_startup() 我监听服务器启动成功！")
     STATE.state = STATE.SERVER_UP
 
@@ -364,7 +364,7 @@ def on_server_stop(server: PluginServerInterface, server_return_code: int):
     if server_return_code != 0:
         server.logger.info('服务端crash?')
 
-    server.logger.info("on_server_stop()")
+    server.logger.info("on_server_stop() 我监听服务器关闭成功！")
     STATE.state = STATE.SERVER_DOWN
 
 

@@ -267,15 +267,15 @@ def item_body(result):
 
 
 # 配合 showhealth 数据包检测玩家死亡事件
-def event_player_death(server, info):
-    result = re.match(r"\* (.*) 死了", info)
+def event_player_death(server: ServerInterface, info: Info) -> str|None:
+    result = rematch(r"\* (.*) 死了", info, (1,))
     if result:
         # player 死亡
-        player = result.group(1)
+        player = result[0]
         result = server.rcon_query(f"data get entity {player} DeathTime")
         if result:
-            deathtime = re.match(f"{player} has the following entity data: (.*)s", result)
-            t = deathtime.group(1)
+            deathtime = rematch(f"{player} has the following entity data: (.*)s", result, (1,))
+            t = deathtime[0]
             server.logger.debug(f"玩家 {player} 的死亡时间计数：{deathtime}")
             if t != "0":
                 server.logger.info(f"检测到玩家 {player} 死亡")
