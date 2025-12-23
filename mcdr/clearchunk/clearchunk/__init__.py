@@ -9,6 +9,11 @@ import json
 from math import floor
 from threading import Lock
 
+from typing import (
+    Any,
+    Literal as PyLiteral,
+)
+
 
 from clearchunk.funcs import (
     CMDPREFIX,
@@ -59,8 +64,6 @@ CMD = CMDPREFIX + ID_NAME
 
 CLEARCHUNK = CONFIG_DIR / (ID_NAME + ".json")
 
-CLEARCHUNK_PROGRESS = {}
-
 EXIT = False
 
 # server: PluginServerInterface
@@ -106,8 +109,45 @@ def inclusive_range(start, stop, step):
             yield stop
 
 
+Progress = PyLiteral[
+    "world",
+    "clearchunk",
+    "progress",
+    "water",
+    "block",
+    "continue",
+    "sleep_time",
+    "sleep_water",
+    "collection",
+]
+
+"""
+js_clearchunk = [
+    [x, y, z], [x, y, z]
+]
+
+js_progress = "water" or "block"
+js_water = {
+    "water": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+    }
+}
+js_block = {
+    "block": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+    }
+}
+"""
+
 class Sleep:
     def __init__(self):
+
+        # 当前是否有任务在运行
+        self.task_lock = Lock()
 
         self._sleep_lock = Lock()
         self._water_lock = Lock()
@@ -127,9 +167,7 @@ class Sleep:
     
     def modify_sleep(self, sleep_time: float|None=None):
 
-        js = get_progress_info()
-        js["sleep_time"] = sleep_time
-        set_progress_info(js)
+        self.save("sleep_time", sleep_time)
 
         with self._sleep_lock:
             self.sleep_time = sleep_time
@@ -141,42 +179,92 @@ class Sleep:
     
     def modify_water_sleep(self, sleep_time: float):
 
-        js = get_progress_info()
-        js["sleep_water"] = sleep_time
-        set_progress_info(js)
-
+        self.save("sleep_water", sleep_time)
         with self._water_lock:
             self.sleep_water = sleep_time
+    
+    def save(self, typ: Progress, value: dict|Any):
+        js = get_progress_info()
+        js[typ] = value
+        set_progress_info(js)
+    
+    def load(self, typ: Progress) -> dict:
+        js = get_progress_info()
+        return js.get(typ, dict())
+    
+    def clear(self, typ: Progress):
+        js = get_progress_info()
+        if js.get(typ):
+            js.pop(typ)
+            set_progress_info(js)
 
 SLEEP = Sleep()
 
+def check_progress(server: ServerInterface) -> bool:
+
+    # 查看是否有未完成的任务
+    step_word = SLEEP.load("progress")
+    step = SLEEP.load(step_word) # type:ignore
+    if step:
+        world = SLEEP.load("world")
+        clearchunk = SLEEP.load("clearchunk")
+
+        msg = []
+        msg.append(RText(f"之前有中断的任务: {world} -> {clearchunk}", RColor.red))
+        msg.append("\n")
+        msg.append(RText(f"如果需要断续之前中断的任务: {CMD} cfg continue", RColor.red))
+        msg.append("\n")
+        msg.append(RText(f"或者，删除之前中断的任务: {CMD} cfg taskclear", RColor.red))
+        server.reply(info, RTextList(*msg))
+        return True
+    else:
+        return False
+
+
 @new_thread("clearchunk")
-def start(pos1, pos2, unique_id=0):
+def start():
 
-    msg = []
-    msg.append(RText(f"开始清理区域: {pos1} -> {pos2}", RColor.green))
-    msg.append("\n")
-    # msg.append(RText(f"清理任务ID: {unique_id}", RColor.yellow))
-    server.reply(info, RTextList(*msg))
+    world = SLEEP.load("world")
+    clearchunk = SLEEP.load("clearchunk")
 
-    js = get_progress_info()
+    # 当前是否在运行的任务
+    if SLEEP.task_lock.locked():
+        server.reply(info, RText(f"请等待已有任务执行完成：{world} -> {clearchunk}", RColor.red))
+        return
+    else:
+        SLEEP.task_lock.acquire()
 
-    if js and "收集坐标点" in js:
-        pos3 = [ js["收集坐标点"]["x"], js["收集坐标点"]["y"], js["收集坐标点"]["z"] ]
+
+    # 查看是否有未完成的任务
+    step_word = SLEEP.load("progress")
+    step = SLEEP.load(step_word) # type:ignore
+    if step:
+        # 是否继续之前的任务
+        if SLEEP.load("continue"):
+            SLEEP.clear("continue")
+            server.reply(info, RText("继续之前中断的任务。", RColor.green))
+        else:
+            msg = []
+            msg.append(RText(f"之前有中断的任务: {world} -> {clearchunk}", RColor.red))
+            msg.append("\n")
+            msg.append(RText(f"如果需要断续之前中断的任务: {CMD} cfg continue", RColor.red))
+            msg.append("\n")
+            msg.append(RText(f"或者，删除之前中断的任务: {CMD} cfg taskclear", RColor.red))
+            server.reply(info, RTextList(*msg))
+
+    else:
+        # 初始化进度阶段
+        SLEEP.save("progress", "water")
+
+
+    xyz = SLEEP.load("collection")
+    if xyz:
+        pos3 = [ xyz["x"], xyz["y"], xyz["z"] ]
     else:
         pos3 = None
 
-    world = js.get("world")
-    if world is None:
+    if not world:
         world = player_dimension(server, info)
-
-    x1, y1, z1 = pos1
-    x2, y2, z2 = pos2
-
-    # 外扩后的边界
-    x6, y6, z6 = x1-1, y1-1, z1-1
-    x7, y7, z7 = x2+1, y2+1, z2+1
-
 
     if world == "minecraft:overworld":
         y_world_up = 319 # 上边界
@@ -194,135 +282,233 @@ def start(pos1, pos2, unique_id=0):
         server.reply(info, RText("不支持的维度。", RColor.red))
         server.logger.error(f"不支持的维度。: {world}")
         return
+ 
+    pos1, pos2 = clearchunk
+    x1, y1, z1 = pos1
+    x2, y2, z2 = pos2
 
+    msg = []
+    msg.append(RText(f"开始清理区域: {world} -> {clearchunk}", RColor.green))
+    msg.append("\n")
+    server.reply(info, RTextList(*msg))
+
+    # 外扩后的边界
+    x6, y6, z6 = x1-1, y1-1, z1-1
+    x7, y7, z7 = x2+1, y2+1, z2+1
 
     x1f, y1f, z1f = x6, max(y6, y_world_down), z6
     x2f, y2f, z2f = x7, min(y7, y_world_up), z7
-    # 预清理整个区域的水和岩浆。清水区域，要比指定区域边界大8。
-    step_r = 8
-    for y in inclusive_range(y2f, y1f, -step_r):
-        if y - step_r > y1f:
-            y2_t = y - step_r
-        else:
-            y2_t = y1f
-                
-        for z in inclusive_range(z1f, z2f, step_r):
-            if z + step_r < z2f:
-                z2_t = z + step_r
+
+    flag_water_progress_x = False
+    flag_water_progress_z = False
+
+    progress =  SLEEP.load("progress")
+    if progress == "water":
+        # 继续进度清理，水和岩浆阶段
+        water_progress = SLEEP.load("water")
+        if water_progress:
+            flag_water_progress_z = True
+            flag_water_progress_x = True
+            y2f = water_progress["y"]
+    
+        server.reply(info, RText("[水和岩浆]区域清理执行...", RColor.green))
+
+        # 预清理整个区域的水和岩浆。清水区域，要比指定区域边界大8。
+        step_r = 8
+        for y in inclusive_range(y2f, y1f, -step_r):
+
+            if y - step_r > y1f:
+                y2_t = y - step_r
             else:
-                z2_t = z2f
+                y2_t = y1f
 
-            for x in inclusive_range(x1f, x2f, step_r):
+            z1f_progress = z1f
+            if flag_water_progress_z:
+                flag_block_progress_z = False
+                z1f_progress = water_progress["z"]
 
-                if EXIT:
-                    server.reply(info, RText("清理任务被中止。", RColor.red))
-                    return
-
-                if x + step_r < x2f:
-                    x2_t = x + step_r
+            for z in inclusive_range(z1f_progress, z2f, step_r):
+                if z + step_r < z2f:
+                    z2_t = z + step_r
                 else:
-                    x2_t = x2f
-                
-                result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:lava")
-                if result is None:
-                    err = "清理区域 岩浆 时发生异常退出。"
-                    server.reply(info, RText(err, RColor.red))
-                    server.logger.error(err)
-                    return
-                # msg = []
-                # msg.append(RText(f"现在清理 岩浆 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
-                # msg.append(RText(result, RColor.yellow))
-                # server.reply(info, RTextList(*msg))
+                    z2_t = z2f
+
+                x1f_progress = x1f
+                if flag_water_progress_x:
+                    flag_block_progress_x = False
+                    x1f_progress = water_progress["z"]
+
+                for x in inclusive_range(x1f_progress, x2f, step_r):
+
+                    if EXIT:
+                        server.reply(info, RText("清理任务被中止。", RColor.red))
+                        SLEEP.save("water", {"x": x, "y": y, "z": z})
+                        return
+
+                    if flag_water_progress_x:
+                        flag_water_progress_x = False
+                        x = water_progress["x"]
+                        server.reply(info, RText(f"继续从当前位置清理[水和岩浆]: [{x}, {y}, {z}]", RColor.green))
 
 
-                result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:water")
-                if result is None:
-                    err = "清理区域 水 时发生异常退出。"
-                    server.reply(info, RText(err, RColor.red))
-                    server.logger.error(err)
-                    return
-                # msg = []
-                # msg.append(RText(f"现在清理 水 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
-                # msg.append(RText(result, RColor.yellow))
-                # server.reply(info, RTextList(*msg))
-                
-                SLEEP.water_sleep_if_needed()
+                    if x + step_r < x2f:
+                        x2_t = x + step_r
+                    else:
+                        x2_t = x2f
 
-                if x2_t == x2f:
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:lava")
+                    if result is None:
+                        err = "清理区域 岩浆 时发生异常退出。"
+                        server.reply(info, RText(err, RColor.red))
+                        server.logger.error(err)
+                        # 保存下进度
+                        SLEEP.save("water", {"x": x, "y": y, "z": z})
+                        SLEEP.task_lock.release()
+                        return
+                    # msg = []
+                    # msg.append(RText(f"现在清理 岩浆 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                    # msg.append(RText(result, RColor.yellow))
+                    # server.reply(info, RTextList(*msg))
+
+
+                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:glass replace minecraft:water")
+                    if result is None:
+                        err = "清理区域 水 时发生异常退出。"
+                        server.reply(info, RText(err, RColor.red))
+                        server.logger.error(err)
+                        # 保存下进度
+                        SLEEP.save("water", {"x": x, "y": y, "z": z})
+                        SLEEP.task_lock.release()
+                        return
+                    # msg = []
+                    # msg.append(RText(f"现在清理 水 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                    # msg.append(RText(result, RColor.yellow))
+                    # server.reply(info, RTextList(*msg))
+
+                    SLEEP.water_sleep_if_needed()
+
+                    if x2_t == x2f:
+                        break
+                if z2_t == z2f:
                     break
-            if z2_t == z2f:
+            if y2_t == y1f:
                 break
-        if y2_t == y1f:
-            break
 
+        server.reply(info, RText("[水和岩浆]区域清理执行完成", RColor.green))
+
+    # ----------------------
+
+    SLEEP.clear("water")
+    SLEEP.save("progress", "block")
+    progress = "block"
 
     y1_down = max(y1, y_world_down)
     y2_up = min(y2, y_world_up)
-    # 正式清理整个区域的方块。 这里步长不能30太大。
-    step_r = 8
-    for y in inclusive_range(y2_up, y1_down, -step_r):
-        if y - step_r > y1_down:
-            y2_t = y - step_r
-        else:
-            y2_t = y1_down
-                
-        for z in inclusive_range(z1, z2, step_r):
-            if z + step_r < z2:
-                z2_t = z + step_r
+
+    flag_block_progress_x = False
+    flag_block_progress_z = False
+
+    if progress == "block":
+
+        # 查看当前进度是否到清理，方块阶段
+        block_progress = SLEEP.load("block")
+        if block_progress:
+            flag_block_progress_x = True
+            flag_block_progress_z = True
+            y2_up = block_progress["y"]
+
+        server.reply(info, RText("[方块]区域清理执行...", RColor.green))
+
+        # 正式清理整个区域的方块。 这里步长不能30太大。
+        step_r = 8
+        for y in inclusive_range(y2_up, y1_down, -step_r):
+
+            if y - step_r > y1_down:
+                y2_t = y - step_r
             else:
-                z2_t = z2
-            
-            xr = (x2 - x1)
-            yr = (y2 - y1)
-            zr = (z2 - z1)
+                y2_t = y1_down
 
-            if pos3 is None:
-                # 不收集的情况下，清理其他item
-                result = server.rcon_query(f"execute in {world} run kill @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}]")
-                # if result:
-                    # server.reply(info, RText(f"清理物品: {result}", RColor.green))
+            z1_progress = z1
+            if flag_block_progress_z:
+                flag_block_progress_z = False
+                z1_progress = block_progress["z"]
 
-            for x in inclusive_range(x1, x2, step_r):
+            for z in inclusive_range(z1_progress, z2, step_r):
 
-                if EXIT:
-                    server.reply(info, RText("清理任务被中止。", RColor.red))
-                    return
-
-                if x + step_r < x2:
-                    x2_t = x + step_r
+                if z + step_r < z2:
+                    z2_t = z + step_r
                 else:
-                    x2_t = x2
-                
+                    z2_t = z2
+
+                xr = (x2 - x1)
+                yr = (y2 - y1)
+                zr = (z2 - z1)
+
                 if pos3 is None:
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air replace")
-                else:
-                    result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air destroy")
+                    # 不收集的情况下，清理其他item
+                    result = server.rcon_query(f"execute in {world} run kill @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}]")
+                    # if result:
+                        # server.reply(info, RText(f"清理物品: {result}", RColor.green))
 
-                if result is None:
-                    server.reply(info, RText("清理区域 方块 时发生异常退出。", RColor.red))
-                    server.logger.error("清理区域 方块 时发生异常")
-                    return
+                x1_progress = x1
+                if flag_block_progress_x:
+                    flag_block_progress_x = False
+                    x1_progress = block_progress["x"]
+                    server.reply(info, RText(f"继续从当前位置清理 [方块]: [{x1_progress}, {y}, {z}]", RColor.green))
 
-                # msg = []
-                # msg.append(RText(f"现在清理 方块 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
-                # msg.append(RText(result, RColor.yellow))
-                # server.reply(info, RTextList(*msg))
+                for x in inclusive_range(x1_progress, x2, step_r):
+
+                    # server.reply(info, RText(f"清理 [方块]: [{x}, {y}, {z}]", RColor.green))
+
+                    if EXIT:
+                        server.reply(info, RText("清理任务被中止。", RColor.red))
+                        # 保存下进度
+                        SLEEP.save("block", {"x": x, "y": y, "z": z})
+                        SLEEP.task_lock.release()
+                        return
+                    
+                    if x + step_r < x2:
+                        x2_t = x + step_r
+                    else:
+                        x2_t = x2
+
+                    if pos3 is None:
+                        result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air replace")
+                    else:
+                        result = server.rcon_query(f"execute in {world} run fill {x} {y2_t} {z} {x2_t} {y} {z2_t} minecraft:air destroy")
+
+                    if result is None:
+                        server.reply(info, RText("清理区域 方块 时发生异常退出。", RColor.red))
+                        server.logger.error("清理区域 方块 时发生异常")
+                        # 保存下进度
+                        SLEEP.save("block", {"x": x, "y": y, "z": z})
+                        SLEEP.task_lock.release()
+                        return
+
+                    # msg = []
+                    # msg.append(RText(f"现在清理 方块 坐标范围: [{x},{y2_t},{z}] [{x2_t},{y},{z2_t}] ", RColor.yellow))
+                    # msg.append(RText(result, RColor.yellow))
+                    # server.reply(info, RTextList(*msg))
 
 
-                if pos3 is not None:
-                    server.rcon_query(f"execute in {world} as @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
-                    server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
-                
-                SLEEP.sleep_if_needed()
+                    if pos3 is not None:
+                        server.rcon_query(f"execute in {world} as @e[type=item,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
+                        server.rcon_query(f"execute in {world} as @e[type=minecraft:experience_orb,x={x1},y={y1},z={z1},dx={xr},dy={yr},dz={zr}] run tp @s {pos3[0]} {pos3[1]} {pos3[2]}")
 
-                if x2_t == x2:
+                    SLEEP.sleep_if_needed()
+
+                    if x2_t == x2:
+                        break
+                if z2_t == z2:
                     break
-            if z2_t == z2:
+            if y2_t == y1_down:
                 break
-        if y2_t == y1_down:
-            break
+    
+        server.reply(info, RText("[方块]区域清理执行完成", RColor.green))
 
-    server.reply(info, RText("清理区域完成执行完成", RColor.green))
+    SLEEP.task_lock.release()
+    SLEEP.clear("block")
+    SLEEP.save("progress", "water")
 
 
 @permission
@@ -341,7 +527,9 @@ def pos(src, ctx):
         server.reply(info, RText("起点坐标不能大于终点坐标", RColor.red))
         return
     
-    start(pos1, pos2)
+    if not check_progress(server):
+        SLEEP.save("clearchunk", [pos1, pos2])
+        start()
 
 
 @permission
@@ -361,7 +549,9 @@ def center(src: CommandSource, ctx: dict):
     x1, y1, z1 = floor(float(x)) - R, y_down, floor(float(z)) - R
     x2, y2, z2 = floor(float(x)) + R, y_up, floor(float(z)) + R
 
-    start([x1, y_down, z1], [x2, y_up, z2])
+    if not check_progress(server):
+        SLEEP.save("clearchunk", [[x1, y_down, z1], [x2, y_up, z2]])
+        start()
 
 
 def collection_point(server: ServerInterface, info: Info, xyz: dict=None):
@@ -394,7 +584,8 @@ def collection_point(server: ServerInterface, info: Info, xyz: dict=None):
     if rcon_result == "Test passed": # or rcon_result == "Test failed":
         # server.rcon_query(f"data modify storage minecraft:clearchunk 收集坐标点 set value {json.dumps(config)}")
 
-        set_progress_info({"world": world,"收集坐标点": config})
+        SLEEP.save("world", world)
+        SLEEP.save("collection", config)
 
         server.reply(info, RText(f"配置回收坐标点：[{x}, {y}, {z}] ", RColor.green))
 
@@ -410,11 +601,9 @@ def collection_point(server: ServerInterface, info: Info, xyz: dict=None):
 
 def collection_point_get(server: ServerInterface, info: Info):
 
-    js = get_progress_info()
-
-    if js and "收集坐标点" in js:
-        pos3 = js["收集坐标点"]
-        server.reply(info, RText(f"当前回收坐标点：[{pos3['x']}, {pos3['y']}, {pos3['z']}] ", RColor.green))
+    point = SLEEP.load("collection")
+    if point:
+        server.reply(info, RText(f"当前回收坐标点：{point}", RColor.green))
     else:
         server.reply(info, RText("未配置回收坐标点。", RColor.red))
 
@@ -523,6 +712,15 @@ def config(src: CommandSource, ctx: dict):
 
                 case _:
                     server.reply(info, RText("未知配置项", RColor.red))
+        
+        case "continue":
+            SLEEP.save("continue", True)
+            start()
+
+        case "taskclear":
+            SLEEP.clear("progress")
+            server.reply(info, RText("已删除之前中断的清理任务", RColor.green))
+
         case _:
             server.reply(info, RText("未知操作", RColor.red))
     
@@ -552,6 +750,9 @@ def help(src: CommandSource):
         f"{CMD} cfg set water_sleep <float>    设置每次sleep时间，单位秒",
         f"{CMD} cfg get water_sleep    查看设置的sleep时间",
         f"{CMD} cfg del water_sleep    清理sleep",
+        f"{'='*10} 任务管理 {'='*10}",
+        f"{CMD} cfg continue    继续之前中断的清理任务",
+        f"{CMD} cfg taskclear   删除之前中断的清理任务",
         f"{'='*10} 工作过程简略 {'='*10}",
         "1. 预清理指定区域外扩8格的水和岩浆",
         "2. 正式清理指定区域的方块",
@@ -677,18 +878,22 @@ def build_command():
     return c
 
 
-def on_load(server: PluginServerInterface, old_plugin):
+def on_load(server: PluginServerInterface, old_plugin: PluginServerInterface):
+    """
+    !!MCDR plugin reload 不会重新加载 Python 模块（.py 文件），而是重新调用 on_load，但模块本身（包括全局变量、类定义、锁对象等）仍然保留在内存中。
+    """
     server.register_help_message(CMD, RText(PLUGIN_NAME, RColor.yellow), PermissionLevel.USER)
     server.register_command(build_command())
 
-    global CLEARCHUNK_PROGRESS
-    if old_plugin is not None:
-        CLEARCHUNK_PROGRESS = old_plugin.CLEARCHUNK_PROGRESS
+    if SLEEP.task_lock.locked():
+        SLEEP.task_lock.release()
+    
+    server.logger.info(RText(f"{PLUGIN_NAME} on_load()成功", RColor.green))
 
 
 def on_unload(server: PluginServerInterface):
     global EXIT
     EXIT = True
     # server_src.unregister_help_message(CMD)
-    server.logger.info(RText(f"{PLUGIN_NAME} 插件卸载成功", RColor.green))
+    server.logger.info(RText(f"{PLUGIN_NAME} on_unload()成功", RColor.green))
 
