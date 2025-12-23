@@ -190,7 +190,9 @@ class Sleep:
     
     def load(self, typ: Progress) -> dict:
         js = get_progress_info()
-        return js.get(typ, dict())
+        if js:
+            return js.get(typ, dict())
+        return {}
     
     def clear(self, typ: Progress):
         js = get_progress_info()
@@ -204,6 +206,9 @@ def check_progress(server: ServerInterface) -> bool:
 
     # 查看是否有未完成的任务
     step_word = SLEEP.load("progress")
+    if not step_word:
+        return False
+
     step = SLEEP.load(step_word) # type:ignore
     if step:
         world = SLEEP.load("world")
@@ -237,8 +242,7 @@ def start():
 
     # 查看是否有未完成的任务
     step_word = SLEEP.load("progress")
-    step = SLEEP.load(step_word) # type:ignore
-    if step:
+    if step_word and SLEEP.load(step_word): # type:ignore
         # 是否继续之前的任务
         if SLEEP.load("continue"):
             SLEEP.clear("continue")
@@ -754,7 +758,7 @@ def help(src: CommandSource):
         f"{CMD} cfg continue    继续之前中断的清理任务",
         f"{CMD} cfg taskclear   删除之前中断的清理任务",
         f"{'='*10} 工作过程简略 {'='*10}",
-        "1. 预清理指定区域外扩8格的水和岩浆",
+        "1. 预清理指定区域外扩1格的水和岩浆",
         "2. 正式清理指定区域的方块",
         "3. 如果配置了收集点，则把掉落物和经验球传送到收集点",
     ]
