@@ -7,8 +7,10 @@ from pathlib import Path
 # datas_files = [("images", "images"), ("usage.txt", "usage.txt")]
 
 imports = ["opencv-python"]
+
 if sys.platform == "win32":
     imports.append("pyautogui")
+
 elif sys.platform == "linux":
     imports.append("keyboardmouse")
     imports.append("libevdev")
@@ -25,16 +27,14 @@ print(f"{imports=}")
 block_cipher = None
 
 a = Analysis(
-    ['mc-fishing2.py'],
+    ['mc-fishing.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    #hiddenimports=["pyautogui", "keyboardmouse", "libevdev"],
     hiddenimports=imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    #excludes=[],
     excludes=["pip", "setuptools", "wheel"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

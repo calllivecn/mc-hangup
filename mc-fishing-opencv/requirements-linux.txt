@@ -1,5 +1,4 @@
-opencv-python==4.12.0.88
-mss==10.1.0
-PyAutoGUI==0.9.54
-numpy==2.2.6
+opencv-python==4.13.0.92
 git+https://github.com/calllivecn/keyboardmouse.git
+cffi==2.0.0
+dbus-next==0.2.3

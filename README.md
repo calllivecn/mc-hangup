@@ -1,5 +1,4 @@
-![工作台](mc-icon.png  "工作台") Minecraft 中文聊天、挂机、自动钓鱼、等辅助工具
-----
+# ![工作台](mc-icon.png  "工作台") Minecraft 中文聊天、挂机、自动钓鱼、等辅助工具
 
 
 ## mc-Dungeon.py:
