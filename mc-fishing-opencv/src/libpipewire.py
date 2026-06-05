@@ -1,6 +1,10 @@
+
+import time
 import threading
 
 import numpy as np
+
+from logs import logger
 
 from _pipewire_cffi import ffi, lib
 
@@ -16,7 +20,16 @@ class PipeWireRecorder:
         
         # 线程同步信号
         self.stop_event = threading.Event()
-        
+
+        # ================= 同步模式专用 =================
+        self._sync_mode = False
+        self._latest_frame = None      # 最新帧数据 (numpy array)
+        self._latest_meta = None       # 最新帧元数据 (w, h)
+        self._frame_lock = threading.Lock()
+        self._frame_cond = threading.Condition(self._frame_lock)
+        self._frame_ready = False
+        # ================================================
+
         # 用户回调
         self._user_on_state = None
         self._user_on_format = None
@@ -92,20 +105,36 @@ class PipeWireRecorder:
                     
                 # 3. 颜色空间转换 (BGRx -> BGR)
                 img_bgr = img_array[:, :, :3].copy() # .copy() 确保内存连续，方便后续 OpenCV 处理
-                
+
+
+                # ===== 1. 同步模式：更新最新帧并唤醒等待者 =====
+                if self._sync_mode:
+                    with self._frame_cond:
+                        self._latest_frame = img_bgr
+                        self._latest_meta = (w, h)
+                        self._frame_ready = True
+                        self._frame_cond.notify_all()
+
+
                 # 4. 触发用户回调
                 if self._user_on_frame:
                     self._user_on_frame(img_bgr, w, h)
                     
             except Exception as e:
-                print(f"❌ [PipeWire] 帧处理异常: {e}")
+                logger.error(f"❌ [PipeWire] 帧处理异常: {e}")
 
         # 保持回调引用
         self._c_refs.extend([_on_state, _on_format, _on_frame])
         lib.set_callbacks(self.pw_ctx, ffi.NULL, _on_state, _on_format, _on_frame)
 
-    def start(self, node_id: int):
-        """在后台线程中启动 PipeWire"""
+    def start(self, node_id: int, sync_mode: bool = False):
+        """
+        启动 PipeWire。
+        :param sync_mode: 如果为 True，则禁用回调触发，启用 read_frame() 同步读取。
+        """
+        
+        self._sync_mode = sync_mode
+        
         self.pw_ctx = lib.create_recorder()
         if not self.pw_ctx:
             raise RuntimeError("创建 PipeWire 上下文失败！")
@@ -125,15 +154,50 @@ class PipeWireRecorder:
             
         pw_thread = threading.Thread(target=self._run_loop, daemon=True)
         pw_thread.start()
+
+        # 等待进入 STREAMING 状态 (最多等 5 秒)
+        start_time = time.time()
+        while not self.is_streaming and not self.stop_event.is_set():
+            if time.time() - start_time > 5.0:
+                raise TimeoutError("等待 PipeWire 进入 STREAMING 状态超时！")
+            time.sleep(0.05)
+
         return pw_thread
 
     def _run_loop(self):
         try:
             lib.run_loop(self.pw_ctx)
         except Exception as e:
-            print(f"💥 PipeWire 线程异常: {e}")
+            logger.error(f"💥 PipeWire 线程异常: {e}")
         finally:
             self.stop_event.set()
+
+    def read_frame(self, timeout: float = 5.0):
+        """
+        同步阻塞读取最新一帧 (类似 OpenCV 的 cap.read())。
+        必须在 start(sync_mode=True) 后使用。
+        
+        :param timeout: 超时时间(秒)，超时返回 None
+        :return: (img_bgr, w, h) 或 None
+        """
+        if not self._sync_mode:
+            raise RuntimeError("read_frame() 仅在 sync_mode=True 时可用！")
+            
+        with self._frame_cond:
+            # 等待新帧到来
+            while not self._frame_ready and not self.stop_event.is_set():
+                if not self._frame_cond.wait(timeout=timeout):
+                    return None  # 超时
+            
+            if self.stop_event.is_set():
+                return None
+                
+            # 取出帧并重置标志
+            frame = self._latest_frame
+            meta = self._latest_meta
+            self._frame_ready = False  # 消费掉这一帧
+            
+            return frame, meta[0], meta[1]
 
     def stop(self):
         """停止并清理 PipeWire 资源"""
