@@ -11,34 +11,24 @@ import json
 import socket
 import logging
 import subprocess
-import threading
 import tkinter as tk
 from tkinter import (
     ttk,
     messagebox,
 )
 from pathlib import Path
-from threading import Thread, Lock
+from threading import Thread, Lock, current_thread
+
+from typing import (
+    Callable,
+)
 
 import cv2
-import mss
+# import mss
 import numpy as np
 
+from logs import logger
 
-def getlogger(level=logging.INFO):
-    logger = logging.getLogger("logger")
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(filename)s:%(funcName)s:%(lineno)d %(message)s", datefmt="%Y-%m-%d-%H:%M:%S")
-    consoleHandler = logging.StreamHandler(stream=sys.stdout)
-    #logger.setLevel(logging.DEBUG)
-
-    consoleHandler.setFormatter(formatter)
-
-    # consoleHandler.setLevel(logging.DEBUG)
-    logger.addHandler(consoleHandler)
-    logger.setLevel(level)
-    return logger
-
-logger = getlogger()
 
 def runtime(func):
     def wrap(*args, **kwargs):
@@ -150,12 +140,46 @@ class Conf:
             self.save()
 
 
+class Screenshot:
+    """
+    同时兼容 mss 和 wayland pipewire
+    """
+    def __init__(self, fps: int, position: tuple = (0, 0)):
+
+        self.fps = fps
+
+        self.position = position
+        
+        if sys.platform == "linux":
+            from libscreenpipewire import ScreenCaptureApp
+            self.pipewire = ScreenCaptureApp()
+
+        elif sys.platform == "win32":
+            # 初始化截图库
+            import mss
+            self.mss_shot = mss.mss()
+            self.screenshot_callable = self.mss_shot.grab
+
+    def get_screenshot(self):
+        """
+        return img
+        """
+        return self.screenshot_callable(self.position)
+
+    def close(self):
+        if hasattr(self, "mss_shot"):
+            self.mss_shot.close()
+        
+        elif hasattr(self, "pipewire"):
+            self.pipewire.close()
+
+
 class Mouse:
 
     def __init__(self):
 
         # 声明
-        self.autotool = None
+        self.autotool: Callable
 
         # default usage
         if sys.platform == "linux":
@@ -182,7 +206,7 @@ class Mouse:
         TYPE = os.getenv("XDG_SESSION_TYPE")
         if TYPE:
             if "wayland" in TYPE.lower():
-                logger.info("你的桌面环境是 wayland")
+                logger.info("检测到桌面环境是 wayland")
                 if self.__use_mouse():
                     pass
                 else:
@@ -190,7 +214,7 @@ class Mouse:
                     sys.exit(1)
 
             else:
-                logger.info("你的桌面环境是 X11 的")
+                logger.info("检测到桌面环境是 X11 的")
                 if self.__use_mouse():
                     pass
                 elif self.__use_pyautogui() or self.__use_xdotool():
@@ -285,7 +309,7 @@ class Mouse:
 
 class BaitFish:
 
-    def __init__(self, position, img_template, fps, threshold=0.75):
+    def __init__(self, position, img_template, threshold=0.75):
 
         self.threshold = threshold
 
@@ -293,8 +317,6 @@ class BaitFish:
         if not p_img_template.exists():
             logger.error("模板图片不存在。。。。")
             sys.exit(2)
-
-        self.fps = fps
 
         #图中的小图
         self.template = cv2.imread(img_template)
@@ -349,7 +371,6 @@ class BaitFish:
         该函数返回一个元组，其中包含两个数组，分别表示满足条件的元素的行和列索引。
         """
 
-
         # loc: 是这样的 loc=(array([], dtype=int64), array([], dtype=int64))
         if len(self.loc[0]) >= 1:
             return True
@@ -384,25 +405,20 @@ class BaitFish:
         """
 
 
-
-
 # 创建顶级组件容器
 class AutoFishing:
 
     def __init__(self):
 
-        # mouse click <right>
-        # click_right is function()
         self.mouse = Mouse()
 
         self.root = tk.Tk()
-        self.root.title("自动钓鱼AI")
+        self.root.title("MC自动钓鱼")
 
         # 运行状态
         self._pregess = "-"
 
         # 设置应用图标
-        # self.root.iconbitmap(str(tk.PhotoImage(ICON)))
         self.root.iconphoto(True, tk.PhotoImage(file=ICON))
 
         self.screen_w = self.root.winfo_screenwidth()
@@ -423,25 +439,8 @@ class AutoFishing:
         self.selected = ttk.Combobox(self.frame, values=self.selectors, state="readonly")
         self.selected.bind("<<ComboboxSelected>>", self.selectmode)
     
-        
         # check Conf
         self.conf = Conf()
-        """
-        if self.conf.chekc_conf:
-            self.conf.load()
-            self.index = self.conf.index
-            self.win_pos = self.conf.win_pos
-            self.template = self.conf.template
-            self.screen_pos = self.conf.screen_pos
-
-        else:
-            self.index = 0
-            self.win_pos = "850x480"
-            self.template = str(TEMPLATE_PATH)
-            self.screen_pos = (700, 300, 150, 160)
-
-            self.conf.save(0, self.template, self.win_pos, self.screen_pos)
-        """
 
         self.selected.current(self.conf.index)
         self.selected.grid(row=0, column=1)
@@ -478,7 +477,6 @@ class AutoFishing:
         label2.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         label2.bind("<Button-1>", self.mouseDown)
         # label2.bind("<B1-Motion>", lambda e: self.moveWin(e, self.game_resolution))
-
 
 
         self.run_lock = Lock()
@@ -681,8 +679,6 @@ class AutoFishing:
             self.avg_speed  = round(sum(self.speed) / len(self.speed), 1)
 
         self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
-
-        # self.fishingspeed_timestamp = cur
     
     
     def start(self):
@@ -757,7 +753,7 @@ class AutoFishing:
         logger.info("收鱼竿")
         self.mouse.click_right()
 
-        time.sleep(0.5) 
+        time.sleep(0.5)
 
         logger.debug("出鱼竿")
         self.mouse.click_right()
@@ -765,11 +761,10 @@ class AutoFishing:
 
     def run(self):
 
-
         fps = int(self.label_fps.get())
         logger.debug(f"FPS：{fps}")
 
-        BF = BaitFish(self.screenshot_pos, str(self.conf.template), fps)
+        BF = BaitFish(self.screenshot_pos, str(self.conf.template))
         img_light = BF.img_light
 
         """
@@ -791,7 +786,7 @@ class AutoFishing:
 
         def check_perf(t):
             """
-             检测帧数，太快sleep()，不足输出警告。
+            检测帧数，太快sleep()，不足输出警告。
             """
             nonlocal alarm_time
             interval = round(1/fps - t, 4)
@@ -844,8 +839,7 @@ class AutoFishing:
             check_perf(t)
 
 
-
-        th = threading.current_thread()
+        th = current_thread()
         print(th.name, "退出...")
         if self.run_lock.locked():
             self.run_lock.release()

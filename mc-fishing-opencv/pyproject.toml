@@ -1,0 +1,18 @@
+[project]
+name = "mc-fishing-opencv"
+version = "0.1.0"
+description = "MC自动钓鱼"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cffi>=2.0.0 ; sys_platform == 'linux'",
+    "dbus-next>=0.2.3 ; sys_platform == 'linux'",
+    "keyboardmouse ; sys_platform == 'linux'",
+    "mss>=10.2.0 ; sys_platform == 'win32'",
+    "numpy>=2.4.6",
+    "opencv-python>=4.13.0.92",
+    "pyautogui>=0.9.54 ; sys_platform == 'win32'",
+]
+
+[tool.uv.sources]
+keyboardmouse = { git = "https://github.com/calllivecn/keyboardmouse.git" }

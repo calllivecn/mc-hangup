@@ -27,7 +27,7 @@ print(f"{imports=}")
 block_cipher = None
 
 a = Analysis(
-    ['mc-fishing.py'],
+    ['src/mc-fishing.py'],
     pathex=[],
     binaries=[],
     datas=[],
