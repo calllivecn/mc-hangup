@@ -9,6 +9,7 @@ import sys
 import time
 import json
 import socket
+import asyncio
 import logging
 import subprocess
 import tkinter as tk
@@ -18,6 +19,7 @@ from tkinter import (
 )
 from pathlib import Path
 from threading import Thread, Lock, current_thread
+from functools import partial
 
 from typing import (
     Callable,
@@ -29,6 +31,8 @@ import numpy as np
 
 from logs import logger
 
+from portal_screencast import PortalScreenCast
+from libpipewire import PipeWireRecorder
 
 def runtime(func):
     def wrap(*args, **kwargs):
@@ -144,34 +148,91 @@ class Screenshot:
     """
     同时兼容 mss 和 wayland pipewire
     """
-    def __init__(self, fps: int, position: tuple = (0, 0)):
+    def __init__(self, fps: int, position: tuple[int, int, int, int]):
 
         self.fps = fps
 
         self.position = position
         
         if sys.platform == "linux":
-            from libscreenpipewire import ScreenCaptureApp
-            self.pipewire = ScreenCaptureApp()
+            self.pipewire_init()
 
         elif sys.platform == "win32":
             # 初始化截图库
             import mss
             self.mss_shot = mss.mss()
-            self.screenshot_callable = self.mss_shot.grab
 
-    def get_screenshot(self):
+    def get_screenshot(self) -> np.ndarray:
         """
-        return img
+        return: img_rgb
         """
-        return self.screenshot_callable(self.position)
+        match sys.platform:
+            case "linux":
+                img_rgb, w, h = self.recorder.read_frame(60)
+                return img_rgb
+            
+            case "win32":
+                img_rgb = self.mss_shot.grab(self.position)
+                return img_rgb
+
 
     def close(self):
         if hasattr(self, "mss_shot"):
             self.mss_shot.close()
         
-        elif hasattr(self, "pipewire"):
-            self.pipewire.close()
+        elif hasattr(self, "recorder"):
+            # 停止 PipeWire
+            self.recorder.stop()
+            if self.pw_thread.is_alive():
+                self.pw_thread.join(timeout=2.0)
+
+
+    async def _request_portal_auth(self):
+        """通过 XDG Desktop Portal 请求屏幕共享授权"""
+        logger.info("🔹 [Portal] 正在请求屏幕共享授权 (请在弹出的系统窗口中点击'分享')...")
+        portal = PortalScreenCast()
+        try:
+            node_id = await portal.start() 
+            logger.info(f"✅ [Portal] 授权成功! 获取到 PipeWire Node ID: {node_id}")
+            return node_id, portal
+        except Exception as e:
+            logger.error(f"❌ [Portal] 授权失败或用户取消: {e}")
+            return None, portal
+
+
+    def pipewire_init(self):
+
+        # ================= 1. Portal 授权获取 Node ID =================
+        try:
+            node_id, portal = asyncio.run(self._request_portal_auth())
+        except KeyboardInterrupt:
+            logger.error("\n⚠️ 用户强制退出。")
+            sys.exit(0)
+            
+        if node_id is None:
+            logger.error("❌ 无法获取 Node ID，程序退出。")
+            sys.exit(1)
+
+        # ================= 2. 配置 PipeWireRecorder =================
+        self.recorder = PipeWireRecorder()
+        
+        # 设置目标 FPS (C层丢帧+时间戳双重限制)
+        self.recorder.set_target_fps(self.fps)
+        
+        # 可选：设置 C 层硬件级裁剪 (x, y, width, height)
+        self.recorder.set_crop_region(*self.position)
+        # recorder.disable_crop()  # 默认捕获全屏/全窗口
+
+        # ================= 3. 启动 PipeWire (同步模式) =================
+        logger.info(f"\n🚀 [PipeWire] 正在连接 Node {node_id} (同步拉取模式, 目标 {self.fps} FPS)...")
+        try:
+            # 【关键】传入 sync_mode=True 启用同步读取
+            self.pw_thread = self.recorder.start(node_id, sync_mode=True)
+        except Exception as e:
+            logger.error(f"❌ [PipeWire] 启动失败: {e}")
+            sys.exit(1)
+
+        logger.info("✅ [PipeWire] 已进入 STREAMING 状态！")
 
 
 class Mouse:
@@ -309,7 +370,7 @@ class Mouse:
 
 class BaitFish:
 
-    def __init__(self, position, img_template, threshold=0.75):
+    def __init__(self, fps, position, img_template, threshold=0.75):
 
         self.threshold = threshold
 
@@ -339,17 +400,20 @@ class BaitFish:
         self.temp = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
         # 初始化截图库
-        self.mss_shot = mss.mss()
+        self._Ss = Screenshot(fps, position)
 
 
-    def mss_close(self):
-        self.mss_shot.close()
+    def close(self):
+        self._Ss.close()
 
 
     # 获取屏幕指定位置的截图(新版库，性能高)
     @runtime
     def screenshot_mss(self):
-        img = self.mss_shot.grab(self.position)
+        
+        # img = self.mss_shot.grab(self.position)
+        img = self._Ss.get_screenshot()
+
         self.shot_img = np.asanyarray(img)
         self.target_img = cv2.cvtColor(self.shot_img, cv2.COLOR_RGB2BGR)
         return self.target_img
@@ -764,7 +828,7 @@ class AutoFishing:
         fps = int(self.label_fps.get())
         logger.debug(f"FPS：{fps}")
 
-        BF = BaitFish(self.screenshot_pos, str(self.conf.template))
+        BF = BaitFish(fps, self.screenshot_pos, str(self.conf.template))
         img_light = BF.img_light
 
         """
@@ -845,7 +909,7 @@ class AutoFishing:
             self.run_lock.release()
         # cv2.destroyAllWindows()
 
-        BF.mss_close()
+        BF.close()
 
 
 def main():

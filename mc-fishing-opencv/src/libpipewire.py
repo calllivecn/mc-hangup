@@ -23,8 +23,8 @@ class PipeWireRecorder:
 
         # ================= 同步模式专用 =================
         self._sync_mode = False
-        self._latest_frame = None      # 最新帧数据 (numpy array)
-        self._latest_meta = None       # 最新帧元数据 (w, h)
+        self._latest_frame: np.ndarray      # 最新帧数据 (numpy array)
+        self._latest_meta: tuple[int, int]       # 最新帧元数据 (w, h)
         self._frame_lock = threading.Lock()
         self._frame_cond = threading.Condition(self._frame_lock)
         self._frame_ready = False
@@ -172,7 +172,7 @@ class PipeWireRecorder:
         finally:
             self.stop_event.set()
 
-    def read_frame(self, timeout: float = 5.0):
+    def read_frame(self, timeout: float = 5.0) -> tuple[np.ndarray | None, int, int]:
         """
         同步阻塞读取最新一帧 (类似 OpenCV 的 cap.read())。
         必须在 start(sync_mode=True) 后使用。
@@ -187,10 +187,10 @@ class PipeWireRecorder:
             # 等待新帧到来
             while not self._frame_ready and not self.stop_event.is_set():
                 if not self._frame_cond.wait(timeout=timeout):
-                    return None  # 超时
+                    return (None, 0, 0)  # 超时
             
             if self.stop_event.is_set():
-                return None
+                return (None, 0, 0)
                 
             # 取出帧并重置标志
             frame = self._latest_frame
