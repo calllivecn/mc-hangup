@@ -173,8 +173,8 @@ class BackInfo:
             # self.server.say("拿到 `Saved the game` 结果")
             pass
         else:
-            # self.server.say(RText("服务器可能 过于卡顿 备份失败。。。", RColor.red))
-            # self.server.say(RText(f"没拿到 ｀Saved the game｀ 拿到的是{result}", RColor.red))
+            self.server.say(RText("服务器可能 过于卡顿 备份失败。。。", RColor.red))
+            self.server.say(RText(f"没拿到 ｀Saved the game｀ 拿到的是{result}", RColor.red))
             self.server.rcon_query("save-on")
             return
 
@@ -245,11 +245,16 @@ class BackInfo:
         tm, msg = baks[number]
 
         bak = BACKUP_DIR / tm
+        # 删除备份
         shutil.rmtree(bak)
 
-        self.__if_exists_msg(bak)
+        # 删除提示文件
+        filename = Path(str(bak) + ".msg")
+        if filename.is_file():
+            os.remove(filename)
+
         
-        # 如果删除最新的备份，需要把latest 指向倒数第2个
+        # 如果删除最新的备份，需要把 latest 指向倒数第2个
         if number == 0 and len(baks) > 2:
             os.remove(self.latest)
             self.latest.symlink_to(baks[1][0])
@@ -257,10 +262,8 @@ class BackInfo:
     def autoremove(self):
         baks = self.list()
         for bak in baks[BACKUP_COUNT-1:]:
-            shutil.rmtree(BACKUP_DIR / bak[0])
-
-            print(f"删除备份msg: {bak} {BACKUP_DIR / bak[0]=}")
-            self.__if_exists_msg(BACKUP_DIR / bak[0])
+            backup_dir_path = BACKUP_DIR / bak[0]
+            self.__if_exists_msg(backup_dir_path)
 
 
     def __readmsg(self, filename: Path):
@@ -278,10 +281,16 @@ class BackInfo:
 
 
     def __if_exists_msg(self, bak: Path):
+        """
+        如果是手动创建带提示信息的，就不自动删除
+        """
         filename = Path(str(bak) + ".msg")
+
         if filename.is_file():
-            self.server.logger.info(f"删除备份msg: {filename}")
-            os.remove(filename)
+            pass
+        else:
+            self.server.logger.info(f"删除备份: {bak}")
+            shutil.rmtree(bak)
 
 
 @new_thread("backup auto backup")
