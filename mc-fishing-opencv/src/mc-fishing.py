@@ -18,8 +18,8 @@ from tkinter import (
     messagebox,
 )
 from pathlib import Path
-from threading import Thread, Lock, current_thread
-from functools import partial
+from threading import Thread, Lock, current_thread, get_ident
+# from functools import partial
 
 from typing import (
     Callable,
@@ -184,9 +184,6 @@ class Screenshot:
         elif hasattr(self, "recorder"):
             # 停止 PipeWire
             self.recorder.stop()
-            if self.pw_thread.is_alive():
-                self.pw_thread.join(timeout=2.0)
-
 
     async def _request_portal_auth(self):
         """通过 XDG Desktop Portal 请求屏幕共享授权"""
@@ -217,8 +214,8 @@ class Screenshot:
         # ================= 2. 配置 PipeWireRecorder =================
         self.recorder = PipeWireRecorder()
         
-        # 设置目标 FPS (C层丢帧+时间戳双重限制)
-        self.recorder.set_target_fps(self.fps)
+        # 设置目标 FPS 是 GUI界面的2倍 (C层丢帧+时间戳双重限制)
+        self.recorder.set_target_fps(self.fps*2)
         
         # 可选：设置 C 层硬件级裁剪 (x, y, width, height)
         self.recorder.set_crop_region(self.position[0], self.position[1], self.position[2] - self.position[0], self.position[3] - self.position[1])
@@ -228,7 +225,7 @@ class Screenshot:
         logger.info(f"\n🚀 [PipeWire] 正在连接 Node {node_id} (同步拉取模式, 目标 {self.fps} FPS)...")
         try:
             # 【关键】传入 sync_mode=True 启用同步读取
-            self.pw_thread = self.recorder.start(node_id, sync_mode=True)
+            self.recorder.start(node_id, sync_mode=True)
         except Exception as e:
             logger.error(f"❌ [PipeWire] 启动失败: {e}")
             sys.exit(1)
@@ -742,8 +739,20 @@ class AutoFishing:
                 self.speed.append(self.fishingspeed)
 
             self.avg_speed  = round(sum(self.speed) / len(self.speed), 1)
+    
+        # 通过 after(0) 安全回调主线程
+        # self.root.after(0, lambda: self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount)))  # ✅ 关键：在主线程执行 set()
+        
+        # 在子线程中执行
+        val = self.fishcount_string.format(self.avg_speed, self.fishcount)
+        logger.debug(f"[UI更新] 准备设置: {self.avg_speed=} {self.fishcount=} {val}")
 
-        self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
+        # 通过 after(0) 安全传递值快照（关键：冻结变量值）
+        self.root.after(0, lambda: self.fishcount_var.set(val))
+        
+        # 不能直接在子线程更新变量!!!
+        # logger.debug(f"[更新位置] 线程ID: {get_ident()}, 名称: {current_thread().name}")
+        # self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
     
     
     def start(self):
@@ -826,7 +835,18 @@ class AutoFishing:
 
     def run(self):
 
-        fps = int(self.label_fps.get())
+
+        # 修复：增加 try-except 和默认值
+        try:
+            fps_text = self.label_fps.get().strip() # 去除空格
+            if fps_text == "":
+                fps = FPS # 使用全局默认值
+            else:
+                fps = int(fps_text)
+        except ValueError:
+            logger.warning(f"FPS输入无效，使用默认值{FPS}")
+            fps = FPS
+
         logger.debug(f"FPS：{fps}")
 
         BF = BaitFish(fps, self.screenshot_pos, str(self.conf.template))

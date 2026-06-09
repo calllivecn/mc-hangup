@@ -46,7 +46,7 @@ class ScreenCaptureApp:
         logger.debug("🎥 录制中... (按 Ctrl+C 停止)")
         logger.debug("="*50 + "\n")
         
-        pw_thread = self.recorder.start(node_id)
+        self.recorder.start(node_id)
         
         # 3. 主线程在此等待停止信号
         try:
@@ -58,8 +58,6 @@ class ScreenCaptureApp:
         # 4. 清理资源
         logger.debug("🛑 [PipeWire] 正在停止...")
         self.recorder.stop()
-        if pw_thread.is_alive():
-            pw_thread.join(timeout=2.0)
             
         await self.portal.stop()
         logger.debug("🧹 所有资源已清理，再见！")

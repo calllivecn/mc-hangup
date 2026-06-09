@@ -21,10 +21,12 @@ class PipeWireRecorder:
         # 线程同步信号
         self.stop_event = threading.Event()
 
+        self._pw_thread = None  # 新增：记录 PipeWire 运行线程
+
         # ================= 同步模式专用 =================
         self._sync_mode = False
-        self._latest_frame: np.ndarray      # 最新帧数据 (numpy array)
-        self._latest_meta: tuple[int, int]       # 最新帧元数据 (w, h)
+        self._latest_frame = None      # 最新帧数据 (numpy array)
+        self._latest_meta = None       # 最新帧元数据 (w, h)
         self._frame_lock = threading.Lock()
         self._frame_cond = threading.Condition(self._frame_lock)
         self._frame_ready = False
@@ -152,8 +154,8 @@ class PipeWireRecorder:
             lib.destroy_recorder(self.pw_ctx)
             raise RuntimeError("连接 PipeWire 流失败！")
             
-        pw_thread = threading.Thread(target=self._run_loop, daemon=True)
-        pw_thread.start()
+        self._pw_thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._pw_thread.start()
 
         # 等待进入 STREAMING 状态 (最多等 5 秒)
         start_time = time.time()
@@ -162,7 +164,7 @@ class PipeWireRecorder:
                 raise TimeoutError("等待 PipeWire 进入 STREAMING 状态超时！")
             time.sleep(0.05)
 
-        return pw_thread
+        return self._pw_thread
 
     def _run_loop(self):
         try:
@@ -172,7 +174,7 @@ class PipeWireRecorder:
         finally:
             self.stop_event.set()
 
-    def read_frame(self, timeout: float = 5.0) -> tuple[np.ndarray | None, int, int]:
+    def read_frame(self, timeout: float = 5.0):
         """
         同步阻塞读取最新一帧 (类似 OpenCV 的 cap.read())。
         必须在 start(sync_mode=True) 后使用。
@@ -187,10 +189,10 @@ class PipeWireRecorder:
             # 等待新帧到来
             while not self._frame_ready and not self.stop_event.is_set():
                 if not self._frame_cond.wait(timeout=timeout):
-                    return (None, 0, 0)  # 超时
+                    return None  # 超时
             
             if self.stop_event.is_set():
-                return (None, 0, 0)
+                return None
                 
             # 取出帧并重置标志
             frame = self._latest_frame
@@ -200,8 +202,17 @@ class PipeWireRecorder:
             return frame, meta[0], meta[1]
 
     def stop(self):
-        """停止并清理 PipeWire 资源"""
+        """停止并清理 PipeWire 资源，确保线程安全"""
         if self.pw_ctx:
+            # 1. 首先发送信号让 C 层的 pw_main_loop_run 准备退出
             lib.stop_loop(self.pw_ctx)
+            
+            # 2. 阻塞等待后台线程完全跳出 C 层的主循环
+            if self._pw_thread and self._pw_thread.is_alive():
+                # 防止由于某些原因在同一线程调用导致死锁
+                if threading.current_thread() != self._pw_thread:
+                    self._pw_thread.join(timeout=3.0)
+            
+            # 3. 此时可以确保后台循环已结束，在当前线程安全地销毁资源
             lib.destroy_recorder(self.pw_ctx)
             self.pw_ctx = None
