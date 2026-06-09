@@ -152,6 +152,7 @@ class Screenshot:
 
         self.fps = fps
 
+        # mss.grab() 使用的是区域的坐标值：左，上，右，下的两个点的坐标。
         self.position = position
         
         if sys.platform == "linux":
@@ -220,7 +221,7 @@ class Screenshot:
         self.recorder.set_target_fps(self.fps)
         
         # 可选：设置 C 层硬件级裁剪 (x, y, width, height)
-        self.recorder.set_crop_region(*self.position)
+        self.recorder.set_crop_region(self.position[0], self.position[1], self.position[2] - self.position[0], self.position[3] - self.position[1])
         # recorder.disable_crop()  # 默认捕获全屏/全窗口
 
         # ================= 3. 启动 PipeWire (同步模式) =================
@@ -408,7 +409,7 @@ class BaitFish:
 
 
     # 获取屏幕指定位置的截图(新版库，性能高)
-    @runtime
+    # @runtime
     def screenshot_mss(self):
         
         # img = self.mss_shot.grab(self.position)
@@ -882,7 +883,7 @@ class AutoFishing:
             end = time.time()
 
             # 截图+找图,消耗时间
-            t = round(end - start, 3)
+            t = round(end - start, 4)
 
             # 匹配到模板
             if find_img:
