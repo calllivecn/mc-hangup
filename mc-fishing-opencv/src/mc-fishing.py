@@ -642,6 +642,7 @@ class AutoFishing:
 
 
     def mainloop(self):
+        self._update_fishing_speed()
         self.root.mainloop()
     
 
@@ -727,7 +728,7 @@ class AutoFishing:
         self.fishcount += 1
         # self.fishingspeed = round(cur - self.fishingspeed_timestamp, 4)
         self.fishingspeed = round(interval, 4)
-        logger.debug(f"上次钓鱼速度：{self.fishingspeed}s/条")
+        logger.debug(f"上次钓鱼速度：{self.fishingspeed}s/条 , [UI更新] 准备设置: {self.avg_speed=} {self.fishcount=}")
 
         # 如果是正常钓鱼，不是暂停，钓鱼时间应该会小于45s
         if self.fishingspeed <= 45:
@@ -742,18 +743,15 @@ class AutoFishing:
     
         # 通过 after(0) 安全回调主线程
         # self.root.after(0, lambda: self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount)))  # ✅ 关键：在主线程执行 set()
-        
-        # 在子线程中执行
-        val = self.fishcount_string.format(self.avg_speed, self.fishcount)
-        logger.debug(f"[UI更新] 准备设置: {self.avg_speed=} {self.fishcount=} {val}")
 
-        # 通过 after(0) 安全传递值快照（关键：冻结变量值）
-        self.root.after(0, lambda: self.fishcount_var.set(val))
-        
         # 不能直接在子线程更新变量!!!
         # logger.debug(f"[更新位置] 线程ID: {get_ident()}, 名称: {current_thread().name}")
         # self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
     
+    def _update_fishing_speed(self):
+        self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
+        self.root.after(100, self._update_fishing_speed)
+        
     
     def start(self):
         if self.run_lock.locked():
