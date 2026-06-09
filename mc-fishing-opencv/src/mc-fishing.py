@@ -150,7 +150,7 @@ class Screenshot:
     """
     def __init__(self, fps: int, position: tuple[int, int, int, int]):
 
-        self.fps = fps
+        self.fps = fps*2
 
         # mss.grab() 使用的是区域的坐标值：左，上，右，下的两个点的坐标。
         self.position = position
@@ -215,7 +215,7 @@ class Screenshot:
         self.recorder = PipeWireRecorder()
         
         # 设置目标 FPS 是 GUI界面的2倍 (C层丢帧+时间戳双重限制)
-        self.recorder.set_target_fps(self.fps*2)
+        self.recorder.set_target_fps(self.fps)
         
         # 可选：设置 C 层硬件级裁剪 (x, y, width, height)
         self.recorder.set_crop_region(self.position[0], self.position[1], self.position[2] - self.position[0], self.position[3] - self.position[1])
@@ -583,13 +583,14 @@ class AutoFishing:
         label_fps.grid(row=0, column=0)
 
         self.label_fps = ttk.Entry(fps_frame, width=4, validate="key", validatecommand=(validate_cmd, "%P"))
+
+        self.label_fps.configure(validate="none")   # 临时关闭验证
         self.label_fps.insert(0, str(FPS))
+        self.label_fps.configure(validate="key")    # 恢复验证
+
         self.label_fps.grid(row=0, column=1)
 
         # 使用说明
-        # help_info_frame = ttk.Frame(self.root)
-        # help_info_frame.pack()
-
         help_info_btn = ttk.Button(self.root, text="使用说明", command=self.__help_info)
         help_info_btn.pack(side="right")
 
@@ -597,6 +598,8 @@ class AutoFishing:
 
 
     def __check_entry_input(self, value):
+        """
+        
         if value.isnumeric() or value == "":
             if len(value) <= 4:
                 return True
@@ -604,6 +607,17 @@ class AutoFishing:
                 return False
         else:
             return False
+        """
+        # 允许空字符串（用户可能正在删除内容）
+        if value == "":
+            return True
+        
+        # 必须是数字且长度 <=4
+        if value.isnumeric() and len(value) <= 4:
+            return True
+        
+        # 拒绝其他所有输入
+        return False
 
     def addButton(self, text, func):
         # 上个按钮
@@ -832,8 +846,6 @@ class AutoFishing:
 
 
     def run(self):
-
-
         # 修复：增加 try-except 和默认值
         try:
             fps_text = self.label_fps.get().strip() # 去除空格
@@ -850,16 +862,17 @@ class AutoFishing:
         BF = BaitFish(fps, self.screenshot_pos, str(self.conf.template))
         img_light = BF.img_light
 
-        """
-        新的思路：如果这次找到的图片，亮度比上次高就说明，“浮漂：溅起水花” 从字幕里更新了(就是有鱼了)。
-        但这种比模板要求很高。需要刚刚只包含 “浮漂：溅起水花” or “浮漂：溅起”
-        """
+
         def super_acceleration() -> bool:
+            """
+            新的思路：如果这次找到的图片，亮度比上次高就说明，“浮漂：溅起水花” 从字幕里更新了(就是有鱼了)。
+            但这种比模板要求很高。需要刚刚只包含 “浮漂：溅起水花” or “浮漂：溅起”
+            """
             nonlocal img_light
             BF.compute_temp_light()
             cmp = float(BF.img_light / (img_light + 1))
             truefalse = cmp > 1.1
-            logger.log(DEBUG2, f"打到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
+            logger.log(DEBUG2, f"找到的模板图像的亮度值：{img_light=} {BF.img_light=} {cmp=}")
             # 更新
             img_light = BF.img_light
             return truefalse
