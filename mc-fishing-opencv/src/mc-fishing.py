@@ -317,6 +317,12 @@ class Mouse:
 
         self.data = cmd.tobyte("right", mouse.KeySeq.MouseClick)
 
+        # 启动mouse server端
+        logger.debug("启动 mouse server 端")
+        self._server = Thread(target=mouse.server, args=(mouse.SECRET,), daemon=True)
+        self._server.start()
+
+
         def click(data):
 
             self.sock.sendto(data, mouse.ADDR)
