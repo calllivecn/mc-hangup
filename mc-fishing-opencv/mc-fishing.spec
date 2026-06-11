@@ -14,6 +14,7 @@ if sys.platform == "win32":
 elif sys.platform == "linux":
     imports.append("keyboardmouse")
     imports.append("libevdev")
+    imports.append("cffi")
 else:
     print("当前操作系统没有测试")
     while (yesno := input("是否继续？[Y/n]")) not in ("Y", "y", "n"):

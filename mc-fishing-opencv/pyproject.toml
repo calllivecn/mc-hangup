@@ -16,3 +16,8 @@ dependencies = [
 
 [tool.uv.sources]
 keyboardmouse = { git = "https://github.com/calllivecn/keyboardmouse.git" }
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.20.0",
+]
