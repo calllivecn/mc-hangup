@@ -63,7 +63,7 @@ ICON = Path("images") / "icon.png"
 
 class Conf:
     """
-    ~~这玩意有bug,不能保存左上角坐标。改成左下角坐标，然后推算左上解坐标。~~
+    ~~这玩意有bug,不能保存左上角坐标。改成左下角坐标，然后推算左上角坐标。~~
     1. 在初始化时，就检测有没有保存的配置。
     2. update() 时，自己对比，看看是否需要更新文件。
     """
@@ -83,21 +83,21 @@ class Conf:
             self.isdefault = True
 
             self.index = 0
-            self.win_pos = "850x480"
+            self.win_size_pos = "850x480+0+0"
             self.template = str(Path("images") / "mc-fishing_850x480_1.18.png")
             self.screen_pos = (700, 300, 150, 160)
 
             self._d = {
                 "index": self.index,
                 "template": str(self.template),
-                "win_pos": self.win_pos,
+                "win_size_pos": self.win_size_pos,
                 "screen_pos": self.screen_pos, # 截图相对游戏窗口的位置
             }
 
             self.save()
     
 
-    def load(self):
+    def load(self) -> bool:
 
         try:
             with open(self.savefile, "r", encoding="utf8") as f:
@@ -106,10 +106,10 @@ class Conf:
             return False
 
         self.index = self._d["index"]
-        self.template = self._d["template"]
-        # 例：win_pos = 850x480+700+300
-        self.win_pos = self._d["win_pos"]
-        # 是相对于 win_pos 的位置，和 模板本身的长宽 例：(700, 300, 150, 160)
+        self.template = Path(self._d["template"])
+        # 例：win_size_pos = 850x480+700+300
+        self.win_size_pos = self._d["win_size_pos"]
+        # 是相对于 win_size_pos 的位置，和 模板本身的长宽 例：(700, 300, 150, 160)
         self.screen_pos = self._d["screen_pos"]
 
         return True
@@ -117,29 +117,34 @@ class Conf:
     def save(self):
         
         with open(self.savefile, "w", encoding="utf8") as f:
-            json.dump(self._d, f)
+            json.dump(self._d, f, ensure_ascii=False, indent=4)
         
         return True
     
-    def update(self, index, template, win_pos, screen_pos):
+    def update(self, index, template, win_size_pos, screen_pos):
         updated = False
         if self.index != index:
             self.index = index
+            self._d["index"] = index
             updated = True
         
         if self.template != template:
             self.template = template
+            self._d["template"] = str(template)
             updated = True
 
-        if self.win_pos != win_pos:
-            self.win_pos = win_pos
+        if self.win_size_pos != win_size_pos:
+            self.win_size_pos = win_size_pos
+            self._d["win_size_pos"] = win_size_pos
             updated = True
         
         if self.screen_pos != screen_pos:
             self.screen_pos = screen_pos
+            self._d["screen_pos"] = screen_pos
             updated = True
         
         if updated:
+            logger.debug(f"更新配置: {json.dumps(self._d, ensure_ascii=False, indent=4)}")
             self.save()
 
 
@@ -171,7 +176,7 @@ class Screenshot:
         self.node_id: int = node_id
         self.recorder: PipeWireRecorder
 
-        
+
         if sys.platform == "linux":
             self.pipewire_init()
 
@@ -489,7 +494,7 @@ class AutoFishingGUI:
         self.game_resolution.update()
 
         # 查看之前的配置里有保存位置没有。
-        self.game_resolution.geometry(self.conf.win_pos)
+        self.game_resolution.geometry(self.conf.win_size_pos)
         self.game_resolution.resizable(False, False)
         self.game_resolution.attributes('-alpha', 0.5)
 
@@ -500,13 +505,13 @@ class AutoFishingGUI:
 
         # 如果没有配置说明是初始化，需要把窗口移到中间。
         if self.conf.isdefault:
-            x, y = self.conf.win_pos.split("x")
+            x, y = self.conf.win_size_pos.split("+")
             logger.debug(f"x, y: {x}, {y}")
-            self.winCenter(self.game_resolution, int(x), int(y))
+            if x != 0 or y != 0:
+                self.winCenter(self.game_resolution, int(x), int(y))
 
 
         # game_resoultion
-        # label = tk.Label(self.game_resolution, bg="#1122cc", borderwidth=5)
         label = ttk.Label(self.game_resolution, background="#1122cc", borderwidth=5)
         label.pack(fill=tk.BOTH, expand=True)
         # label.bind("<B1-Motion>", lambda e: self.Resize(e, self.game_resolution))
@@ -572,22 +577,14 @@ class AutoFishingGUI:
 
         self._help_info = False
 
+        # 为整个窗口绑定快捷键
+        self.root.bind("<Escape>", self.on_esc_pressed)  # 严格使用 <Escape>
 
-        # wayland 桌面环境获取授权, 保存node_id
-        self.__init_portal_screencast()
+
+        self.node_id: int = -1
 
 
     def __check_entry_input(self, value):
-        """
-        
-        if value.isnumeric() or value == "":
-            if len(value) <= 4:
-                return True
-            else:
-                return False
-        else:
-            return False
-        """
         # 允许空字符串（用户可能正在删除内容）
         if value == "":
             return True
@@ -648,14 +645,14 @@ class AutoFishingGUI:
         if value == "850x480(推荐)":
             index = 0
             template = Path("images") / "mc-fishing_850x480.png"
-            win_pos = "850x480"
+            win_size = "850x480"
             screen_pos = (700, 300, 150, 160) # 左上角坐标，和截图的长宽。
 
             self.game_resolution.resizable(True, True)
-            self.game_resolution.geometry(win_pos)
+            self.game_resolution.geometry(win_size)
             self.game_resolution.resizable(False, False)
             self.game_resolution.attributes('-alpha', 0.5)
-            tmp = win_pos.split("+")[0]
+            tmp = win_size.split("+")[0]
             x, y = tmp.split("x")
             self.winCenter(self.game_resolution, int(x), int(y))
 
@@ -664,16 +661,16 @@ class AutoFishingGUI:
         elif value == "1920x1080":
             index = 1
             template = Path("images") / "mc-fishing_1920x1080_1.18.png"
-            win_pos = "1920x1080"
+            win_size = "1920x1080"
             # screen_pos = (1600, 630, 1050, 980)
             # screen_pos = (1600, 630, 310, 430)
             screen_pos = (1600, 560, 300, 430)
 
             self.game_resolution.resizable(True, True)
-            self.game_resolution.geometry(win_pos)
+            self.game_resolution.geometry(win_size)
             self.game_resolution.resizable(False, False)
             self.game_resolution.attributes('-alpha', 0.5)
-            tmp = win_pos.split("+")[0]
+            tmp = win_size.split("+")[0]
             x, y = tmp.split("x")
             self.winCenter(self.game_resolution, int(x), int(y))
 
@@ -681,10 +678,10 @@ class AutoFishingGUI:
 
         elif value == "其他模式":
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
-            self.selected.current(0)
+            self.selected.current(self.conf.index)
         else:
             messagebox.showinfo(title="提示", message="还没实现，请期待～")
-            self.selected.current(0)
+            self.selected.current(self.conf.index)
     
 
     def winCenter(self, win, w, h):
@@ -739,13 +736,38 @@ class AutoFishingGUI:
     def _update_fishing_speed(self):
         self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
         self.root.after(100, self._update_fishing_speed)
-        
-    
+
+
+    def on_esc_pressed(self, e):
+        """
+        如果当前是运行状态，就停止运行
+        """
+        if self.run_lock.locked():
+            self.run_lock.release()
+
+            self.start_stop_var.set("开始")
+
+            # 显示窗口
+            # self.top.deiconify()
+            self.game_resolution.deiconify()
+            self.game_resolution.update()
+            self.game_resolution.attributes('-alpha', 0.5)
+
+            logger.info(f"stoping... {self.th.name}")
+
+
     def start(self):
 
+        
+        if self.node_id == -1:
+            # wayland 桌面环境获取授权, 保存node_id
+            self.__init_portal_screencast()
+
+
         if self.run_lock.locked():
-            self.start_stop_var.set("开始")
             self.run_lock.release()
+
+            self.start_stop_var.set("开始")
 
             # 显示窗口
             # self.top.deiconify()
@@ -756,19 +778,20 @@ class AutoFishingGUI:
             logger.info(f"stoping... {self.th.name}")
 
         else:
+            self.run_lock.acquire()
+            
             # 隐藏窗口
             self.game_resolution.withdraw()
 
             logger.info("start ...")
-            self.start_stop_var.set("暂停")
-            self.run_lock.acquire()
+            self.start_stop_var.set("暂停(ESC)")
 
             # 拿到游戏屏幕位置
             game_geometry = self.game_resolution.winfo_geometry()
             logger.info(f"拿到游戏屏幕位置: {game_geometry}")
 
             # 查看窗口位置变化。
-            if self.conf.win_pos != game_geometry:
+            if self.conf.win_size_pos != game_geometry:
                 self.conf.update(self.conf.index, self.conf.template, game_geometry, self.conf.screen_pos)
 
             w, tmp = game_geometry.split("x")
