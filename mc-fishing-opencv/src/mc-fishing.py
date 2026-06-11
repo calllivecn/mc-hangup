@@ -11,7 +11,6 @@ import json
 import socket
 import asyncio
 import logging
-import subprocess
 import tkinter as tk
 from tkinter import (
     ttk,
@@ -144,16 +143,34 @@ class Conf:
             self.save()
 
 
+async def _request_portal_auth():
+    """通过 XDG Desktop Portal 请求屏幕共享授权"""
+    logger.info("🔹 [Portal] 正在请求屏幕共享授权 (请在弹出的系统窗口中点击'分享')...")
+    portal = PortalScreenCast()
+    try:
+        node_id = await portal.start() 
+        logger.info(f"✅ [Portal] 授权成功! 获取到 PipeWire Node ID: {node_id}")
+        return node_id, portal
+    except Exception as e:
+        logger.error(f"❌ [Portal] 授权失败或用户取消: {e}")
+        return None, portal
+
+
 class Screenshot:
     """
     同时兼容 mss 和 wayland pipewire
     """
-    def __init__(self, fps: int, position: tuple[int, int, int, int]):
+    def __init__(self, fps: int, position: tuple[int, int, int, int], node_id: int):
 
-        self.fps = fps*2
+        self.fps = fps
 
         # mss.grab() 使用的是区域的坐标值：左，上，右，下的两个点的坐标。
         self.position = position
+
+        # node_id
+        self.node_id: int = node_id
+        self.recorder: PipeWireRecorder
+
         
         if sys.platform == "linux":
             self.pipewire_init()
@@ -162,6 +179,7 @@ class Screenshot:
             # 初始化截图库
             import mss
             self.mss_shot = mss.mss()
+
 
     def get_screenshot(self) -> np.ndarray:
         """
@@ -185,47 +203,24 @@ class Screenshot:
             # 停止 PipeWire
             self.recorder.stop()
 
-    async def _request_portal_auth(self):
-        """通过 XDG Desktop Portal 请求屏幕共享授权"""
-        logger.info("🔹 [Portal] 正在请求屏幕共享授权 (请在弹出的系统窗口中点击'分享')...")
-        portal = PortalScreenCast()
-        try:
-            node_id = await portal.start() 
-            logger.info(f"✅ [Portal] 授权成功! 获取到 PipeWire Node ID: {node_id}")
-            return node_id, portal
-        except Exception as e:
-            logger.error(f"❌ [Portal] 授权失败或用户取消: {e}")
-            return None, portal
-
-
     def pipewire_init(self):
-
-        # ================= 1. Portal 授权获取 Node ID =================
-        try:
-            node_id, portal = asyncio.run(self._request_portal_auth())
-        except KeyboardInterrupt:
-            logger.error("\n⚠️ 用户强制退出。")
-            sys.exit(0)
-            
-        if node_id is None:
-            logger.error("❌ 无法获取 Node ID，程序退出。")
-            sys.exit(1)
 
         # ================= 2. 配置 PipeWireRecorder =================
         self.recorder = PipeWireRecorder()
+
+        fps = self.fps*2
         
         # 设置目标 FPS 是 GUI界面的2倍 (C层丢帧+时间戳双重限制)
-        self.recorder.set_target_fps(self.fps)
+        self.recorder.set_target_fps(fps)
         
         # 可选：设置 C 层硬件级裁剪 (x, y, width, height)
         self.recorder.set_crop_region(self.position[0], self.position[1], self.position[2] - self.position[0], self.position[3] - self.position[1])
-        # recorder.disable_crop()  # 默认捕获全屏/全窗口
 
         # ================= 3. 启动 PipeWire (同步模式) =================
-        logger.info(f"\n🚀 [PipeWire] 正在连接 Node {node_id} (同步拉取模式, 目标 {self.fps} FPS)...")
+        logger.info(f"\n🚀 [PipeWire] 正在连接 Node {self.node_id} (同步拉取模式, 目标 {fps} FPS)...")
         try:
             # 【关键】传入 sync_mode=True 启用同步读取
-            self.recorder.start(node_id, sync_mode=True)
+            self.recorder.start(self.node_id, sync_mode=True)
         except Exception as e:
             logger.error(f"❌ [PipeWire] 启动失败: {e}")
             sys.exit(1)
@@ -242,7 +237,7 @@ class Mouse:
 
         # default usage
         if sys.platform == "linux":
-            self.check_in_linux()    
+            self.check_in_linux()
 
         elif sys.platform == "win32":
             self.check_in_windows()
@@ -276,7 +271,7 @@ class Mouse:
                 logger.info("检测到桌面环境是 X11 的")
                 if self.__use_mouse():
                     pass
-                elif self.__use_pyautogui() or self.__use_xdotool():
+                elif self.__use_pyautogui():
                     pass
                 else:
                     logger.error("没有支持鼠标方案")
@@ -334,21 +329,6 @@ class Mouse:
         self.autotool = lambda : click(self.data)
 
         return True
-    
-    def __use_xdotool(self) -> bool:
-        """
-        使用 xdotool 鼠标方案。
-        成功返回True, 失败返回False
-        """
-        try:
-            result = subprocess.run("type -p xdotool".split(), shell=True, stdout=subprocess.PIPE)
-            result.check_returncode()
-            self.autotool = lambda : subprocess.run("xdotool click 3".split(), stdout=subprocess.PIPE)
-            logger.info("使用 xdotool 方案")
-            return True
-        except Exception:
-            logger.warning("没有找到 xdotool 需要安装。")
-            return False
 
 
     def __use_pyautogui(self) -> bool:
@@ -368,7 +348,7 @@ class Mouse:
 
 class BaitFish:
 
-    def __init__(self, fps, position, img_template, threshold=0.75):
+    def __init__(self, ss: Screenshot, img_template: str, threshold=0.75):
 
         self.threshold = threshold
 
@@ -386,9 +366,6 @@ class BaitFish:
         # 找到的图像的像素值和, init
         self.img_light = np.sum(self.template)
 
-        # position: (200, 200, 400, 500) 
-        self.position = position
-
         # 拿到模板图片大小
         self.template_size = self.template.shape
         # h,w,c = template_size
@@ -398,8 +375,7 @@ class BaitFish:
         self.temp = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
         # 初始化截图库
-        self._Ss = Screenshot(fps, position)
-
+        self._Ss = ss
 
     def close(self):
         self._Ss.close()
@@ -468,7 +444,7 @@ class BaitFish:
 
 
 # 创建顶级组件容器
-class AutoFishing:
+class AutoFishingGUI:
 
     def __init__(self):
 
@@ -597,6 +573,10 @@ class AutoFishing:
         self._help_info = False
 
 
+        # wayland 桌面环境获取授权, 保存node_id
+        self.__init_portal_screencast()
+
+
     def __check_entry_input(self, value):
         """
         
@@ -626,7 +606,7 @@ class AutoFishing:
         btn1.pack()
     
     def clear_fishingcount_func(self):
-        logger.debug("重置计数")
+        logger.debug("重置钓鱼计数")
         with self.reset_fishingcount:
             self.fishcount = 0
             self.fishingspeed = 0
@@ -754,13 +734,7 @@ class AutoFishing:
                 self.speed.append(self.fishingspeed)
 
             self.avg_speed  = round(sum(self.speed) / len(self.speed), 1)
-    
-        # 通过 after(0) 安全回调主线程
-        # self.root.after(0, lambda: self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount)))  # ✅ 关键：在主线程执行 set()
 
-        # 不能直接在子线程更新变量!!!
-        # logger.debug(f"[更新位置] 线程ID: {get_ident()}, 名称: {current_thread().name}")
-        # self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
     
     def _update_fishing_speed(self):
         self.fishcount_var.set(self.fishcount_string.format(self.avg_speed, self.fishcount))
@@ -768,6 +742,7 @@ class AutoFishing:
         
     
     def start(self):
+
         if self.run_lock.locked():
             self.start_stop_var.set("开始")
             self.run_lock.release()
@@ -832,7 +807,7 @@ class AutoFishing:
 
     def retract_fishing_rod(self):
         fishing_time = time.time()
-        t_interval = fishing_time - self.fishing_last 
+        t_interval = fishing_time - self.fishing_last
         self.fishing_last = fishing_time
         self.fishshow(t_interval)
         # 收鱼竿
@@ -845,21 +820,36 @@ class AutoFishing:
         self.mouse.click_right()
 
 
+    def __init_portal_screencast(self):
+
+        # ================= 1. Portal 授权获取 Node ID =================
+        try:
+            self.node_id, portal = asyncio.run(_request_portal_auth())
+        except KeyboardInterrupt:
+            logger.error("\n⚠️ 用户强制退出。")
+            sys.exit(0)
+            
+        if self.node_id is None:
+            logger.error("❌ 无法获取 Node ID，程序退出。")
+            sys.exit(1)
+
+
     def run(self):
         # 修复：增加 try-except 和默认值
         try:
             fps_text = self.label_fps.get().strip() # 去除空格
             if fps_text == "":
-                fps = FPS # 使用全局默认值
+                self.fps = FPS # 使用全局默认值
             else:
-                fps = int(fps_text)
+                self.fps = int(fps_text)
         except ValueError:
             logger.warning(f"FPS输入无效，使用默认值{FPS}")
-            fps = FPS
+            self.fps = FPS
 
-        logger.debug(f"FPS：{fps}")
+        logger.debug(f"FPS：{self.fps}")
 
-        BF = BaitFish(fps, self.screenshot_pos, str(self.conf.template))
+        self.ss = Screenshot(self.fps, self.screenshot_pos, self.node_id)
+        BF = BaitFish(self.ss, str(self.conf.template))
         img_light = BF.img_light
 
 
@@ -885,7 +875,7 @@ class AutoFishing:
             检测帧数，太快sleep()，不足输出警告。
             """
             nonlocal alarm_time
-            interval = round(1/fps - t, 4)
+            interval = round(1/self.fps - t, 4)
             if interval > 0:
                 time.sleep(interval)
             else:
@@ -962,7 +952,8 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    fishing = AutoFishing()
+
+    fishing = AutoFishingGUI()
     fishing.mainloop()
 
 

@@ -1,10 +1,12 @@
 """Portal ScreenCast 异步模块 (保持会话存活)"""
 import asyncio
 
+
 from dbus_next.aio.message_bus import MessageBus
 from dbus_next import Message
 from dbus_next.signature import Variant
 from dbus_next.constants import MessageType, BusType
+
 
 class PortalScreenCast:
     def __init__(self):
@@ -73,6 +75,7 @@ class PortalScreenCast:
         self.session_handle = res['session_handle']
         
         print("🔹 [Portal] 2/3 选择捕获源 (窗口)...")
+
         await self._call_and_wait('SelectSources', 'oa{sv}', [
             self.session_handle,
             {'types': Variant('u', 1), 'cursor_mode': Variant('u', 1), 'multiple': Variant('b', False)}
