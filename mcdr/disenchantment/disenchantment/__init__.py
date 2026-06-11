@@ -31,6 +31,7 @@ SOUL_DIR = CONFIG_DIR / ID_NAME
 def disenchantment(src, ctx):
     server, info = __get(src)
 
+    # 查看主手
     # rcon_result = server.rcon_query(f"data get entity {info.player} SelectedItem")
     rcon_result = server.rcon_query(f"data get entity {info.player} SelectedItem.components")
     cmd = f"{info.player} has the following entity data: (.*)"
@@ -59,27 +60,31 @@ def disenchantment(src, ctx):
     enchantments_count = len(enchantments)
 
     # 检测副手上有没>=数量的空白书籍。 在1.21.x 上没有找到检测副手物品方法
-    cmd = f"""data get entity {info.player} Inventory[{{"Slot": 0b}}]"""
-    print(f"{cmd=}")
+    # 1.16 版本后副手槽位不再存储在 Inventory 列表中
+    #cmd = f"""data get entity {info.player} Inventory[{{"Slot": 0b}}]"""
+    #print(f"{cmd=}")
+
+    # 26.1.2 的检测副手方式
+    cmd = f"execute if items entity {info.player} weapon.offhand minecraft:book"
     rcon_result = server.rcon_query(cmd)
 
     # 这样就是不行？？。。
     # rcon_result = server.rcon_query(f"""data get entity {info.player} Inventory[{{"Slot": 102b}}]""")  # 副手物品栏
 
     print(f"{rcon_result=}")
+    #result = re.match(f"{info.player} has the following entity data: (.*)", rcon_result)
 
-    result = re.match(f"{info.player} has the following entity data: (.*)", rcon_result)
-    if result is None:
-        server.reply(info, RText(f"1:第一个物品栏没书籍。", RColor.red))
+    # 26.1.2 新的 Test passed. Count: 56
+    #if rcon_result is None:
+    if rcon_result == "Test failed":
+        server.reply(info, RText(f"1:副手上没有书籍。", RColor.red))
         return
 
-    print("1:第一个物品栏没书籍。过了。")
+    print("1:副手上有书籍。过了。")
 
-    cmd = f"""{{count: (.*), Slot: 0b, id: "minecraft:book"}}"""
-    item = re.match(cmd, result.group(1))
-    if item is None:
-        server.reply(info, RText(f"2:第一个物品栏没书籍。", RColor.red))
-        return
+    #cmd = f"""{{count: (.*), Slot: 0b, id: "minecraft:book"}}"""
+    cmd = "Test passed. Count: (.*)"
+    item = re.match(cmd, rcon_result)
     
     print(f"{item=}")
     item_count = item.group(1)
